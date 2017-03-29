@@ -34,7 +34,30 @@ $ws->start();
 ### use the webSocket application
 
 ```php
+use inhere\webSocket\Application;
+use inhere\webSocket\WebSocketServer;
 
+$app = new Application('', 9501);
+
+$app->onOpen(function (WebSocketServer $ws, Application $app, $id) {
+    $app->respond([
+        'total' => $ws->count()
+    ], 'welcome!');
+});
+
+$app->onClose(function (WebSocketServer $ws, Application $app) {
+    $app->respond([
+        'total' => $ws->count()
+    ]);
+});
+
+$rootHandler = $app->route('/', new \inhere\webSocket\handlers\RootHandler());
+
+// commands
+$rootHandler->add('test', function ($data, $index, Application $app) {
+
+    return 'hello';
+});
 ```
 
 ## webSocket header example

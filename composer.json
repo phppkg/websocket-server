@@ -1,5 +1,5 @@
 {
-  "name": "inhere/webSocket",
+  "name": "inhere/websocket",
   "type": "library",
   "description": "a lightweight webSocket application library",
   "keywords": ["library","webSocket","webSocket-application"],
