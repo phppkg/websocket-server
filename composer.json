@@ -1,0 +1,29 @@
+{
+  "name": "inhere/webSocket",
+  "type": "library",
+  "description": "some useful library of the php",
+  "keywords": ["library","tool","php"],
+  "homepage": "http://github.com/inhere/php-librarys",
+  "license": "MIT",
+  "authors": [
+    {
+      "name": "inhere",
+      "email": "in.798@qq.com",
+      "homepage": "http://www.yzone.net/"
+    }
+  ],
+  "require": {
+    "php": ">=7.0.0",
+    "ext-sockets": "*",
+    "inhere/php-librarys": "dev-master"
+  },
+  "autoload": {
+    "psr-4": {
+      "inhere\\webSocket\\" : "src/"
+    }
+  },
+  "suggest": {
+    "inhere/simple-print-tool": "Very lightweight data printing tools",
+    "inhere/php-validate": "Very lightweight data validate tool"
+  }
+}

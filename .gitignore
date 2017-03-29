@@ -1,0 +1,9 @@
+.idea/
+.phpintel/
+!README.md
+!.gitkeep
+
+*.log
+*.swp
+*.swo
+.DS_Store
