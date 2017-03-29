@@ -6,11 +6,11 @@
  * Time: 9:07
  */
 
-namespace inhere\librarys\webSocket\server;
+namespace inhere\webSocket\parts;
 
 /**
  * Class IpBlackList
- * @package inhere\librarys\webSocket\server
+ * @package inhere\webSocket\parts
  */
 class IpBlackList
 {

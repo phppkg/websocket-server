@@ -1,9 +1,9 @@
 {
   "name": "inhere/webSocket",
   "type": "library",
-  "description": "some useful library of the php",
-  "keywords": ["library","tool","php"],
-  "homepage": "http://github.com/inhere/php-librarys",
+  "description": "a lightweight webSocket application library",
+  "keywords": ["library","webSocket","webSocket-application"],
+  "homepage": "http://github.com/inhere/php-webSocket",
   "license": "MIT",
   "authors": [
     {

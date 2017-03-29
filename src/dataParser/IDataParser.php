@@ -6,13 +6,13 @@
  * Time: 15:35
  */
 
-namespace inhere\librarys\webSocket\server\parts;
+namespace inhere\webSocket\dataParser;
 
-use inhere\librarys\webSocket\server\Application;
+use inhere\webSocket\Application;
 
 /**
  * Interface IDataParser
- * @package inhere\librarys\webSocket\server\parts
+ * @package inhere\webSocket\dataParser
  *
  */
 interface IDataParser

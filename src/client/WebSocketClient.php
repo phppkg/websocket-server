@@ -5,12 +5,12 @@
  * Date: 2017-03-27
  * Time: 9:14
  */
-namespace inhere\librarys\webSocket\client;
+namespace inhere\webSocket\client;
 
 
 /**
  * Class WebSocketClient
- * @package inhere\librarys\webSocket\client
+ * @package inhere\webSocket\client
  */
 class WebSocketClient
 {

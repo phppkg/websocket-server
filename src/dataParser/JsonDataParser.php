@@ -6,14 +6,13 @@
  * Time: 9:27
  */
 
-namespace inhere\librarys\webSocket\server\parts;
+namespace inhere\webSocket\dataParser;
 
-
-use inhere\librarys\webSocket\server\Application;
+use inhere\webSocket\Application;
 
 /**
  * Class JsonDataParser
- * @package inhere\librarys\webSocket\server\parts
+ * @package inhere\webSocket\dataParser
  */
 class JsonDataParser implements IDataParser
 {
@@ -34,6 +33,8 @@ class JsonDataParser implements IDataParser
     public function parse(string $data, int $index, Application $app)
     {
         // json parser
+        // format: {"cmd": "value", ... ...}
+        // eg: {"cmd": "login", "name":"john","pwd":123456}
         $temp = $data;
         $command = '';
         $to = $app->getOption('jsonParseTo') ?: self::JSON_TO_RAW;
@@ -44,14 +45,15 @@ class JsonDataParser implements IDataParser
         $data = json_decode(trim($data), $toAssoc = $to === self::JSON_TO_ARRAY);
 
         // parse error
-        if ( json_last_error() > 0 ) {
-            // revert
+        if (json_last_error() > 0) {
             $errMsg = json_last_error_msg();
 
             $app->log("The #{$index} request data parse to json failed! MSG: $errMsg Data: {$temp}", 'error');
 
             return false;
-        } elseif ($toAssoc) {
+        }
+
+        if ($toAssoc) {
             if ( isset($data[$cmdKey]) && $data[$cmdKey]) {
                 $command = $data[$cmdKey];
                 unset($data[$cmdKey]);
@@ -66,6 +68,7 @@ class JsonDataParser implements IDataParser
             $data = $temp;
         }
 
+        unset($temp);
         return [$command, $data];
     }
 }

@@ -6,13 +6,15 @@
  * Time: 15:35
  */
 
-namespace inhere\librarys\webSocket\server\parts;
+namespace inhere\webSocket\handlers;
 
-use inhere\librarys\webSocket\server\Application;
+use inhere\webSocket\Application;
+use inhere\webSocket\parts\Request;
+use inhere\webSocket\parts\Response;
 
 /**
  * Interface IRouteHandler
- * @package inhere\librarys\webSocket\server\parts
+ * @package inhere\webSocket\handlers
  */
 interface IRouteHandler
 {

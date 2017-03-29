@@ -8,12 +8,12 @@
  * @from Slim 3
  */
 
-namespace inhere\librarys\webSocket\server\parts;
+namespace inhere\webSocket\parts;
 
 /**
  * Class Response
  * response for handshake
- * @package inhere\librarys\webSocket\server\parts
+ * @package inhere\webSocket\parts
  *
  * @property string $protocol
  * @property string $protocolVersion
@@ -225,7 +225,7 @@ class Response
      */
     protected function filterStatus($status)
     {
-        if (!is_integer($status) || $status<100 || $status>599) {
+        if (!is_int($status) || $status<100 || $status>599) {
             throw new \InvalidArgumentException('Invalid HTTP status code');
         }
 
@@ -346,15 +346,15 @@ class Response
 
     /**
      * @param array $headers
-     * @param bool $replace
+     * @param bool $merge
      * @return $this
      */
-    public function setHeaders(array $headers, $replace = false)
+    public function setHeaders(array $headers, $merge = false)
     {
-        if ($replace) {
-            $this->headers = array_merge($this->headers, $headers);
-        } else {
+        if (!$merge) {
             $this->headers = $headers;
+        } else {
+            $this->headers = array_merge($this->headers, $headers);
         }
 
         return $this;

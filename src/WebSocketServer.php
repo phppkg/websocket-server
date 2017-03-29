@@ -6,10 +6,10 @@
  * Time: 下午8:29
  */
 
-namespace inhere\librarys\webSocket\server;
+namespace inhere\webSocket;
 
-use inhere\librarys\webSocket\server\parts\Request;
-use inhere\librarys\webSocket\server\parts\Response;
+use inhere\webSocket\parts\Request;
+use inhere\webSocket\parts\Response;
 
 /**
  * Class WebSocketServer
@@ -70,7 +70,7 @@ class WebSocketServer
      * ]
      */
     private $clients = [];
-    
+
     /**
      * settings
      * @var array
@@ -209,8 +209,8 @@ class WebSocketServer
             }
 
             // handle ...
-            foreach ($read as $k => $sock) {
-                $this->handleSocket($sock, $k, $maxLen);
+            foreach ($read as $sock) {
+                $this->handleSocket($sock, $maxLen);
             }
 
             //sleep(1);
@@ -220,11 +220,10 @@ class WebSocketServer
 
     /**
      * @param resource $sock
-     * @param int $k
      * @param int $len
      * @return bool
      */
-    protected function handleSocket($sock, $k, $len)
+    protected function handleSocket($sock, $len)
     {
         // 每次循环检查到 $this->socket 时，都会用 socket_accept() 去检查是否有新的连接进入，有就加入连接列表
         if($sock === $this->master) {

@@ -6,7 +6,7 @@
  * Time: 18:02
  */
 
-namespace inhere\librarys\webSocket\server\parts;
+namespace inhere\webSocket\parts;
 
 /**
  * Class Request

@@ -6,14 +6,17 @@
  * Time: 15:34
  */
 
-namespace inhere\librarys\webSocket\server\parts;
+namespace inhere\webSocket\handlers;
+
+use inhere\webSocket\parts\Request;
+use inhere\webSocket\parts\Response;
 
 /**
  * Class RootHandler
  *
  * handle the root '/' webSocket request
  *
- * @package inhere\librarys\webSocket\server\parts
+ * @package inhere\webSocket\handlers
  */
 class RootHandler extends ARouteHandler
 {
@@ -25,7 +28,7 @@ class RootHandler extends ARouteHandler
     {
         parent::onHandshake($request, $response);
 
-        $response->setCookie('test', 'value');
+        $response->setCookie('test', 'test-value');
     }
 
     public function indexCommand()

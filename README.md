@@ -1,5 +1,25 @@
 # webSocket application
 
+a lightweight webSocket application library
+
+## install
+
+in `composer.json` add:
+
+```
+"inhere/php-webSocket": "dev-master",
+```
+
+run: `composer up`
+
+## usage
+
+### only use webSocket server
+
+```
+
+```
+
 ## webSocket header example
 
 ### webSocket request header 
@@ -53,3 +73,7 @@ Upgrade: websocket
 Connection: Upgrade
 Sec-WebSocket-Accept: BOVf/XCi92SSib4Ga+ltTsmHiWQ=
 ```
+
+## license
+
+MIT

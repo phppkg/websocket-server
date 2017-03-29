@@ -6,12 +6,12 @@
  * Time: 23:13
  */
 
-namespace inhere\librarys\webSocket\server;
+namespace inhere\webSocket;
 
-use inhere\librarys\webSocket\server\parts\Request;
-use inhere\librarys\webSocket\server\parts\IRouteHandler;
-use inhere\librarys\webSocket\server\parts\Response;
-use inhere\librarys\webSocket\server\parts\RootHandler;
+use inhere\webSocket\handlers\IRouteHandler;
+use inhere\webSocket\handlers\RootHandler;
+use inhere\webSocket\parts\Request;
+use inhere\webSocket\parts\Response;
 
 /**
  * Class Application
