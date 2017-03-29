@@ -10,6 +10,8 @@
 
 namespace inhere\webSocket\parts;
 
+use inhere\librarys\traits\TraitGetterSetterAccess;
+
 /**
  * Class Response
  * response for handshake
@@ -28,6 +30,8 @@ namespace inhere\webSocket\parts;
  */
 class Response
 {
+    use TraitGetterSetterAccess;
+
     /**
      * the connection header line data end char
      */
@@ -418,7 +422,7 @@ class Response
      */
     public function setBody($body)
     {
-        $this->body = is_array($body) ? $body : [$body];
+        $this->body = (array)$body;
 
         return $this;
     }
@@ -426,45 +430,5 @@ class Response
     public function __toString()
     {
         return $this->toString();
-    }
-
-    /**
-     * @param $name
-     * @return bool
-     */
-    public function __isset($name)
-    {
-        return property_exists($this, $name);
-    }
-
-    /**
-     * @param $name
-     * @return null|mixed
-     */
-    public function __get($name)
-    {
-        $getter = 'get' . ucfirst($name);
-
-        if ( method_exists($this, $getter) ) {
-            return $this->$getter();
-        }
-
-        return null;
-    }
-
-    /**
-     * @param string $name
-     * @param $value
-     * @throws \RuntimeException
-     */
-    public function __set(string $name, $value)
-    {
-        $setter = 'set' . ucfirst($name);
-
-        if ( method_exists($this, $setter) ) {
-            $this->$setter($name, $value);
-        }
-
-        throw new \RuntimeException("Setting a not exists property: $name");
     }
 }

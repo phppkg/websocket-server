@@ -8,6 +8,8 @@
 
 namespace inhere\webSocket\parts;
 
+use inhere\librarys\traits\TraitGetterSetterAccess;
+
 /**
  * Class Request
  *
@@ -26,6 +28,8 @@ namespace inhere\webSocket\parts;
  */
 class Request
 {
+    use TraitGetterSetterAccess;
+
     /**
      * @var string
      */
@@ -301,45 +305,5 @@ class Request
     public function setBody(string $body)
     {
         $this->body = $body;
-    }
-
-    /**
-     * @param $name
-     * @return bool
-     */
-    public function __isset($name)
-    {
-        return property_exists($this, $name);
-    }
-
-    /**
-     * @param $name
-     * @return null|mixed
-     */
-    public function __get($name)
-    {
-        $getter = 'get' . ucfirst($name);
-
-        if ( method_exists($this, $getter) ) {
-            return $this->$getter();
-        }
-
-        return null;
-    }
-
-    /**
-     * @param string $name
-     * @param $value
-     * @throws \RuntimeException
-     */
-    public function __set(string $name, $value)
-    {
-        $setter = 'set' . ucfirst($name);
-
-        if ( method_exists($this, $setter) ) {
-            $this->$setter($name, $value);
-        }
-
-        throw new \RuntimeException("Setting a not exists property: $name");
     }
 }

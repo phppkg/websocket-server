@@ -16,7 +16,24 @@ run: `composer up`
 
 ### only use webSocket server
 
+```php
+use inhere\webSocket\WebSocketServer;
+
+$ws = new WebSocketServer();
+
+$ws->on('open', function (WebSocketServer $ws, $data) {
+    $ws->send('welcome!');
+});
+
+$ws->on(WebSocketServer::ON_MESSAGE, function (WebSocketServer $ws, $data) {
+    $ws->send("you input: $data");
+});
+
+$ws->start();
 ```
+### use the webSocket application
+
+```php
 
 ```
 

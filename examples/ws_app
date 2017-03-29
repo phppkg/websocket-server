@@ -8,17 +8,17 @@
  * RUN  `server/ws_server`
  */
 
-require __DIR__ . '/autoload.php';
+require __DIR__ . '/../../../autoload.php';
 
-use inhere\webSocket\server\Application;
-use inhere\webSocket\server\WebSocketServer;
+use inhere\webSocket\Application;
+use inhere\webSocket\WebSocketServer;
 
 $app = new Application('', 9501);
 
-$app->onOpen(function (WebSocketServer $ws, Application $app) {
+$app->onOpen(function (WebSocketServer $ws, Application $app, $id) {
     $app->respond([
         'total' => $ws->count()
-    ]);
+    ], 'welcome!');
 });
 
 $app->onClose(function (WebSocketServer $ws, Application $app) {
@@ -27,7 +27,7 @@ $app->onClose(function (WebSocketServer $ws, Application $app) {
     ]);
 });
 
-$rootHandler = $app->route('/', new \inhere\webSocket\parts\RootHandler());
+$rootHandler = $app->route('/', new \inhere\webSocket\handlers\RootHandler());
 
 // commands
 $rootHandler->add('test', function ($data, $index, Application $app) {

@@ -15,6 +15,7 @@ use inhere\webSocket\parts\Response;
 
 /**
  * Class Application
+ *  webSocket server application
  *
  * 1.
  * ```
@@ -86,6 +87,9 @@ class Application
     protected $options = [
         // request and response data type: json text
         'dataType' => 'json',
+
+        // allowed accessed Origins. e.g: [ 'localhost', 'site.com' ]
+        'allowedOrigins' => [],
     ];
 
     /**
@@ -460,6 +464,7 @@ EOF;
     private $sender = -1;
     private $targets = [];
     private $excepted = [];
+    private $response = [];
 
     /**
      * @param null|int $index
@@ -535,6 +540,11 @@ EOF;
 
     public function beforeSend($result)
     {
+    }
+
+    public function send()
+    {
+
     }
 
     /////////////////////////////////////////////////////////////////////////////////////////

@@ -12,7 +12,7 @@ namespace inhere\webSocket\parts;
  * Class IpBlackList
  * @package inhere\webSocket\parts
  */
-class IpBlackList
+class IPBlackList
 {
 
 }

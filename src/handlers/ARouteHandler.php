@@ -56,9 +56,6 @@ abstract class ARouteHandler implements IRouteHandler
     const DEFAULT_CMD = 'index';
     const DEFAULT_CMD_SUFFIX = 'Command';
 
-    // default command suffix
-    public $cmdSuffix = 'Command';
-
     /**
      * @var array
      */
@@ -69,7 +66,10 @@ abstract class ARouteHandler implements IRouteHandler
         // It is valid when `'dataType' => 'json'`, allow: 1 raw 2 array 3 object
         'jsonParseTo'    => IDataParser::JSON_TO_ARRAY,
 
+        // default command name, if request data not define command name.
         'defaultCmd'     => self::DEFAULT_CMD,
+        // default command suffix
+        'cmdSuffix'     => self::DEFAULT_CMD_SUFFIX,
 
         // allowed request Origins. e.g: [ 'localhost', 'site.com' ]
         'allowedOrigins' => [],

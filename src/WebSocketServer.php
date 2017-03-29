@@ -146,7 +146,7 @@ class WebSocketServer
     /**
      * create and prepare socket resource
      */
-    protected function prepareSocket()
+    protected function prepareMasterSocket()
     {
         // reset
         socket_clear_error();
@@ -169,7 +169,7 @@ class WebSocketServer
         // 给套接字绑定名字
         socket_bind($this->master, $this->getHost(), $this->getPort());
 
-        $max = $this->getSetting('max_conn');
+        $max = $this->getSetting('max_conn', 20);
 
         // 监听套接字上的连接. 最多允许 $max 个连接，超过的客户端连接会返回 WSAECONNREFUSED 错误
         socket_listen($this->master, $max);
@@ -185,7 +185,7 @@ class WebSocketServer
         $this->beforeStart();
 
         // create and prepare
-        $this->prepareSocket();
+        $this->prepareMasterSocket();
 
         $maxLen = (int)$this->getSetting('max_data_len', 1024);
 
@@ -229,9 +229,8 @@ class WebSocketServer
         if($sock === $this->master) {
             // 从已经监控的socket中接受新的客户端请求
             if ( false === ($newSock = socket_accept($sock)) ) {
-                $msg = $this->getSocketError();
-                $this->log($msg);
-                $this->trigger(self::ON_ERROR, [$msg, $this]);
+                $this->error($this->getSocketError());
+
                 return false;
             }
 
@@ -243,18 +242,17 @@ class WebSocketServer
 
         // 不在已经记录的client列表中
         if ( !isset($this->sockets[$id], $this->clients[$id])) {
-            $this->close($id, $sock);
-            return false;
+            return $this->close($id, $sock);
         }
 
         $data = null;
         // 函数 socket_recv() 从 socket 中接受长度为 len 字节的数据，并保存在 $data 中。
         $bytes = socket_recv($sock, $data, $len, 0);
 
-        if (false === $bytes || !$data) {
-            $this->log("Failed to receive data from #$id client or not received data, will close socket connection.");
-            $this->close($id, $sock);
-            return false;
+        // 没有发送数据或者小于7字节
+        if (false === $bytes || $bytes < 7 || !$data ) {
+            $this->log("Failed to receive data or not received data(client close connection) from #$id client, will close the socket.");
+            return $this->close($id, $sock);
         }
 
         // 是否已经握手
@@ -263,7 +261,7 @@ class WebSocketServer
             return true;
         }
 
-        $this->message($id, $data);
+        $this->message($id, $data, $bytes);
 
         return true;
     }
@@ -287,7 +285,7 @@ class WebSocketServer
         // 客户端连接单独保存
         $this->sockets[$id] = $socket;
 
-        $this->log("a new client connected, ID: $id, Count: " . $this->count() . 'Info ', 'info', $this->clients );
+        $this->log("A new client connected, ID: $id, Count: " . $this->count() . ', Info:', 'info', $this->clients );
 
         // 触发 connect 事件回调
         $this->trigger(self::ON_CONNECT, [$this, $id]);
@@ -318,6 +316,7 @@ class WebSocketServer
             return $this->close($id, $socket);
         }
 
+        // 解析请求头信息
         $request = Request::makeByParseData($data);
 
         // 触发 handshake 事件回调，如果返回 false -- 拒绝连接，比如需要认证，限定路由，限定ip，限定domain等
@@ -329,6 +328,7 @@ class WebSocketServer
             return $this->close($id, $socket);
         }
 
+        // general key
         $key = base64_encode(sha1(trim($match[1]) . '258EAFA5-E914-47DA-95CA-C5AB0DC85B11', true));
         $response
             ->setStatus(101)
@@ -343,9 +343,9 @@ class WebSocketServer
 
         // 标记已经握手 更新路由 path
         $this->clients[$id]['handshake'] = true;
-        $this->clients[$id]['path'] = $request->getPath();
+        $this->clients[$id]['path'] = $path = $request->getPath();
 
-        $this->log("The #$id client connection handshake successful! client count:" . $this->count());
+        $this->log("The #$id client connection handshake successful!" . $this->count() . ', Info:', 'info', $this->clients[$id]);
 
         // 握手成功 触发 open 事件
         return $this->trigger(self::ON_OPEN, [$this, $data, $id]);
@@ -355,12 +355,13 @@ class WebSocketServer
      * handle client message
      * @param int $id
      * @param string $data
+     * @param int $bytes
      */
-    protected function message(int $id, string $data)
+    protected function message(int $id, string $data, int $bytes)
     {
         $data = $this->decode($data);
 
-        $this->log("Received a message from #$id, Data: $data");
+        $this->log("Received $bytes bytes message from #$id, Data: $data");
 
         // call on message handler
         $this->trigger(self::ON_MESSAGE, [$this, $data, $id]);
@@ -399,9 +400,177 @@ class WebSocketServer
         // call close handler
         $this->trigger(self::ON_CLOSE, [$this, $id]);
 
-        $this->log("The #$id client connection has been closed! client count:" . $this->count());
+        $this->log("The #$id client connection has been closed! Count:" . $this->count());
 
         return true;
+    }
+
+    /**
+     * @param $msg
+     */
+    protected function error($msg)
+    {
+        $this->log("An error occurred! Error: $msg", 'error');
+
+        $this->trigger(self::ON_ERROR, [$msg, $this]);
+    }
+
+    /////////////////////////////////////////////////////////////////////////////////////////
+    /// events method
+    /////////////////////////////////////////////////////////////////////////////////////////
+
+    /**
+     * register a event callback
+     * @param string    $event    event name
+     * @param callable  $cb       event callback
+     * @param bool      $replace  replace exists's event cb
+     * @return WebSocketServer
+     */
+    public function on(string $event, callable $cb, bool $replace = false): self
+    {
+        if ( false === ($key = array_search($event, $this->getSupportedEvents(), true)) ) {
+            $sup = implode(',', $this->getSupportedEvents());
+
+            throw new \InvalidArgumentException("The want registered event is not supported. Supported: $sup");
+        }
+
+        if ( !$replace && isset($this->callbacks[$key]) ) {
+            throw new \InvalidArgumentException("The want registered event [$event] have been registered! don't allow replace.");
+        }
+
+        $this->callbacks[$key] = $cb;
+
+        return $this;
+    }
+
+    /**
+     * @param string $event
+     * @param array $args
+     * @return mixed
+     */
+    protected function trigger(string $event, array $args = [])
+    {
+        if ( false === ($key = array_search($event, $this->getSupportedEvents(), true)) ) {
+            throw new \InvalidArgumentException("Trigger a not exists's event: $event.");
+        }
+
+        if ( !isset($this->callbacks[$key]) || !($cb = $this->callbacks[$key]) ) {
+            return '';
+        }
+
+        return call_user_func_array($cb, $args);
+    }
+
+    /**
+     * @param string $event
+     * @return bool
+     */
+    public function isSupportedEvent(string $event): bool
+    {
+        return in_array($event, $this->getSupportedEvents(), true);
+    }
+
+    /////////////////////////////////////////////////////////////////////////////////////////
+    /// send message to client
+    /////////////////////////////////////////////////////////////////////////////////////////
+
+    /**
+     * @param string $data
+     * @param null|int $from
+     * @param int|array|null $target
+     * @param int[] $expected
+     * @return bool|int
+     */
+    public function send(string $data, int $from = -1, $target = null, array $expected = [])
+    {
+        return is_int($target) && $target >= 0 ?
+            $this->sendTo($target, $data, $from) :
+            $this->broadcast($data, $from, (array)$target,  $expected);
+    }
+
+    /**
+     * @param int    $target 发送目标
+     * @param string $data
+     * @param int    $from 发送者
+     * @return int
+     */
+    public function sendTo(int $target, string $data, int $from = 0)
+    {
+        if ( !$this->hasClient($target) ) {
+            $this->log("The target user #$target not connected!", 'error');
+
+            return 1703;
+        }
+
+        $res = $this->frame($data);
+        $socket = $this->sockets[$target];
+        $fromUser = $from < 1 ? 'SYSTEM' : $from;
+
+        $this->log("The #{$fromUser} send message to #{$target}. Data: {$data}");
+
+        return $this->writeTo($socket, $res);
+    }
+
+    /**
+     * @param string $data
+     * @param int    $from
+     * @param int[]  $expected
+     * @param int[]  $targets
+     * @return int
+     */
+    public function broadcast(string $data, int $from = 0, array $targets = [], array $expected = []): int
+    {
+        $res = $this->frame($data);
+        $len = strlen($res);
+        $fromUser = $from < 1 ? 'SYSTEM' : $from;
+
+        // to all
+        if ( !$expected && !$targets) {
+            $this->log("(broadcast)The #{$fromUser} send a message to all users. Data: {$data}");
+
+            foreach ($this->sockets as $socket) {
+                $this->writeTo($socket, $res, $len);
+            }
+
+        } else {
+            $this->log("(broadcast)The #{$fromUser} gave some specified user sending a message. Data: {$data}");
+            foreach ($this->sockets as $id => $socket) {
+                if ( isset($expected[$id]) ) {
+                    continue;
+                }
+
+                if ( $targets && !isset($targets[$id]) ) {
+                    continue;
+                }
+
+                $this->writeTo($socket, $res, $len);
+            }
+        }
+
+        // $msg = socket_strerror(socket_last_error());
+        return socket_last_error();
+    }
+
+    /**
+     * response data to client by socket connection
+     * @param resource  $socket
+     * @param string    $data
+     * @param int       $length
+     * @return int
+     */
+    public function writeTo($socket, string $data, int $length = 0)
+    {
+        // response data to client
+        return socket_write($socket, $data, $length > 0 ? $length : strlen($data));
+    }
+
+    /**
+     * @param null|resource $socket
+     * @return string
+     */
+    public function getSocketError($socket = null)
+    {
+        return socket_strerror(socket_last_error($socket));
     }
 
     /////////////////////////////////////////////////////////////////////////////////////////
@@ -515,164 +684,6 @@ class WebSocketServer
         if ( ! function_exists('pcntl_fork') ) {
             throw new \RuntimeException('PCNTL functions not available on this PHP installation, please install pcntl extension.');
         }
-    }
-
-    /////////////////////////////////////////////////////////////////////////////////////////
-    /// events method
-    /////////////////////////////////////////////////////////////////////////////////////////
-
-    /**
-     * register a event callback
-     * @param string    $event    event name
-     * @param callable  $cb       event callback
-     * @param bool      $replace  replace exists's event cb
-     * @return WebSocketServer
-     */
-    public function on(string $event, callable $cb, bool $replace = false): self
-    {
-        if ( false === ($key = array_search($event, $this->getSupportedEvents(), true)) ) {
-            $sup = implode(',', $this->getSupportedEvents());
-
-            throw new \InvalidArgumentException("The want registered event is not supported. Supported: $sup");
-        }
-
-        if ( !$replace && isset($this->callbacks[$key]) ) {
-            throw new \InvalidArgumentException("The want registered event [$event] have been registered! don't allow replace.");
-        }
-
-        $this->callbacks[$key] = $cb;
-
-        return $this;
-    }
-
-    /**
-     * @param string $event
-     * @param array $args
-     * @return mixed
-     */
-    protected function trigger(string $event, array $args = [])
-    {
-        if ( false === ($key = array_search($event, $this->getSupportedEvents(), true)) ) {
-            throw new \InvalidArgumentException("Trigger a not exists's event: $event.");
-        }
-
-        if ( !isset($this->callbacks[$key]) || !($cb = $this->callbacks[$key]) ) {
-            return '';
-        }
-
-        return call_user_func_array($cb, $args);
-    }
-
-    /**
-     * @param string $event
-     * @return bool
-     */
-    public function isSupportedEvent(string $event): bool
-    {
-        return in_array($event, $this->getSupportedEvents(), true);
-    }
-
-    /////////////////////////////////////////////////////////////////////////////////////////
-    /// send message to client
-    /////////////////////////////////////////////////////////////////////////////////////////
-
-    /**
-     * @param string $data
-     * @param null|int $from
-     * @param int|array|null $target
-     * @param int[] $expected
-     * @return bool|int
-     */
-    public function send(string $data, int $from = -1, $target = null, array $expected = [])
-    {
-        return is_int($target) && $target >= 0 ?
-            $this->sendTo($target, $data, $from) :
-            $this->broadcast($data, $from, (array)$target,  $expected);
-    }
-
-    /**
-     * @param int    $target 发送目标
-     * @param string $data
-     * @param int    $from 发送者
-     * @return int
-     */
-    public function sendTo(int $target, string $data, int $from = -1)
-    {
-        if ( !$this->hasClient($target) ) {
-            $this->log("The target user #$target not connected!", 'error');
-
-            return 1703;
-        }
-
-        $res = $this->frame($data);
-        $socket = $this->sockets[$target];
-        $fromUser = $from < 0 ? 'SYSTEM' : $from;
-
-        $this->log("The #{$fromUser} send message to #{$target}. Data: {$data}");
-
-        return $this->writeTo($socket, $res);
-    }
-
-    /**
-     * @param string $data
-     * @param int    $from
-     * @param int[]  $expected
-     * @param int[]  $targets
-     * @return int
-     */
-    public function broadcast(string $data, int $from = -1, array $targets = [], array $expected = []): int
-    {
-        $res = $this->frame($data);
-        $len = strlen($res);
-        $fromUser = $from < 0 ? 'SYSTEM' : $from;
-
-        // to all
-        if ( !$expected && !$targets) {
-            $this->log("(broadcast)The #{$fromUser} send a message to all users. Data: {$data}");
-
-            foreach ($this->sockets as $socket) {
-                $this->writeTo($socket, $res, $len);
-            }
-
-        } else {
-            $this->log("(broadcast)The #{$fromUser} gave some specified user sending a message. Data: {$data}");
-            foreach ($this->sockets as $id => $socket) {
-                if ( isset($expected[$id]) ) {
-                    continue;
-                }
-
-                if ( $targets && !isset($targets[$id]) ) {
-                    continue;
-                }
-
-                $this->writeTo($socket, $res, $len);
-            }
-        }
-
-        // $msg = socket_strerror(socket_last_error());
-        return socket_last_error();
-    }
-
-    /**
-     * response data to client by socket connection
-     * @param resource  $socket
-     * @param string    $data
-     * @param int       $length
-     * @return int
-     */
-    public function writeTo($socket, string $data, int $length = 0)
-    {
-        // response data to client
-        return socket_write($socket, $data, $length > 0 ? $length : strlen($data));
-    }
-
-    /**
-     * @param null|resource $socket
-     * @return string
-     */
-    public function getSocketError($socket = null)
-    {
-        return socket_strerror(socket_last_error($socket));
     }
 
     /////////////////////////////////////////////////////////////////////////////////////////

@@ -7,7 +7,7 @@
  * Time: 22:41
  */
 
-require __DIR__ . '/autoload.php';
+require __DIR__ . '/../../../autoload.php';
 
 use inhere\webSocket\WebSocketServer;
 
@@ -17,7 +17,7 @@ $ws->on('open', function (WebSocketServer $ws, $data) {
     $ws->send('welcome!');
 });
 
-$ws->on('message', function (WebSocketServer $ws, $data) {
+$ws->on(WebSocketServer::ON_MESSAGE, function (WebSocketServer $ws, $data) {
     $ws->send("you input: $data");
 });
 
