@@ -7,7 +7,7 @@ a lightweight webSocket application library
 in `composer.json` add:
 
 ```
-"inhere/php-webSocket": "dev-master",
+"inhere/websocket": "dev-master",
 ```
 
 run: `composer up`

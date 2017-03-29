@@ -10,6 +10,7 @@ namespace inhere\webSocket;
 
 use inhere\webSocket\handlers\IRouteHandler;
 use inhere\webSocket\handlers\RootHandler;
+use inhere\webSocket\parts\MessageResponse;
 use inhere\webSocket\parts\Request;
 use inhere\webSocket\parts\Response;
 
@@ -41,7 +42,7 @@ use inhere\webSocket\parts\Response;
  * });
  *
  * // start server
- * $app->run();
+ * $app->parseOptRun();
  * ```
  */
 class Application
@@ -196,24 +197,38 @@ EOF;
      * webSocket 只会在连接握手时会有 request, response
      * @param Request   $request
      * @param Response  $response
-     * @param resource  $socket
      * @param int       $id
      * @return bool
      */
-    public function handleHandshake(Request $request, Response $response, $socket, int $id)
+    public function handleHandshake(Request $request, Response $response, int $id)
     {
         $this->log('Parsed request data:');
         var_dump($request);
 
+        $path = $request->getPath();
+
         // check route. if not exists, response 404 error
-        if ( !$handler = $this->activeRouteHandler($request, $id) ) {
-            $response->setStatus(404)->setHeaders(['Connection' => 'close']);
+        if ( !$this->hasRoute($path) ) {
+            $this->log("The #$id request's path [$path] route handler not exists.", 'error');
+
+            // call custom route-not-found handler
+            if ( $rnfHandler = $this->wsHandlers[self::ROUTE_NOT_FOUND] ) {
+                $rnfHandler($id, $path, $this);
+            }
+
+            $response
+                ->setStatus(404)
+                ->setHeaders(['Connection' => 'close'])
+                ->setBody("You request route path [$path] not found!");
 
             return false;
         }
 
         $response->setHeader('Server', 'websocket-server');
 
+        $handler = $this->routesHandlers[$path];
+        $handler->setApp($this);
+        $handler->setRequest($request);
         $handler->onHandshake($request, $response);
 
         return true;
@@ -221,66 +236,64 @@ EOF;
 
     /**
      * @param WebSocketServer $ws
-     * @param string $rawData
+     * @param Request $request
      * @param int $id
      */
-    public function handleOpen(WebSocketServer $ws, string $rawData, int $id)
+    public function handleOpen(WebSocketServer $ws, Request $request, int $id)
     {
         $this->log('A new user connection. Now, connected user count: ' . $ws->count());
         // $this->log("SERVER Data: \n" . var_export($_SERVER, 1), 'info');
 
         if ( $openHandler = $this->wsHandlers[self::OPEN_HANDLER] ) {
-            // $openHandler($request, $this);
-            $openHandler($ws, $this, $id);
+             $openHandler($this, $request, $id);
         }
 
-        $path = $ws->getClient($id)['path'];
+        // $path = $ws->getClient($id)['path'];
+        $path = $request->getPath();
         $this->getRouteHandler($path)->onOpen($id);
     }
 
     /**
-     * @param string          $data
      * @param WebSocketServer $ws
-     * @param int             $id
+     * @param string $data
+     * @param int $id
+     * @param array $client
      */
-    public function handleMessage(WebSocketServer $ws, string $data, int $id)
+    public function handleMessage(WebSocketServer $ws, string $data, int $id, array $client)
     {
-        $goon = true;
         $this->log("Received user [$id] sent message. MESSAGE: $data, LENGTH: " . mb_strlen($data));
 
         // call custom message handler
         if ( $msgHandler = $this->wsHandlers[self::MESSAGE_HANDLER] ) {
-            $goon = $msgHandler($ws, $this);
+            $msgHandler($ws, $this);
         }
 
-        // go on handle
-        if ( false !== $goon ) {
-            $path = $ws->getClient($id)['path'];
-            $rHandler = $this->getRouteHandler($path);
-            $result = $rHandler->dispatch($data, $id);
+        // dispatch command
 
-            if ( $result && is_string($result) ) {
-                $this->log("Response message: $result");
-                $this->beforeSend($result);
+        // $path = $ws->getClient($id)['path'];
+        $result = $this->getRouteHandler($client['path'])->dispatch($data, $id);
 
-                $ws->send($result, $id);
-            }
+        if ( $result && is_string($result) ) {
+            $this->log("Response message: $result");
+
+            $ws->send($result, $id);
         }
     }
 
     /**
      * @param WebSocketServer $ws
      * @param int $id
+     * @param array $client
      */
-    public function handleClose(WebSocketServer $ws, int $id)
+    public function handleClose(WebSocketServer $ws, int $id, array $client)
     {
         $this->log("The #$id user disconnected. Now, connected user count: " . $ws->count());
 
         if ( $closeHandler = $this->wsHandlers[self::CLOSE_HANDLER] ) {
-            $closeHandler($ws, $this);
+            $closeHandler($this, $id, $client);
         }
 
-        $this->getRouteHandler()->onClose($id);
+        $this->getRouteHandler($client['path'])->onClose($id, $client);
     }
 
     /**
@@ -295,7 +308,6 @@ EOF;
             $errHandler($ws, $this);
         }
     }
-
 
     /**
      * @param callable $openHandler
@@ -329,15 +341,6 @@ EOF;
         $this->wsHandlers[self::MESSAGE_HANDLER] = $messageHandler;
     }
 
-    public function onRouteNotFound($index, $path)
-    {
-        $this->target($index)->respond('', "you request route path [$path] not found!");
-
-        $this->ws->close($index);
-
-        return null;
-    }
-
     /////////////////////////////////////////////////////////////////////////////////////////
     /// handle request route
     /////////////////////////////////////////////////////////////////////////////////////////
@@ -367,32 +370,6 @@ EOF;
         return $routeHandler;
     }
 
-    /**
-     * @param Request $request
-     * @param int $index
-     * @return IRouteHandler|null
-     */
-    protected function activeRouteHandler(Request $request, int $index)
-    {
-        $path = $request->getPath();
-
-        if ( !$this->hasRoute($path) ) {
-            $this->log("The route handler not exists for the path: $path", 'error');
-
-            // call custom route-not-found handler
-            if ( $rnfHandler = $this->wsHandlers[self::MESSAGE_HANDLER] ) {
-                return $rnfHandler($index, $path, $this);
-            }
-
-            return $this->onRouteNotFound($index, $path);
-        }
-
-        $rHandler = $this->routesHandlers[$path];
-        $rHandler->setApp($this);
-        $rHandler->setRequest($request);
-
-        return $rHandler;
-    }
 
     /**
      * @param string $path
@@ -405,22 +382,6 @@ EOF;
         }
 
         return $this->routesHandlers[$path];
-    }
-
-    /**
-     * @param string $data
-     * @param string $msg
-     * @param int $code
-     * @return string
-     */
-    public function fmtJson($data, string $msg = 'success', int $code = 0): string
-    {
-        return json_encode([
-            'data' => $data,
-            'msg'  => $msg,
-            'code' => (int)$code,
-            'time' => time(),
-        ]);
     }
 
     /**
@@ -461,90 +422,75 @@ EOF;
     /// response
     /////////////////////////////////////////////////////////////////////////////////////////
 
-    private $sender = -1;
-    private $targets = [];
-    private $excepted = [];
-    private $response = [];
-
     /**
-     * @param null|int $index
+     * @param string $data
+     * @param string $msg
+     * @param int $code
+     * @return string
      */
-    public function bySender($index = null)
+    public function fmtJson($data, string $msg = 'success', int $code = 0): string
     {
-        $this->sender = $index;
+        return json_encode([
+            'data' => $data,
+            'msg'  => $msg,
+            'code' => (int)$code,
+            'time' => time(),
+        ]);
     }
 
     /**
-     * @param int|array $indexes
-     * @return $this
+     * @param string $data
+     * @param int $sender
+     * @param array $receivers
+     * @param array $excepted
+     * @return MessageResponse
      */
-    public function target($indexes)
+    public function makeResponse(string $data = '', int $sender = 0, array $receivers = [], array $excepted = []): MessageResponse
     {
-        foreach ((array)$indexes as $index) {
-            $this->targets[$index] = true;
-        }
+        $mr = MessageResponse::make($data, $sender, $receivers, $excepted);
 
-        return $this;
-    }
-
-    /**
-     * @param $indexes
-     * @return $this
-     */
-    public function except($indexes)
-    {
-        foreach ((array)$indexes as $index) {
-            $this->excepted[$index] = true;
-        }
-
-        return $this;
+        return $mr->setWs($this->ws);
     }
 
     /**
      * @param mixed $data
      * @param string $msg
      * @param int $code
+     * @param \Closure|null $afterMake
      * @return int
      */
-    public function respond($data, string $msg = 'success', int $code = 0): int
+    public function respond($data, string $msg = 'success', int $code = 0, \Closure $afterMake = null): int
     {
         // json
         if ( $this->isJsonType() ) {
-            $data = json_encode([
-                'data' => $data,
-                'msg'  => $msg,
-                'code' => (int)$code,
-                'time' => time(),
-            ]);
-        } else {
+            $data = $this->fmtJson($data, $msg, $code);
 
+        // text
+        } else {
             if ( $data && is_array($data) ) {
-                $data =json_encode($data);
+                $data = json_encode($data);
             }
 
-            // text
             $data = $data ?: $msg;
         }
 
-        $this->log("Response data: $data");
-        $this->beforeSend($data);
+        $mr = MessageResponse::make()->setData($data)->setWs($this->ws);
 
-        $status = $this->ws->send($data, $this->sender, $this->targets, $this->excepted);
+        if ( $afterMake ) {
+            $afterMake($mr);
+        }
 
-        // reset data
-        $this->sender = -1;
-        $this->targets = $this->excepted = [];
-
-        return $status;
+        return $mr->send(true);
     }
 
-    public function beforeSend($result)
+    /**
+     * @param MessageResponse $response
+     * @param bool $reset
+     * @return int
+     */
+    public function send(MessageResponse $response, bool $reset = true): int
     {
-    }
-
-    public function send()
-    {
-
+        return $response->setWs($this->ws)->send($reset);
     }
 
     /////////////////////////////////////////////////////////////////////////////////////////

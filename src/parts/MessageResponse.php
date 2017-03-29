@@ -10,6 +10,7 @@ namespace inhere\webSocket\parts;
 
 use inhere\librarys\traits\TraitArrayAccess;
 use inhere\librarys\traits\TraitGetterSetterAccess;
+use inhere\webSocket\WebSocketServer;
 
 /**
  * Class MessageResponse
@@ -20,6 +21,11 @@ class MessageResponse implements \ArrayAccess
 {
     use TraitArrayAccess;
     use TraitGetterSetterAccess;
+
+    /**
+     * @var WebSocketServer
+     */
+    private $ws;
 
     /**
      * the sender id
@@ -40,28 +46,62 @@ class MessageResponse implements \ArrayAccess
     private $excepted;
 
     /**
-     * @var array
+     * @var string
      */
     private $data;
 
-    public static function make(array $data = [], int $sender = 0, array $receivers = [], array $excepted = [])
+    public static function make(string $data = '', int $sender = 0, array $receivers = [], array $excepted = [])
     {
         return new self($data, $sender, $receivers, $excepted);
     }
 
     /**
      * MessageResponse constructor.
-     * @param array $data
+     * @param string $data
      * @param int $sender
      * @param array $receivers
      * @param array $excepted
      */
-    public function __construct(array $data = [], int $sender = 0, array $receivers = [], array $excepted = [])
+    public function __construct(string $data = '', int $sender = 0, array $receivers = [], array $excepted = [])
     {
         $this->data = $data;
         $this->sender = $sender;
         $this->receivers = $receivers;
         $this->excepted = $excepted;
+    }
+
+    /**
+     * @param bool $reset
+     * @return int
+     */
+    public function send(bool $reset = true)
+    {
+        if ( !$this->ws ) {
+            throw new \InvalidArgumentException('Please set the property [ws], is instance of the WebSocketServer');
+        }
+
+        $status = $this->ws->send($this->getData(), $this->sender, $this->receivers, $this->excepted);
+
+        if ( $reset ) {
+            $this->reset();
+        }
+
+        return $status;
+    }
+
+    /**
+     * reset
+     */
+    public function reset()
+    {
+        $this->sender = 0;
+        $this->receivers = $this->excepted = $this->data = [];
+    }
+
+    public function __destruct()
+    {
+        $this->ws = null;
+        $this->reset();
     }
 
     /**
@@ -74,14 +114,21 @@ class MessageResponse implements \ArrayAccess
 
     /**
      * @param int $sender
+     * @return $this
      */
     public function bySender(int $sender)
     {
-        $this->sender = $sender;
+        return $this->setSender($sender);
+    }
+    public function from(int $sender)
+    {
+        return $this->setSender($sender);
     }
     public function setSender(int $sender)
     {
         $this->sender = $sender;
+
+        return $this;
     }
 
     /**
@@ -96,6 +143,10 @@ class MessageResponse implements \ArrayAccess
      * @param array $receivers
      * @return $this
      */
+    public function to(array $receivers)
+    {
+        return $this->setReceivers($receivers);
+    }
     public function setReceivers(array $receivers)
     {
         $this->receivers = $receivers;
@@ -112,7 +163,20 @@ class MessageResponse implements \ArrayAccess
     }
 
     /**
-     * @param array $excepted
+     * @param $receiver
+     * @return $this
+     */
+    public function except(int $receiver)
+    {
+        if ( !in_array($receiver, $this->receivers, true) ) {
+            $this->excepted[] = $receiver;
+        }
+
+        return $this;
+    }
+
+    /**
+     * @param array|int $excepted
      * @return $this
      */
     public function setExcepted($excepted)
@@ -124,44 +188,57 @@ class MessageResponse implements \ArrayAccess
 
     /**
      * @param string $data
-     * @param string $key define a name for the data
-     * @param bool $replace
+     * @param bool $toLast
      * @return $this
      */
-    public function addData(string $data, string $key = '', $replace = false)
+    public function addData(string $data, bool $toLast = true)
     {
-        if ( $this->data === null ) {
-            $this->data = [];
-        }
-
-        if ($key && (!isset($this->data[$key]) || $replace)) {
-            $this->data[$key] = $data;
+        if ( $toLast ) {
+            $this->data .= $data;
         } else {
-            $this->data[] = $data;
+            $this->data = $data . $this->data;
         }
 
         return $this;
     }
 
     /**
-     * @param bool $toString
-     * @return array|string
+     * @return string
      */
-    public function getData(bool $toString = false)
+    public function getData(): string
     {
-        return $toString ? implode('', $this->data) : $this->data;
+        return $this->data;
     }
 
     /**
-     * @param string|array $data
-     * @return $this
+     * @param string $data
+     * @return self
      */
-    public function setData($data)
+    public function setData(string $data): self
     {
-        $this->data = (array)$data;
+        $this->data = $data;
 
         return $this;
     }
 
+    /**
+     * @return WebSocketServer
+     */
+    public function getWs(): WebSocketServer
+    {
+        return $this->ws;
+    }
 
+    /**
+     * @param WebSocketServer $ws
+     * @return self
+     */
+    public function setWs(WebSocketServer $ws)
+    {
+        if ( !$this->ws ) {
+            $this->ws = $ws;
+        }
+
+        return $this;
+    }
 }

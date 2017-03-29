@@ -12,18 +12,19 @@ require __DIR__ . '/../../../autoload.php';
 
 use inhere\webSocket\Application;
 use inhere\webSocket\WebSocketServer;
+use inhere\webSocket\parts\Request;
 
 $app = new Application('', 9501);
 
-$app->onOpen(function (WebSocketServer $ws, Application $app, $id) {
+$app->onOpen(function (Application $app, Request $request, int $id) {
     $app->respond([
-        'total' => $ws->count()
+        'total' => $app->getWs()->count()
     ], 'welcome!');
 });
 
-$app->onClose(function (WebSocketServer $ws, Application $app) {
+$app->onClose(function (Application $app, int $id, array $client) {
     $app->respond([
-        'total' => $ws->count()
+        'total' => $app->getWs()->count()
     ]);
 });
 

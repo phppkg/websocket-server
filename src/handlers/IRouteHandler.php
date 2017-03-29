@@ -35,8 +35,10 @@ interface IRouteHandler
 
     /**
      * @param int $id
+     * @param array $client
+     * @return
      */
-    public function onClose(int $id);
+    public function onClose(int $id, array $client);
 
     /**
      * @param Application $app

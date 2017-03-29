@@ -106,9 +106,9 @@ abstract class ARouteHandler implements IRouteHandler
     /**
      * @inheritdoc
      */
-    public function onClose(int $id)
+    public function onClose(int $id, array $client)
     {
-        $this->log('A user has been disconnected. route path: ' . $this->request->getPath());
+        $this->log('A user has been disconnected. Path: ' . $client['path']);
     }
 
     /**
@@ -255,13 +255,6 @@ abstract class ARouteHandler implements IRouteHandler
     /////////////////////////////////////////////////////////////////////////////////////////
     /// helper method
     /////////////////////////////////////////////////////////////////////////////////////////
-
-    public function target($ids)
-    {
-        $this->app->target($ids);
-
-        return $this;
-    }
 
     public function respond($data, string $msg = 'success', int $code = 0): int
     {

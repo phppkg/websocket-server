@@ -77,7 +77,10 @@ class WebSocketServer
      */
     protected $settings = [
         'debug'    => false,
+
+        'open_log' => true,
         'log_file' => '',
+
         // while 循环时间间隔 毫秒 millisecond. 1s = 1000ms = 1000 000us
         'sleep_ms' => 800,
         // 最大允许连接数量
@@ -257,11 +260,10 @@ class WebSocketServer
 
         // 是否已经握手
         if ( !$this->clients[$id]['handshake'] ) {
-            $this->handshake($sock, $data, $id);
-            return true;
+            return $this->handshake($sock, $data, $id);
         }
 
-        $this->message($id, $data, $bytes);
+        $this->message($id, $data, $bytes, $this->clients[$id]);
 
         return true;
     }
@@ -304,6 +306,7 @@ class WebSocketServer
         $this->log("Ready to shake hands with the #$id client connection");
         $response = new Response();
 
+        // 解析请求头信息错误
         if ( !preg_match("/Sec-WebSocket-Key: (.*)\r\n/",$data, $match) ) {
             $this->log("handle handshake failed! [Sec-WebSocket-Key] not found in header. Data: \n $data", 'error');
 
@@ -313,7 +316,7 @@ class WebSocketServer
 
             $this->writeTo($socket, $response->toString());
 
-            return $this->close($id, $socket);
+            return $this->close($id, $socket, false);
         }
 
         // 解析请求头信息
@@ -321,11 +324,11 @@ class WebSocketServer
 
         // 触发 handshake 事件回调，如果返回 false -- 拒绝连接，比如需要认证，限定路由，限定ip，限定domain等
         // 就停止继续处理。并返回信息给客户端
-        if ( false === $this->trigger(self::ON_HANDSHAKE, [$request, $response, $socket, $id]) ) {
+        if ( false === $this->trigger(self::ON_HANDSHAKE, [$request, $response, $id]) ) {
             $this->log("The #$id client handshake's callback return false, will close the connection", 'notice');
             $this->writeTo($socket, $response->toString());
 
-            return $this->close($id, $socket);
+            return $this->close($id, $socket, false);
         }
 
         // general key
@@ -348,7 +351,7 @@ class WebSocketServer
         $this->log("The #$id client connection handshake successful!" . $this->count() . ', Info:', 'info', $this->clients[$id]);
 
         // 握手成功 触发 open 事件
-        return $this->trigger(self::ON_OPEN, [$this, $data, $id]);
+        return $this->trigger(self::ON_OPEN, [$this, $request, $id]);
     }
 
     /**
@@ -356,15 +359,16 @@ class WebSocketServer
      * @param int $id
      * @param string $data
      * @param int $bytes
+     * @param array $client The client info [@see $defaultInfo]
      */
-    protected function message(int $id, string $data, int $bytes)
+    protected function message(int $id, string $data, int $bytes, array $client)
     {
         $data = $this->decode($data);
 
         $this->log("Received $bytes bytes message from #$id, Data: $data");
 
         // call on message handler
-        $this->trigger(self::ON_MESSAGE, [$this, $data, $id]);
+        $this->trigger(self::ON_MESSAGE, [$this, $data, $id, $client]);
     }
 
     /**
@@ -382,9 +386,10 @@ class WebSocketServer
      * Closing a connection
      * @param int $id
      * @param null|resource $socket
+     * @param bool $triggerEvent
      * @return bool
      */
-    public function close(int $id, $socket = null)
+    public function close(int $id, $socket = null, bool $triggerEvent = true)
     {
         if ( !is_resource($socket) && !($socket = $this->sockets[$id] ?? null) ) {
             $this->log("Close the client socket connection failed! #$id client socket not exists", 'error');
@@ -395,12 +400,15 @@ class WebSocketServer
             socket_close($socket);
         }
 
+        $client = $this->clients[$id];
         unset($this->sockets[$id], $this->clients[$id]);
 
         // call close handler
-        $this->trigger(self::ON_CLOSE, [$this, $id]);
+        if ( $triggerEvent ) {
+            $this->trigger(self::ON_CLOSE, [$this, $id, $client]);
+        }
 
-        $this->log("The #$id client connection has been closed! Count:" . $this->count());
+        $this->log("The #$id client connection has been closed! Count: " . $this->count());
 
         return true;
     }
@@ -479,7 +487,7 @@ class WebSocketServer
      * @param null|int $from
      * @param int|array|null $target
      * @param int[] $expected
-     * @return bool|int
+     * @return int
      */
     public function send(string $data, int $from = -1, $target = null, array $expected = [])
     {
@@ -489,49 +497,58 @@ class WebSocketServer
     }
 
     /**
-     * @param int    $target 发送目标
+     * 发送消息给指定的目标
+     * @param int    $receiver 接收者
      * @param string $data
-     * @param int    $from 发送者
+     * @param int    $sender   发送者
      * @return int
      */
-    public function sendTo(int $target, string $data, int $from = 0)
+    public function sendTo(int $receiver, string $data, int $sender = 0)
     {
-        if ( !$this->hasClient($target) ) {
-            $this->log("The target user #$target not connected!", 'error');
+        if ( !($socket = $this->getSocket($receiver)) ) {
+            $this->log("The target user #$receiver not connected or has been logout!", 'error');
 
             return 1703;
         }
 
         $res = $this->frame($data);
-        $socket = $this->sockets[$target];
-        $fromUser = $from < 1 ? 'SYSTEM' : $from;
+        $fromUser = $sender < 1 ? 'SYSTEM' : $sender;
 
-        $this->log("The #{$fromUser} send message to #{$target}. Data: {$data}");
+        $this->log("The #{$fromUser} send message to #{$receiver}. Data: {$data}");
 
         return $this->writeTo($socket, $res);
     }
 
     /**
      * @param string $data
-     * @param int    $from
+     * @param int    $sender   发送者
+     * @param int[]  $receivers 接收者们
      * @param int[]  $expected
-     * @param int[]  $targets
      * @return int
      */
-    public function broadcast(string $data, int $from = 0, array $targets = [], array $expected = []): int
+    public function broadcast(string $data, int $sender = 0, array $receivers = [], array $expected = []): int
     {
         $res = $this->frame($data);
         $len = strlen($res);
-        $fromUser = $from < 1 ? 'SYSTEM' : $from;
+        $fromUser = $sender < 1 ? 'SYSTEM' : $sender;
 
         // to all
-        if ( !$expected && !$targets) {
+        if ( !$expected && !$receivers) {
             $this->log("(broadcast)The #{$fromUser} send a message to all users. Data: {$data}");
 
             foreach ($this->sockets as $socket) {
                 $this->writeTo($socket, $res, $len);
             }
 
+        // to receivers
+        } elseif ($receivers) {
+            foreach ($receivers as $receiver) {
+                if ( $socket = $this->getSocket($receiver) ) {
+                    $this->writeTo($socket, $res, $len);
+                }
+            }
+
+        // to all
         } else {
             $this->log("(broadcast)The #{$fromUser} gave some specified user sending a message. Data: {$data}");
             foreach ($this->sockets as $id => $socket) {
@@ -539,7 +556,7 @@ class WebSocketServer
                     continue;
                 }
 
-                if ( $targets && !isset($targets[$id]) ) {
+                if ( $receivers && !isset($receivers[$id]) ) {
                     continue;
                 }
 
