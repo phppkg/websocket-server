@@ -11,6 +11,7 @@ namespace inhere\webSocket\handlers;
 use inhere\webSocket\Application;
 use inhere\library\http\Request;
 use inhere\library\http\Response;
+use inhere\webSocket\parts\MessageResponse;
 
 /**
  * Interface IRouteHandler
@@ -18,7 +19,7 @@ use inhere\library\http\Response;
  */
 interface IRouteHandler
 {
-    const PING = 'ping';
+    const SEND_PING = 'ping';
     const NOT_FOUND = 'notFound';
     const PARSE_ERROR = 'error';
 
@@ -49,6 +50,8 @@ interface IRouteHandler
      */
     public function onError(Application $app, string $msg);
 
+    public function checkIsAllowedOrigin(string $from);
+
     /**
      * @param string $data
      * @param int $id
@@ -66,6 +69,15 @@ interface IRouteHandler
     public function log(string $message, string $type = 'info', array $data = []);
 
     public function isJsonType();
+
+    /**
+     * @param $data
+     * @param string $msg
+     * @param int $code
+     * @param bool $doSend
+     * @return int|MessageResponse
+     */
+    public function respond($data, string $msg = 'success', int $code = 0, bool $doSend = true);
 
     /**
      * @param string $key

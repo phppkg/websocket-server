@@ -29,10 +29,11 @@ class RootHandler extends ARouteHandler
         parent::onHandshake($request, $response);
 
         $response->setCookie('test', 'test-value');
+        $response->setCookie('test1', 'test-value1');
     }
 
     public function indexCommand()
     {
-        $this->getApp()->respond('hello, this is [/index]');
+        $this->respond('hello, this is [/index]');
     }
 }

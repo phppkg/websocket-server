@@ -8,6 +8,7 @@
 
 namespace inhere\webSocket;
 
+use inhere\library\traits\TraitSimpleFixedEvent;
 use inhere\library\traits\TraitUseSimpleOption;
 
 /**
@@ -17,6 +18,7 @@ use inhere\library\traits\TraitUseSimpleOption;
 abstract class BaseWebSocket
 {
     use TraitUseSimpleOption;
+    use TraitSimpleFixedEvent;
 
     /**
      * version
@@ -63,12 +65,6 @@ abstract class BaseWebSocket
     protected $port;
 
     /**
-     * 事件的回调函数
-     * @var \SplFixedArray
-     */
-    protected $callbacks;
-
-    /**
      * @var array
      */
     protected $options = [
@@ -89,7 +85,7 @@ abstract class BaseWebSocket
         $this->host = $host;
         $this->port = $port;
 
-        $this->setOptions($options);
+        $this->setOptions($options, true);
     }
 
     /**

@@ -40,19 +40,17 @@ class ComplexDataParser implements IDataParser
             $realData = $data;
         }
 
-        $handler->log("The #{$index} request command: $command, data: $realData");
         $to = $handler->getOption('jsonParseTo') ?: self::JSON_TO_RAW;
+        $handler->log("The #{$index} request Command: $command, To-format: $to, Data: $realData");
 
         if ( $handler->isJsonType() && $to !== self::JSON_TO_RAW ) {
             $realData = json_decode(trim($realData), $to === self::JSON_TO_ARRAY);
 
             // parse error
             if ( json_last_error() > 0 ) {
-                // revert
-                $realData = trim($matches[2]);
                 $errMsg = json_last_error_msg();
 
-                $handler->log("Request data parse to json failed! MSG: {$errMsg}, JSON: {$realData}", 'error');
+                $handler->log("Request data parse to json failed! Error: {$errMsg}, Data: {$realData}", 'error');
 
                 return false;
             }

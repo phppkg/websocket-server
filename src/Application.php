@@ -95,7 +95,7 @@ class Application
         'dataType' => 'json',
 
         // allowed accessed Origins. e.g: [ 'localhost', 'site.com' ]
-        'allowedOrigins' => [],
+        'allowedOrigins' => '*',
     ];
 
     /**
@@ -120,7 +120,7 @@ class Application
         $this->port = $port ?: 8080;
         $this->wsHandlers = new \SplFixedArray(5);
 
-        $this->setOptions($options);
+        $this->setOptions($options, true);
     }
 
     /**
@@ -201,23 +201,20 @@ EOF;
      * webSocket 只会在连接握手时会有 request, response
      * @param Request   $request
      * @param Response  $response
-     * @param int       $id
+     * @param int       $cid
      * @return bool
      */
-    public function handleHandshake(Request $request, Response $response, int $id)
+    public function handleHandshake(Request $request, Response $response, int $cid)
     {
-        $this->log('Parsed request data:');
-        var_dump($request);
-
         $path = $request->getPath();
 
         // check route. if not exists, response 404 error
         if ( !$this->hasRoute($path) ) {
-            $this->log("The #$id request's path [$path] route handler not exists.", 'error');
+            $this->log("The #$cid request's path [$path] route handler not exists.", 'error');
 
             // call custom route-not-found handler
             if ( $rnfHandler = $this->wsHandlers[self::ROUTE_NOT_FOUND] ) {
-                $rnfHandler($id, $path, $this);
+                $rnfHandler($cid, $path, $this);
             }
 
             $response
@@ -228,9 +225,27 @@ EOF;
             return false;
         }
 
-        $response->setHeader('Server', 'websocket-server');
-
+        $origin = $request->getOrigin();
         $handler = $this->routesHandlers[$path];
+
+        // check `Origin`
+        // Access-Control-Allow-Origin: *
+        if ( !$handler->checkIsAllowedOrigin($origin) ) {
+            $this->log("The #$cid Origin [$origin] is not in the 'allowedOrigins' list.", 'error');
+
+            $response
+                ->setStatus(403)
+                ->setHeaders(['Connection' => 'close'])
+                ->setBody('Deny Access!');
+
+            return false;
+        }
+
+        // application/json
+        // text/plain
+        $response->setHeader('Server', 'websocket-server');
+        // $response->setHeader('Access-Control-Allow-Origin', '*');
+
         $handler->setApp($this);
         $handler->setRequest($request);
         $handler->onHandshake($request, $response);
@@ -241,31 +256,31 @@ EOF;
     /**
      * @param WebSocketServer $ws
      * @param Request $request
-     * @param int $id
+     * @param int $cid
      */
-    public function handleOpen(WebSocketServer $ws, Request $request, int $id)
+    public function handleOpen(WebSocketServer $ws, Request $request, int $cid)
     {
         $this->log('A new user connection. Now, connected user count: ' . $ws->count());
         // $this->log("SERVER Data: \n" . var_export($_SERVER, 1), 'info');
 
         if ( $openHandler = $this->wsHandlers[self::OPEN_HANDLER] ) {
-             $openHandler($this, $request, $id);
+             $openHandler($this, $request, $cid);
         }
 
-        // $path = $ws->getClient($id)['path'];
+        // $path = $ws->getClient($cid)['path'];
         $path = $request->getPath();
-        $this->getRouteHandler($path)->onOpen($id);
+        $this->getRouteHandler($path)->onOpen($cid);
     }
 
     /**
      * @param WebSocketServer $ws
      * @param string $data
-     * @param int $id
+     * @param int $cid
      * @param array $client
      */
-    public function handleMessage(WebSocketServer $ws, string $data, int $id, array $client)
+    public function handleMessage(WebSocketServer $ws, string $data, int $cid, array $client)
     {
-        $this->log("Received user [$id] sent message. MESSAGE: $data, LENGTH: " . mb_strlen($data));
+        $this->log("Received user #$cid sent message. MESSAGE: $data, LENGTH: " . mb_strlen($data));
 
         // call custom message handler
         if ( $msgHandler = $this->wsHandlers[self::MESSAGE_HANDLER] ) {
@@ -274,8 +289,8 @@ EOF;
 
         // dispatch command
 
-        // $path = $ws->getClient($id)['path'];
-        $result = $this->getRouteHandler($client['path'])->dispatch($data, $id);
+        // $path = $ws->getClient($cid)['path'];
+        $result = $this->getRouteHandler($client['path'])->dispatch($data, $cid);
 
         if ( $result && is_string($result) ) {
             $ws->send($result);
@@ -284,18 +299,18 @@ EOF;
 
     /**
      * @param WebSocketServer $ws
-     * @param int $id
+     * @param int $cid
      * @param array $client
      */
-    public function handleClose(WebSocketServer $ws, int $id, array $client)
+    public function handleClose(WebSocketServer $ws, int $cid, array $client)
     {
-        $this->log("The #$id user disconnected. Now, connected user count: " . $ws->count());
+        $this->log("The #$cid user disconnected. Now, connected user count: " . $ws->count());
 
         if ( $closeHandler = $this->wsHandlers[self::CLOSE_HANDLER] ) {
-            $closeHandler($this, $id, $client);
+            $closeHandler($this, $cid, $client);
         }
 
-        $this->getRouteHandler($client['path'])->onClose($id, $client);
+        $this->getRouteHandler($client['path'])->onClose($cid, $client);
     }
 
     /**
@@ -477,6 +492,7 @@ EOF;
     }
 
     /**
+     * response data to client, will auto build formatted message by 'dataType'
      * @param mixed $data
      * @param string $msg
      * @param int $code
@@ -486,6 +502,22 @@ EOF;
     public function respond($data, string $msg = '', int $code = 0, bool $doSend = true)
     {
         $data = $this->buildMessage($data, $msg, $code);
+
+        return $this->respondText($data, $doSend);
+    }
+
+    /**
+     * response text data to client
+     * @param $data
+     * @param bool $doSend
+     * @return int|MessageResponse
+     */
+    public function respondText($data, bool $doSend = true)
+    {
+        if ( is_array($data) ) {
+            $data = implode('', $data);
+        }
+
         $mr = MessageResponse::make($data)->setWs($this->ws);
 
         if ( $doSend ) {
@@ -502,17 +534,33 @@ EOF;
      * @param \Closure|null $afterMakeMR
      * @param bool $reset
      * @return int
-     * @internal param MessageResponse $response
      */
     public function send($data, string $msg = '', int $code = 0, \Closure $afterMakeMR = null, bool $reset = true): int
     {
         $data = $this->buildMessage($data, $msg, $code);
+
+        return $this->sendText($data, $afterMakeMR, $reset);
+    }
+
+    /**
+     * response text data to client
+     * @param $data
+     * @param \Closure|null $afterMakeMR
+     * @param bool $reset
+     * @return int
+     */
+    public function sendText($data, \Closure $afterMakeMR = null, bool $reset = true)
+    {
+        if ( is_array($data) ) {
+            $data = implode('', $data);
+        }
+
         $mr = MessageResponse::make($data)->setWs($this->ws);
 
         if ( $afterMakeMR ) {
             $status = $afterMakeMR($mr);
 
-            // If the message have bee sent
+            // If the message have been sent
             if ( is_int($status) ) {
                 return $status;
             }

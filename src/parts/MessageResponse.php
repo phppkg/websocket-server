@@ -154,7 +154,7 @@ class MessageResponse implements \ArrayAccess
      * @param int $sender
      * @return $this
      */
-    public function bySender(int $sender)
+    public function sender(int $sender)
     {
         return $this->setSender($sender);
     }
@@ -178,16 +178,33 @@ class MessageResponse implements \ArrayAccess
     }
 
     /**
-     * @param array $receivers
+     * @param int $cid
      * @return $this
      */
-    public function to(array $receivers)
+    public function receiver(int $cid)
+    {
+        return $this->addReceiver($cid);
+    }
+    public function addReceiver(int $cid)
+    {
+        if ( !in_array($cid, $this->receivers, true) ) {
+            $this->receivers[] = $cid;
+        }
+
+        return $this;
+    }
+
+    /**
+     * @param array|int $receivers
+     * @return $this
+     */
+    public function to($receivers)
     {
         return $this->setReceivers($receivers);
     }
-    public function setReceivers(array $receivers)
+    public function setReceivers($receivers)
     {
-        $this->receivers = $receivers;
+        $this->receivers = (array)$receivers;
 
         return $this;
     }
@@ -206,7 +223,7 @@ class MessageResponse implements \ArrayAccess
      */
     public function except(int $receiver)
     {
-        if ( !in_array($receiver, $this->receivers, true) ) {
+        if ( !in_array($receiver, $this->excepted, true) ) {
             $this->excepted[] = $receiver;
         }
 

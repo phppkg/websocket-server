@@ -14,6 +14,7 @@ use inhere\webSocket\dataParser\ComplexDataParser;
 use inhere\webSocket\dataParser\IDataParser;
 use inhere\library\http\Request;
 use inhere\library\http\Response;
+use inhere\webSocket\parts\MessageResponse;
 
 /**
  * Class ARouteHandler
@@ -56,6 +57,9 @@ abstract class ARouteHandler implements IRouteHandler
     const DEFAULT_CMD = 'index';
     const DEFAULT_CMD_SUFFIX = 'Command';
 
+    const DENY_ALL = '!';
+    const ALLOW_ALL = '*';
+
     /**
      * @var array
      */
@@ -72,7 +76,7 @@ abstract class ARouteHandler implements IRouteHandler
         'cmdSuffix'     => self::DEFAULT_CMD_SUFFIX,
 
         // allowed request Origins. e.g: [ 'localhost', 'site.com' ]
-        'allowedOrigins' => [],
+        'allowedOrigins' => '*',
     ];
 
     /**
@@ -82,7 +86,7 @@ abstract class ARouteHandler implements IRouteHandler
      */
     public function __construct(array $options = [], IDataParser $dataParser = null)
     {
-        $this->setOptions($options);
+        $this->setOptions($options, true);
 
         $this->_dataParser = $dataParser;
     }
@@ -98,7 +102,7 @@ abstract class ARouteHandler implements IRouteHandler
     /**
      * @inheritdoc
      */
-    public function onOpen(int $id)
+    public function onOpen(int $cid)
     {
         $this->log('A new user open connection. route path: ' . $this->request->getPath());
     }
@@ -106,7 +110,7 @@ abstract class ARouteHandler implements IRouteHandler
     /**
      * @inheritdoc
      */
-    public function onClose(int $id, array $client)
+    public function onClose(int $cid, array $client)
     {
         $this->log('A user has been disconnected. Path: ' . $client['path']);
     }
@@ -124,23 +128,52 @@ abstract class ARouteHandler implements IRouteHandler
     /////////////////////////////////////////////////////////////////////////////////////////
 
     /**
+     * check client is allowed origin
+     * `Origin: http://foo.example`
+     * @param string $from\
+     * @return bool
+     */
+    public function checkIsAllowedOrigin(string $from)
+    {
+        $allowed = $this->getOption('allowedOrigins');
+
+        // deny all
+        if ( !$allowed ) {
+            return false;
+        }
+
+        // allow all
+        if ( is_string($allowed) && $allowed === self::ALLOW_ALL ) {
+            return true;
+        }
+
+        if ( !$from ) {
+            return false;
+        }
+
+        $allowed = (array)$allowed;
+
+        return true;
+    }
+
+    /**
      * parse and dispatch command
      * @param string $data
-     * @param int $id
+     * @param int $cid
      * @return mixed
      */
-    public function dispatch(string $data, int $id)
+    public function dispatch(string $data, int $cid)
     {
         $route = $this->request->path;
 
         // parse: get command and real data
-        if ( $results = $this->getDataParser()->parse($data, $id, $this) ) {
+        if ( $results = $this->getDataParser()->parse($data, $cid, $this) ) {
             [$command, $data] = $results;
             $command = $command ?: $this->getOption('defaultCmd') ?? self::DEFAULT_CMD;
-            $this->log("The #{$id} request command is: $command in route [$route]");
+            $this->log("The #{$cid} request command is: $command in route [$route]");
         } else {
             $command = self::PARSE_ERROR;
-            $this->log("The #{$id} request data parse failed in route [$route]! Data: $data", 'error');
+            $this->log("The #{$cid} request data parse failed in route [$route]! Data: $data", 'error');
         }
 
         // dispatch command
@@ -148,7 +181,7 @@ abstract class ARouteHandler implements IRouteHandler
         // is a outside command `by add()`
         if ( $this->isCommandName($command) ) {
             $handler = $this->getCmdHandler($command);
-            return call_user_func_array($handler, [$data, $id, $this]);
+            return call_user_func_array($handler, [$data, $cid, $this]);
         }
 
         $suffix = 'Command';
@@ -156,11 +189,11 @@ abstract class ARouteHandler implements IRouteHandler
 
         // not found
         if ( !method_exists( $this, $method) ) {
-            $this->log("The #{$id} request command: $command not found, run 'notFound' command", 'notice');
+            $this->log("The #{$cid} request command: $command not found, run 'notFound' command", 'notice');
             $method = self::NOT_FOUND . $suffix;
         }
 
-        return $this->$method($data, $id);
+        return $this->$method($data, $cid);
     }
 
     /**
@@ -184,34 +217,37 @@ abstract class ARouteHandler implements IRouteHandler
 
     /**
      * @param $data
-     * @param int $id
+     * @param int $cid
      * @return int
      */
-    public function pingCommand(string $data, int $id)
+    public function pingCommand(string $data, int $cid)
     {
-        return $this->respond($data . '+PONG');
+        return $this->respondText($data . '+PONG', false)->to($cid)->send();
     }
 
     /**
      * @param $data
-     * @param int $id
+     * @param int $cid
      * @return int
      */
-    public function parseErrorCommand(string $data, int $id)
+    public function errorCommand(string $data, int $cid)
     {
-        return $this->respond($data, 'you send data format is error!', -200);
+        return $this
+            ->respond($data, 'you send data format is error!', -200, false)
+            ->to($cid)
+            ->send();
     }
 
     /**
      * @param string $command
-     * @param int $id
+     * @param int $cid
      * @return int
      */
-    public function notFoundCommand(string $command, int $id)
+    public function notFoundCommand(string $command, int $cid)
     {
         $msg = "You request command [$command] not found in the route [{$this->request->getPath()}].";
 
-        return $this->respond('', $msg, -404);
+        return $this->respond('', $msg, -404, false)->to($cid)->send();
     }
 
     /**
@@ -256,9 +292,36 @@ abstract class ARouteHandler implements IRouteHandler
     /// helper method
     /////////////////////////////////////////////////////////////////////////////////////////
 
-    public function respond($data, string $msg = 'success', int $code = 0): int
+    /**
+     * @param $data
+     * @param string $msg
+     * @param int $code
+     * @param bool $doSend
+     * @return int|MessageResponse
+     */
+    public function respond($data, string $msg = 'success', int $code = 0, bool $doSend = true)
     {
-        return $this->app->respond($data, $msg, $code);
+        return $this->app->respond($data, $msg, $code, $doSend);
+    }
+
+    /**
+     * @param $data
+     * @param bool $doSend
+     * @return MessageResponse|int
+     */
+    public function respondText($data, bool $doSend = true)
+    {
+        return $this->app->respondText($data, $doSend);
+    }
+
+    public function send($data, string $msg = '', int $code = 0, \Closure $afterMakeMR = null, bool $reset = true): int
+    {
+        return $this->app->send($data, $msg, $code, $afterMakeMR, $reset);
+    }
+
+    public function sendText($data, \Closure $afterMakeMR = null, bool $reset = true)
+    {
+        return $this->app->sendText($data, $afterMakeMR, $reset);
     }
 
     public function log(string $message, string $type = 'info', array $data = [])

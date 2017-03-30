@@ -13,7 +13,8 @@ require __DIR__ . '/../../../autoload.php';
 use inhere\webSocket\Application;
 use inhere\webSocket\parts\MessageResponse;
 use inhere\webSocket\WebSocketServer;
-use inhere\webSocket\parts\Request;
+use inhere\library\http\Request;
+use \inhere\webSocket\handlers\IRouteHandler;
 
 $app = new Application('', 9501);
 
@@ -32,19 +33,19 @@ $app->onClose(function (Application $app, int $id, array $client) {
 $rootHandler = $app->route('/', new \inhere\webSocket\handlers\RootHandler());
 
 // commands
-$rootHandler->add('test', function ($data, $index, Application $app) {
+$rootHandler->add('test', function ($data, $index, IRouteHandler $handler) {
 
     return 'hello';
 });
 
 // if use `$app->jsonDataParser()` client send: {"cmd":"login","name":"john","pwd":123456}
 // if use `$app->complexDataParser()` client send: [@login]{"name":"john","pwd":123456}
-$rootHandler->add('login', function ($data, $id, Application $app) {
+$rootHandler->add('login', function ($data, $cid, IRouteHandler $handler) {
 
     $name = $data['name'] ?? 'Please input your name.';
 
-    $app->respond("hello, $name. you login success, welcome!", '', 0, false)
-        ->setSender($id)
+    $handler->respond("hello, $name. you login success, welcome!", '', 0, false)
+        ->to($cid)
         ->send();
 
     // 1. will return text
@@ -57,7 +58,7 @@ $rootHandler->add('login', function ($data, $id, Application $app) {
     // `Application::isJsonType() === true`  return formatted json.
     // `Application::isJsonType() === false` return raw text.
     // **it is recommended**
-    $app->respond("welcome new friend: $name join us.");
+    $handler->respond("welcome new friend: $name join us.");
 });
 
 $rootHandler->add('logout', function ($data, $id, Application $app) {

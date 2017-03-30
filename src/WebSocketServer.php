@@ -25,7 +25,6 @@ use inhere\library\http\Response;
  */
 class WebSocketServer extends BaseWebSocket
 {
-
     // 事件的回调函数名
     const ON_CONNECT   = 'connect';
     const ON_HANDSHAKE = 'handshake';
@@ -33,7 +32,6 @@ class WebSocketServer extends BaseWebSocket
     const ON_MESSAGE   = 'message';
     const ON_CLOSE     = 'close';
     const ON_ERROR     = 'error';
-
 
     /**
      * the master socket
@@ -54,7 +52,7 @@ class WebSocketServer extends BaseWebSocket
      * 连接的客户端握手状态列表
      * @var array
      * [
-     *  id => [ ip=> string , port => int, handshake => bool ], // bool: handshake status.
+     *  cid => [ ip=> string , port => int, handshake => bool ], // bool: handshake status.
      * ]
      */
     private $clients = [];
@@ -220,11 +218,11 @@ class WebSocketServer extends BaseWebSocket
             return true;
         }
 
-        $id = (int)$sock;
+        $cid = (int)$sock;
 
         // 不在已经记录的client列表中
-        if ( !isset($this->sockets[$id], $this->clients[$id])) {
-            return $this->close($id, $sock);
+        if ( !isset($this->sockets[$cid], $this->clients[$cid])) {
+            return $this->close($cid, $sock);
         }
 
         $data = null;
@@ -233,16 +231,16 @@ class WebSocketServer extends BaseWebSocket
 
         // 没有发送数据或者小于7字节
         if (false === $bytes || $bytes < 7 || !$data ) {
-            $this->log("Failed to receive data or not received data(client close connection) from #$id client, will close the socket.");
-            return $this->close($id, $sock);
+            $this->log("Failed to receive data or not received data(client close connection) from #$cid client, will close the socket.");
+            return $this->close($cid, $sock);
         }
 
         // 是否已经握手
-        if ( !$this->clients[$id]['handshake'] ) {
-            return $this->handshake($sock, $data, $id);
+        if ( !$this->clients[$cid]['handshake'] ) {
+            return $this->handshake($sock, $data, $cid);
         }
 
-        $this->message($id, $data, $bytes, $this->clients[$id]);
+        $this->message($cid, $data, $bytes, $this->clients[$cid]);
 
         return true;
     }
@@ -253,23 +251,23 @@ class WebSocketServer extends BaseWebSocket
      */
     public function connect($socket)
     {
-        $id = (int)$socket;
+        $cid = (int)$socket;
         socket_getpeername($socket, $ip, $port);
 
         // 初始化客户端信息
-        $this->clients[$id] = $info = [
+        $this->clients[$cid] = $info = [
             'ip' => $ip,
             'port' => $port,
             'handshake' => false,
             'path' => '/',
         ];
         // 客户端连接单独保存
-        $this->sockets[$id] = $socket;
+        $this->sockets[$cid] = $socket;
 
-        $this->log("A new client connected, ID: $id, From {$info['ip']}:{$info['port']}. Count: " . $this->count());
+        $this->log("A new client connected, ID: $cid, From {$info['ip']}:{$info['port']}. Count: " . $this->count());
 
         // 触发 connect 事件回调
-        $this->trigger(self::ON_CONNECT, [$this, $id]);
+        $this->trigger(self::ON_CONNECT, [$this, $cid]);
     }
 
     /**
@@ -277,12 +275,12 @@ class WebSocketServer extends BaseWebSocket
      * Response to upgrade agreement (handshake)
      * @param resource $socket
      * @param string $data
-     * @param int $id
+     * @param int $cid
      * @return bool|mixed
      */
-    protected function handshake($socket, string $data, int $id)
+    protected function handshake($socket, string $data, int $cid)
     {
-        $this->log("Ready to shake hands with the #$id client connection");
+        $this->log("Ready to shake hands with the #$cid client connection");
         $response = new Response();
 
         // 解析请求头信息错误
@@ -295,7 +293,7 @@ class WebSocketServer extends BaseWebSocket
 
             $this->writeTo($socket, $response->toString());
 
-            return $this->close($id, $socket, false);
+            return $this->close($cid, $socket, false);
         }
 
         // 解析请求头信息
@@ -303,11 +301,11 @@ class WebSocketServer extends BaseWebSocket
 
         // 触发 handshake 事件回调，如果返回 false -- 拒绝连接，比如需要认证，限定路由，限定ip，限定domain等
         // 就停止继续处理。并返回信息给客户端
-        if ( false === $this->trigger(self::ON_HANDSHAKE, [$request, $response, $id]) ) {
-            $this->log("The #$id client handshake's callback return false, will close the connection", 'notice');
+        if ( false === $this->trigger(self::ON_HANDSHAKE, [$request, $response, $cid]) ) {
+            $this->log("The #$cid client handshake's callback return false, will close the connection", 'notice');
             $this->writeTo($socket, $response->toString());
 
-            return $this->close($id, $socket, false);
+            return $this->close($cid, $socket, false);
         }
 
         // general key
@@ -318,60 +316,60 @@ class WebSocketServer extends BaseWebSocket
                 'Upgrade' => 'websocket',
                 'Connection' => 'Upgrade',
                 'Sec-WebSocket-Accept' => $key,
-            ], true);
+            ]);
 
         // 响应握手成功
         $this->writeTo($socket, $response->toString());
 
         // 标记已经握手 更新路由 path
-        $this->clients[$id]['handshake'] = true;
-        $this->clients[$id]['path'] = $path = $request->getPath();
+        $this->clients[$cid]['handshake'] = true;
+        $this->clients[$cid]['path'] = $path = $request->getPath();
 
-        $this->log("The #$id client connection handshake successful!" . $this->count() . ', Info:', 'info', $this->clients[$id]);
+        $this->log("The #$cid client connection handshake successful! Info:", 'info', $this->clients[$cid]);
 
         // 握手成功 触发 open 事件
-        return $this->trigger(self::ON_OPEN, [$this, $request, $id]);
+        return $this->trigger(self::ON_OPEN, [$this, $request, $cid]);
     }
 
     /**
      * handle client message
-     * @param int $id
+     * @param int $cid
      * @param string $data
      * @param int $bytes
      * @param array $client The client info [@see $defaultInfo]
      */
-    protected function message(int $id, string $data, int $bytes, array $client)
+    protected function message(int $cid, string $data, int $bytes, array $client)
     {
         $data = $this->decode($data);
 
-        $this->log("Received $bytes bytes message from #$id, Data: $data");
+        $this->log("Received $bytes bytes message from #$cid, Data: $data");
 
         // call on message handler
-        $this->trigger(self::ON_MESSAGE, [$this, $data, $id, $client]);
+        $this->trigger(self::ON_MESSAGE, [$this, $data, $cid, $client]);
     }
 
     /**
      * alias method of the `close()`
-     * @param int $id
+     * @param int $cid
      * @param null|resource $socket
      * @return mixed
      */
-    public function disconnect(int $id, $socket = null)
+    public function disconnect(int $cid, $socket = null)
     {
-        return $this->close($id, $socket);
+        return $this->close($cid, $socket);
     }
 
     /**
      * Closing a connection
-     * @param int $id
+     * @param int $cid
      * @param null|resource $socket
      * @param bool $triggerEvent
      * @return bool
      */
-    public function close(int $id, $socket = null, bool $triggerEvent = true)
+    public function close(int $cid, $socket = null, bool $triggerEvent = true)
     {
-        if ( !is_resource($socket) && !($socket = $this->sockets[$id] ?? null) ) {
-            $this->log("Close the client socket connection failed! #$id client socket not exists", 'error');
+        if ( !is_resource($socket) && !($socket = $this->sockets[$cid] ?? null) ) {
+            $this->log("Close the client socket connection failed! #$cid client socket not exists", 'error');
         }
 
         // close socket connection
@@ -379,15 +377,15 @@ class WebSocketServer extends BaseWebSocket
             socket_close($socket);
         }
 
-        $client = $this->clients[$id];
-        unset($this->sockets[$id], $this->clients[$id]);
+        $client = $this->clients[$cid];
+        unset($this->sockets[$cid], $this->clients[$cid]);
 
         // call close handler
         if ( $triggerEvent ) {
-            $this->trigger(self::ON_CLOSE, [$this, $id, $client]);
+            $this->trigger(self::ON_CLOSE, [$this, $cid, $client]);
         }
 
-        $this->log("The #$id client connection has been closed! Count: " . $this->count());
+        $this->log("The #$cid client connection has been closed! Count: " . $this->count());
 
         return true;
     }
@@ -400,61 +398,6 @@ class WebSocketServer extends BaseWebSocket
         $this->log("An error occurred! Error: $msg", 'error');
 
         $this->trigger(self::ON_ERROR, [$msg, $this]);
-    }
-
-    /////////////////////////////////////////////////////////////////////////////////////////
-    /// events method
-    /////////////////////////////////////////////////////////////////////////////////////////
-
-    /**
-     * register a event callback
-     * @param string    $event    event name
-     * @param callable  $cb       event callback
-     * @param bool      $replace  replace exists's event cb
-     * @return WebSocketServer
-     */
-    public function on(string $event, callable $cb, bool $replace = false): self
-    {
-        if ( false === ($key = array_search($event, $this->getSupportedEvents(), true)) ) {
-            $sup = implode(',', $this->getSupportedEvents());
-
-            throw new \InvalidArgumentException("The want registered event is not supported. Supported: $sup");
-        }
-
-        if ( !$replace && isset($this->callbacks[$key]) ) {
-            throw new \InvalidArgumentException("The want registered event [$event] have been registered! don't allow replace.");
-        }
-
-        $this->callbacks[$key] = $cb;
-
-        return $this;
-    }
-
-    /**
-     * @param string $event
-     * @param array $args
-     * @return mixed
-     */
-    protected function trigger(string $event, array $args = [])
-    {
-        if ( false === ($key = array_search($event, $this->getSupportedEvents(), true)) ) {
-            throw new \InvalidArgumentException("Trigger a not exists's event: $event.");
-        }
-
-        if ( !isset($this->callbacks[$key]) || !($cb = $this->callbacks[$key]) ) {
-            return '';
-        }
-
-        return call_user_func_array($cb, $args);
-    }
-
-    /**
-     * @param string $event
-     * @return bool
-     */
-    public function isSupportedEvent(string $event): bool
-    {
-        return in_array($event, $this->getSupportedEvents(), true);
     }
 
     /////////////////////////////////////////////////////////////////////////////////////////
@@ -539,12 +482,12 @@ class WebSocketServer extends BaseWebSocket
         // to all
         } else {
             $this->log("(broadcast)The #{$fromUser} gave some specified user sending a message. Data: {$data}");
-            foreach ($this->sockets as $id => $socket) {
-                if ( isset($expected[$id]) ) {
+            foreach ($this->sockets as $cid => $socket) {
+                if ( isset($expected[$cid]) ) {
                     continue;
                 }
 
-                if ( $receivers && !isset($receivers[$id]) ) {
+                if ( $receivers && !isset($receivers[$cid]) ) {
                     continue;
                 }
 
@@ -699,22 +642,22 @@ class WebSocketServer extends BaseWebSocket
     /**
      *  check it is a accepted client
      * @notice maybe don't complete handshake
-     * @param $id
+     * @param $cid
      * @return bool
      */
-    public function hasClient(int $id)
+    public function hasClient(int $cid)
     {
-        return isset($this->clients[$id]);
+        return isset($this->clients[$cid]);
     }
 
     /**
      * get client info data
-     * @param int $id
+     * @param int $cid
      * @return mixed
      */
-    public function getClient(int $id)
+    public function getClient(int $cid)
     {
-        return $this->clients[$id] ?? $this->defaultInfo;
+        return $this->clients[$cid] ?? $this->defaultInfo;
     }
 
     /**
@@ -739,13 +682,13 @@ class WebSocketServer extends BaseWebSocket
 
     /**
      * check it a accepted client and handshake completed  client
-     * @param int $id
+     * @param int $cid
      * @return bool
      */
-    public function hasHandshake(int $id): bool
+    public function hasHandshake(int $cid): bool
     {
-        if ( $this->hasClient($id) ) {
-            return $this->getClient($id)['handshake'];
+        if ( $this->hasClient($cid) ) {
+            return $this->getClient($cid)['handshake'];
         }
 
         return false;
@@ -781,13 +724,13 @@ class WebSocketServer extends BaseWebSocket
 
     /**
      * get client socket connection by index
-     * @param $id
+     * @param $cid
      * @return resource|false
      */
-    public function getSocket($id)
+    public function getSocket($cid)
     {
-        if ( $this->hasClient($id) ) {
-            return $this->sockets[$id];
+        if ( $this->hasClient($cid) ) {
+            return $this->sockets[$cid];
         }
 
         return false;
