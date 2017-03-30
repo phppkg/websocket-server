@@ -8,8 +8,8 @@
 
 namespace inhere\webSocket;
 
-use inhere\webSocket\parts\Request;
-use inhere\webSocket\parts\Response;
+use inhere\librarys\http\Request;
+use inhere\librarys\http\Response;
 
 /**
  * Class WebSocketServer
@@ -23,18 +23,10 @@ use inhere\webSocket\parts\Response;
  * $ws->start();
  * ```
  */
-class WebSocketServer
+class WebSocketServer extends BaseWebSocket
 {
-    /**
-     * Websocket blob type.
-     */
-    const BINARY_TYPE_BLOB = "\x81";
 
-    /**
-     * Websocket array buffer type.
-     */
-    const BINARY_TYPE_ARRAY_BUFFER = "\x82";
-
+    // 事件的回调函数名
     const ON_CONNECT   = 'connect';
     const ON_HANDSHAKE = 'handshake';
     const ON_OPEN      = 'open';
@@ -42,16 +34,12 @@ class WebSocketServer
     const ON_CLOSE     = 'close';
     const ON_ERROR     = 'error';
 
-    const DEFAULT_HOST = '0.0.0.0';
-    const DEFAULT_PORT = 80;
 
     /**
      * the master socket
      * @var resource
      */
     private $master;
-    private $host;
-    private $port;
 
     /**
      * 连接的客户端列表
@@ -72,17 +60,17 @@ class WebSocketServer
     private $clients = [];
 
     /**
-     * settings
+     * options
      * @var array
      */
-    protected $settings = [
+    protected $options = [
         'debug'    => false,
 
         'open_log' => true,
         'log_file' => '',
 
         // while 循环时间间隔 毫秒 millisecond. 1s = 1000ms = 1000 000us
-        'sleep_ms' => 800,
+        'sleep_ms' => 500,
         // 最大允许连接数量
         'max_conn' => 25,
         // 最大数据接收长度 1024 2048
@@ -101,13 +89,6 @@ class WebSocketServer
     ];
 
     /**
-     * 5个事件(@see $supportedEvents)的回调函数
-     * 分别在新用户连接、连接成功、有消息到达、用户断开、发生错误时触发
-     * @var \SplFixedArray
-     */
-    private $callbacks;
-
-    /**
      * @return array
      */
     public function getSupportedEvents(): array
@@ -119,15 +100,13 @@ class WebSocketServer
      * WebSocket constructor.
      * @param string $host
      * @param int $port
-     * @param array $settings
+     * @param array $options
      */
-    public function __construct(string $host = '0.0.0.0', int $port = 80, array $settings = array())
+    public function __construct(string $host = '0.0.0.0', int $port = 8080, array $options = [])
     {
-        $this->host = $host;
-        $this->port = $port;
+        parent::__construct($host, $port, $options);
 
         $this->callbacks = new \SplFixedArray( count($this->getSupportedEvents()) );
-        $this->setSettings($settings);
     }
 
     /////////////////////////////////////////////////////////////////////////////////////////
@@ -172,7 +151,7 @@ class WebSocketServer
         // 给套接字绑定名字
         socket_bind($this->master, $this->getHost(), $this->getPort());
 
-        $max = $this->getSetting('max_conn', 20);
+        $max = $this->getOption('max_conn', 20);
 
         // 监听套接字上的连接. 最多允许 $max 个连接，超过的客户端连接会返回 WSAECONNREFUSED 错误
         socket_listen($this->master, $max);
@@ -190,10 +169,10 @@ class WebSocketServer
         // create and prepare
         $this->prepareMasterSocket();
 
-        $maxLen = (int)$this->getSetting('max_data_len', 1024);
+        $maxLen = (int)$this->getOption('max_data_len', 1024);
 
         // interval time
-        $setTime = (int)$this->getSetting('sleep_ms', 800);
+        $setTime = (int)$this->getOption('sleep_ms', 800);
         $sleepTime = $setTime > 50 ? $setTime : 800;
         $sleepTime *= 1000; // ms -> us
 
@@ -278,7 +257,7 @@ class WebSocketServer
         socket_getpeername($socket, $ip, $port);
 
         // 初始化客户端信息
-        $this->clients[$id] = [
+        $this->clients[$id] = $info = [
             'ip' => $ip,
             'port' => $port,
             'handshake' => false,
@@ -287,7 +266,7 @@ class WebSocketServer
         // 客户端连接单独保存
         $this->sockets[$id] = $socket;
 
-        $this->log("A new client connected, ID: $id, Count: " . $this->count() . ', Info:', 'info', $this->clients );
+        $this->log("A new client connected, ID: $id, From {$info['ip']}:{$info['port']}. Count: " . $this->count());
 
         // 触发 connect 事件回调
         $this->trigger(self::ON_CONNECT, [$this, $id]);
@@ -332,7 +311,7 @@ class WebSocketServer
         }
 
         // general key
-        $key = base64_encode(sha1(trim($match[1]) . '258EAFA5-E914-47DA-95CA-C5AB0DC85B11', true));
+        $key = $this->genSign($match[1]);
         $response
             ->setStatus(101)
             ->setHeaders([
@@ -717,79 +696,6 @@ class WebSocketServer
     /// helper method
     /////////////////////////////////////////////////////////////////////////////////////////
 
-    //体力活
-    public function frame($s)
-    {
-        $a = str_split($s, 125);
-        $prefix = self::BINARY_TYPE_BLOB;
-
-        if (count($a) === 1){
-            return $prefix . chr(strlen($a[0])) . $a[0];
-        }
-
-        $ns = '';
-
-        foreach ($a as $o){
-            $ns .= $prefix . chr(strlen($o)) . $o;
-        }
-
-        return $ns;
-    }
-
-    // 体力活
-    public function decode($buffer)
-    {
-        /*$len = $masks = $data =*/ $decoded = '';
-        $len = ord($buffer[1]) & 127;
-
-        if ($len === 126) {
-            $masks = substr($buffer, 4, 4);
-            $data = substr($buffer, 8);
-        } else if ($len === 127) {
-            $masks = substr($buffer, 10, 4);
-            $data = substr($buffer, 14);
-        } else {
-            $masks = substr($buffer, 2, 4);
-            $data = substr($buffer, 6);
-        }
-
-        $dataLen = strlen($data);
-        for ($index = 0; $index < $dataLen; $index++) {
-            $decoded .= $data[$index] ^ $masks[$index % 4];
-        }
-
-        return $decoded;
-    }
-
-    /**
-     * @param string $message
-     * @param string $type
-     * @param array $data
-     */
-    public function log(string $message, string $type = 'info', array $data = [])
-    {
-        $date = date('Y-m-d H:i:s');
-        $type = strtoupper(trim($type));
-
-        $this->print("[$date] [$type] $message " . ( $data ? json_encode($data) : '' ) );
-    }
-
-    /**
-     * @param mixed $messages
-     * @param bool $nl
-     * @param null|int $exit
-     */
-    public function print($messages, $nl = true, $exit = null)
-    {
-        $text = is_array($messages) ? implode(($nl ? "\n" : ''), $messages) : $messages;
-
-        fwrite(\STDOUT, $text . ($nl ? "\n" : ''));
-
-        if ( $exit !== null ) {
-            exit((int)$exit);
-        }
-    }
-
     /**
      *  check it is a accepted client
      * @notice maybe don't complete handshake
@@ -903,63 +809,4 @@ class WebSocketServer
         return $this->master;
     }
 
-    /**
-     * @return string
-     */
-    public function getHost(): string
-    {
-        if ( !$this->host ) {
-            $this->host = self::DEFAULT_HOST;
-        }
-
-        return $this->host;
-    }
-
-    /**
-     * @return int
-     */
-    public function getPort(): int
-    {
-        if ( !$this->port || $this->port <= 0 ) {
-            $this->port = self::DEFAULT_PORT;
-        }
-
-        return $this->port;
-    }
-
-    /**
-     * @return \SplFixedArray
-     */
-    public function getCallbacks(): \SplFixedArray
-    {
-        return $this->callbacks;
-    }
-
-    /**
-     * @return array
-     */
-    public function getSettings(): array
-    {
-        return $this->settings;
-    }
-
-    /**
-     * @param array $settings
-     */
-    public function setSettings(array $settings)
-    {
-        if ( $settings) {
-            $this->settings = array_merge($this->settings, $settings);
-        }
-    }
-
-    /**
-     * @param string $name
-     * @param mixed $default
-     * @return mixed
-     */
-    public function getSetting(string $name, $default = null)
-    {
-        return $this->settings[$name] ?? $default;
-    }
 }

@@ -8,11 +8,12 @@
 
 namespace inhere\webSocket;
 
+use inhere\librarys\traits\TraitUseSimpleOption;
 use inhere\webSocket\handlers\IRouteHandler;
 use inhere\webSocket\handlers\RootHandler;
 use inhere\webSocket\parts\MessageResponse;
-use inhere\webSocket\parts\Request;
-use inhere\webSocket\parts\Response;
+use inhere\librarys\http\Request;
+use inhere\librarys\http\Response;
 
 /**
  * Class Application
@@ -47,6 +48,8 @@ use inhere\webSocket\parts\Response;
  */
 class Application
 {
+    use TraitUseSimpleOption;
+
     // custom ws handler position
     const OPEN_HANDLER = 0;
     const MESSAGE_HANDLER = 1;
@@ -115,11 +118,9 @@ class Application
     {
         $this->host = $host ?: '0.0.0.0';
         $this->port = $port ?: 8080;
-        $this->options = array_merge($this->options, $options);
-
         $this->wsHandlers = new \SplFixedArray(5);
 
-        $this->routes = new \SplObjectStorage();
+        $this->setOptions($options);
     }
 
     /**
@@ -558,32 +559,6 @@ EOF;
     public function getDataType(): string
     {
         return $this->getOption('dataType');
-    }
-
-    /**
-     * @param string $key
-     * @param null $default
-     * @return mixed|null
-     */
-    public function getOption(string $key, $default = null)
-    {
-        return $this->options[$key] ?? $default;
-    }
-
-    /**
-     * @return array
-     */
-    public function getOptions(): array
-    {
-        return $this->options;
-    }
-
-    /**
-     * @param array $options
-     */
-    public function setOptions(array $options)
-    {
-        $this->options = array_merge($this->options, $options);
     }
 
     /**

@@ -8,11 +8,12 @@
 
 namespace inhere\webSocket\handlers;
 
+use inhere\librarys\traits\TraitUseSimpleOption;
 use inhere\webSocket\Application;
 use inhere\webSocket\dataParser\ComplexDataParser;
 use inhere\webSocket\dataParser\IDataParser;
-use inhere\webSocket\parts\Request;
-use inhere\webSocket\parts\Response;
+use inhere\librarys\http\Request;
+use inhere\librarys\http\Response;
 
 /**
  * Class ARouteHandler
@@ -20,6 +21,8 @@ use inhere\webSocket\parts\Response;
  */
 abstract class ARouteHandler implements IRouteHandler
 {
+    use TraitUseSimpleOption;
+
     // custom ws handler position
     const OPEN_HANDLER = 0;
     const MESSAGE_HANDLER = 1;
@@ -281,32 +284,6 @@ abstract class ARouteHandler implements IRouteHandler
     public function getDataType(): string
     {
         return $this->getOption('dataType');
-    }
-
-    /**
-     * @param string $key
-     * @param null $default
-     * @return mixed|null
-     */
-    public function getOption(string $key, $default = null)
-    {
-        return $this->options[$key] ?? $default;
-    }
-
-    /**
-     * @return array
-     */
-    public function getOptions(): array
-    {
-        return $this->options;
-    }
-
-    /**
-     * @param array $options
-     */
-    public function setOptions(array $options)
-    {
-        $this->options = array_merge($this->options, $options);
     }
 
     /**
