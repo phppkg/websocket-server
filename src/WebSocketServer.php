@@ -484,16 +484,16 @@ class WebSocketServer
 
     /**
      * @param string $data
-     * @param null|int $from
-     * @param int|array|null $target
+     * @param int $sender
+     * @param int|array|null $receiver
      * @param int[] $expected
      * @return int
      */
-    public function send(string $data, int $from = -1, $target = null, array $expected = [])
+    public function send(string $data, int $sender = 0, $receiver = null, array $expected = [])
     {
-        return is_int($target) && $target >= 0 ?
-            $this->sendTo($target, $data, $from) :
-            $this->broadcast($data, $from, (array)$target,  $expected);
+        return is_int($receiver) ?
+            $this->sendTo($receiver, $data, $sender) :
+            $this->broadcast($data, (array)$receiver,  $expected, $sender);
     }
 
     /**
@@ -505,10 +505,14 @@ class WebSocketServer
      */
     public function sendTo(int $receiver, string $data, int $sender = 0)
     {
+        if ( !$data || $receiver < 1 ) {
+            return 0;
+        }
+
         if ( !($socket = $this->getSocket($receiver)) ) {
             $this->log("The target user #$receiver not connected or has been logout!", 'error');
 
-            return 1703;
+            return 0;
         }
 
         $res = $this->frame($data);
@@ -520,14 +524,19 @@ class WebSocketServer
     }
 
     /**
-     * @param string $data
-     * @param int    $sender   发送者
-     * @param int[]  $receivers 接收者们
-     * @param int[]  $expected
-     * @return int
+     * broadcast message 广播消息
+     * @param string $data      消息数据
+     * @param int    $sender    发送者
+     * @param int[]  $receivers 指定接收者们
+     * @param int[]  $expected  要排除的接收者
+     * @return int   Return socket last error number code.  gt 0 on failure, eq 0 on success
      */
-    public function broadcast(string $data, int $sender = 0, array $receivers = [], array $expected = []): int
+    public function broadcast(string $data, array $receivers = [], array $expected = [], int $sender = 0): int
     {
+        if ( !$data ) {
+            return 0;
+        }
+
         $res = $this->frame($data);
         $len = strlen($res);
         $fromUser = $sender < 1 ? 'SYSTEM' : $sender;
@@ -564,7 +573,6 @@ class WebSocketServer
             }
         }
 
-        // $msg = socket_strerror(socket_last_error());
         return socket_last_error();
     }
 
@@ -573,12 +581,14 @@ class WebSocketServer
      * @param resource  $socket
      * @param string    $data
      * @param int       $length
-     * @return int
+     * @return int      Return socket last error number code. gt 0 on failure, eq 0 on success
      */
     public function writeTo($socket, string $data, int $length = 0)
     {
         // response data to client
-        return socket_write($socket, $data, $length > 0 ? $length : strlen($data));
+        socket_write($socket, $data, $length > 0 ? $length : strlen($data));
+
+        return socket_last_error();
     }
 
     /**

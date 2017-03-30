@@ -26,9 +26,6 @@ abstract class ARouteHandler implements IRouteHandler
     const CLOSE_HANDLER = 2;
     const ERROR_HANDLER = 3;
 
-    const DATA_JSON = 'json';
-    const DATA_TEXT = 'text';
-
     /**
      * @var Application
      */
@@ -134,7 +131,7 @@ abstract class ARouteHandler implements IRouteHandler
         $route = $this->request->path;
 
         // parse: get command and real data
-        if ( $results = $this->getDataParser()->parse($data, $id, $this->app) ) {
+        if ( $results = $this->getDataParser()->parse($data, $id, $this) ) {
             [$command, $data] = $results;
             $command = $command ?: $this->getOption('defaultCmd') ?? self::DEFAULT_CMD;
             $this->log("The #{$id} request command is: $command in route [$route]");
@@ -189,7 +186,7 @@ abstract class ARouteHandler implements IRouteHandler
      */
     public function pingCommand(string $data, int $id)
     {
-        return $this->target($id)->respond($data . '+PONG');
+        return $this->respond($data . '+PONG');
     }
 
     /**
@@ -199,7 +196,7 @@ abstract class ARouteHandler implements IRouteHandler
      */
     public function parseErrorCommand(string $data, int $id)
     {
-        return $this->target($id)->respond($data, 'you send data format is error!', -200);
+        return $this->respond($data, 'you send data format is error!', -200);
     }
 
     /**
@@ -211,7 +208,7 @@ abstract class ARouteHandler implements IRouteHandler
     {
         $msg = "You request command [$command] not found in the route [{$this->request->getPath()}].";
 
-        return $this->target($id)->respond('', $msg, -404);
+        return $this->respond('', $msg, -404);
     }
 
     /**
@@ -269,6 +266,22 @@ abstract class ARouteHandler implements IRouteHandler
     /////////////////////////////////////////////////////////////////////////////////////////
     /// getter/setter method
     /////////////////////////////////////////////////////////////////////////////////////////
+
+    /**
+     * @return bool
+     */
+    public function isJsonType(): bool
+    {
+        return $this->getOption('dataType') === self::DATA_JSON;
+    }
+
+    /**
+     * @return string
+     */
+    public function getDataType(): string
+    {
+        return $this->getOption('dataType');
+    }
 
     /**
      * @param string $key

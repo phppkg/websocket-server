@@ -57,6 +57,8 @@ class Application
 
     const PARSE_ERROR = 'error';
 
+    const OK = 0;
+
     const DATA_JSON = 'json';
     const DATA_TEXT = 'text';
 
@@ -175,12 +177,13 @@ class Application
 
         if ( isset($opts['h']) || isset($opts['help']) ) {
             $help = <<<EOF
-Start a webSocket server.  
-  
+Start a webSocket Application Server.  
+
 Options:
   -H,--host  Setting the webSocket server host.(default:9501)
   -p,--port  Setting the webSocket server port.(default:127.0.0.1)
   -h,--help  Show help information
+  
 EOF;
 
             fwrite(\STDOUT, $help);
@@ -274,9 +277,7 @@ EOF;
         $result = $this->getRouteHandler($client['path'])->dispatch($data, $id);
 
         if ( $result && is_string($result) ) {
-            $this->log("Response message: $result");
-
-            $ws->send($result, $id);
+            $ws->send($result);
         }
     }
 
@@ -370,6 +371,14 @@ EOF;
         return $routeHandler;
     }
 
+    /**
+     * @param $path
+     * @return bool
+     */
+    public function hasRoute(string $path): bool
+    {
+        return isset($this->routesHandlers[$path]);
+    }
 
     /**
      * @param string $path
@@ -382,144 +391,6 @@ EOF;
         }
 
         return $this->routesHandlers[$path];
-    }
-
-    /**
-     * @param string $key
-     * @param null $default
-     * @return mixed|null
-     */
-    public function getOption(string $key, $default = null)
-    {
-        return $this->options[$key] ?? $default;
-    }
-
-    /**
-     * @return array
-     */
-    public function getOptions(): array
-    {
-        return $this->options;
-    }
-
-    /**
-     * @param array $options
-     */
-    public function setOptions(array $options)
-    {
-        $this->options = array_merge($this->options, $options);
-    }
-
-    /**
-     * @return bool
-     */
-    public function isJsonType()
-    {
-        return $this->getOption('dataType') === self::DATA_JSON;
-    }
-
-    /////////////////////////////////////////////////////////////////////////////////////////
-    /// response
-    /////////////////////////////////////////////////////////////////////////////////////////
-
-    /**
-     * @param string $data
-     * @param string $msg
-     * @param int $code
-     * @return string
-     */
-    public function fmtJson($data, string $msg = 'success', int $code = 0): string
-    {
-        return json_encode([
-            'data' => $data,
-            'msg'  => $msg,
-            'code' => (int)$code,
-            'time' => time(),
-        ]);
-    }
-
-    /**
-     * @param string $data
-     * @param int $sender
-     * @param array $receivers
-     * @param array $excepted
-     * @return MessageResponse
-     */
-    public function makeResponse(string $data = '', int $sender = 0, array $receivers = [], array $excepted = []): MessageResponse
-    {
-        $mr = MessageResponse::make($data, $sender, $receivers, $excepted);
-
-        return $mr->setWs($this->ws);
-    }
-
-    /**
-     * @param mixed $data
-     * @param string $msg
-     * @param int $code
-     * @param \Closure|null $afterMake
-     * @return int
-     */
-    public function respond($data, string $msg = 'success', int $code = 0, \Closure $afterMake = null): int
-    {
-        // json
-        if ( $this->isJsonType() ) {
-            $data = $this->fmtJson($data, $msg, $code);
-
-        // text
-        } else {
-            if ( $data && is_array($data) ) {
-                $data = json_encode($data);
-            }
-
-            $data = $data ?: $msg;
-        }
-
-        $mr = MessageResponse::make()->setData($data)->setWs($this->ws);
-
-        if ( $afterMake ) {
-            $afterMake($mr);
-        }
-
-        return $mr->send(true);
-    }
-
-    /**
-     * @param MessageResponse $response
-     * @param bool $reset
-     * @return int
-     */
-    public function send(MessageResponse $response, bool $reset = true): int
-    {
-        return $response->setWs($this->ws)->send($reset);
-    }
-
-    /////////////////////////////////////////////////////////////////////////////////////////
-    /// a very simple's user storage
-    /////////////////////////////////////////////////////////////////////////////////////////
-
-    /**
-     * @var array
-     */
-    private $users = [];
-
-    public function getUser($index)
-    {
-        return $this->users[$index] ?? null;
-    }
-
-    public function userLogin($index, $data)
-    {
-
-    }
-
-    public function userLogout($index, $data)
-    {
-
-    }
-
-    public function hasRoute($path)
-    {
-        return isset($this->routesHandlers[$path]);
     }
 
     /**
@@ -546,6 +417,173 @@ EOF;
         foreach ($routesHandlers as $route => $handler) {
             $this->route($route, $handler);
         }
+    }
+
+    /////////////////////////////////////////////////////////////////////////////////////////
+    /// response
+    /////////////////////////////////////////////////////////////////////////////////////////
+
+    /**
+     * @param string $data
+     * @param string $msg
+     * @param int $code
+     * @return string
+     */
+    public function fmtJson($data, string $msg = 'success', int $code = 0): string
+    {
+        return json_encode([
+            'data' => $data,
+            'msg'  => $msg,
+            'code' => (int)$code,
+            'time' => time(),
+        ]);
+    }
+
+    /**
+     * @param $data
+     * @param string $msg
+     * @param int $code
+     * @return string
+     */
+    public function buildMessage($data, string $msg = 'success', int $code = 0)
+    {
+        // json
+        if ( $this->isJsonType() ) {
+            $data = $this->fmtJson($data, $msg ?: 'success', $code);
+
+            // text
+        } else {
+            if ( $data && is_array($data) ) {
+                $data = json_encode($data);
+            }
+
+            $data = $data ?: $msg;
+        }
+
+        return $data;
+    }
+
+    /**
+     * @param string $data
+     * @param int $sender
+     * @param array $receivers
+     * @param array $excepted
+     * @return MessageResponse
+     */
+    public function makeMR(string $data = '', int $sender = 0, array $receivers = [], array $excepted = []): MessageResponse
+    {
+        return MessageResponse::make($data, $sender, $receivers, $excepted)->setWs($this->ws);
+    }
+
+    /**
+     * @param mixed $data
+     * @param string $msg
+     * @param int $code
+     * @param bool $doSend
+     * @return int|MessageResponse
+     */
+    public function respond($data, string $msg = '', int $code = 0, bool $doSend = true)
+    {
+        $data = $this->buildMessage($data, $msg, $code);
+        $mr = MessageResponse::make($data)->setWs($this->ws);
+
+        if ( $doSend ) {
+            $mr->send(true);
+        }
+
+        return $mr;
+    }
+
+    /**
+     * @param $data
+     * @param string $msg
+     * @param int $code
+     * @param \Closure|null $afterMakeMR
+     * @param bool $reset
+     * @return int
+     * @internal param MessageResponse $response
+     */
+    public function send($data, string $msg = '', int $code = 0, \Closure $afterMakeMR = null, bool $reset = true): int
+    {
+        $data = $this->buildMessage($data, $msg, $code);
+        $mr = MessageResponse::make($data)->setWs($this->ws);
+
+        if ( $afterMakeMR ) {
+            $status = $afterMakeMR($mr);
+
+            // If the message have bee sent
+            if ( is_int($status) ) {
+                return $status;
+            }
+        }
+
+        return $mr->send($reset);
+    }
+
+    /////////////////////////////////////////////////////////////////////////////////////////
+    /// a very simple's user storage
+    /////////////////////////////////////////////////////////////////////////////////////////
+
+    /**
+     * @var array
+     */
+    private $users = [];
+
+    public function getUser($index)
+    {
+        return $this->users[$index] ?? null;
+    }
+
+    public function userLogin($index, $data)
+    {
+
+    }
+
+    public function userLogout($index, $data)
+    {
+
+    }
+
+    /**
+     * @return bool
+     */
+    public function isJsonType(): bool
+    {
+        return $this->getOption('dataType') === self::DATA_JSON;
+    }
+
+    /**
+     * @return string
+     */
+    public function getDataType(): string
+    {
+        return $this->getOption('dataType');
+    }
+
+    /**
+     * @param string $key
+     * @param null $default
+     * @return mixed|null
+     */
+    public function getOption(string $key, $default = null)
+    {
+        return $this->options[$key] ?? $default;
+    }
+
+    /**
+     * @return array
+     */
+    public function getOptions(): array
+    {
+        return $this->options;
+    }
+
+    /**
+     * @param array $options
+     */
+    public function setOptions(array $options)
+    {
+        $this->options = array_merge($this->options, $options);
     }
 
     /**

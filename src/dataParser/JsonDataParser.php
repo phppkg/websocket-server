@@ -8,7 +8,7 @@
 
 namespace inhere\webSocket\dataParser;
 
-use inhere\webSocket\Application;
+use inhere\webSocket\handlers\IRouteHandler;
 
 /**
  * Class JsonDataParser
@@ -27,20 +27,20 @@ class JsonDataParser implements IDataParser
     /**
      * @param string $data
      * @param int $index
-     * @param Application $app
+     * @param IRouteHandler $handler
      * @return array|false
      */
-    public function parse(string $data, int $index, Application $app)
+    public function parse(string $data, int $index, IRouteHandler $handler)
     {
         // json parser
         // format: {"cmd": "value", ... ...}
         // eg: {"cmd": "login", "name":"john","pwd":123456}
         $temp = $data;
         $command = '';
-        $to = $app->getOption('jsonParseTo') ?: self::JSON_TO_RAW;
+        $to = $handler->getOption('jsonParseTo') ?: self::JSON_TO_RAW;
         $cmdKey = $this->cmdKey ?: self::DEFAULT_CMD_KEY;
 
-        $app->log("The #{$index} request command: $command, data: $data");
+        $handler->log("The #{$index} request command: $command, data: $data");
 
         $data = json_decode(trim($data), $toAssoc = $to === self::JSON_TO_ARRAY);
 
@@ -48,7 +48,7 @@ class JsonDataParser implements IDataParser
         if (json_last_error() > 0) {
             $errMsg = json_last_error_msg();
 
-            $app->log("The #{$index} request data parse to json failed! MSG: $errMsg Data: {$temp}", 'error');
+            $handler->log("The #{$index} request data parse to json failed! MSG: $errMsg Data: {$temp}", 'error');
 
             return false;
         }

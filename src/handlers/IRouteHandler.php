@@ -22,6 +22,9 @@ interface IRouteHandler
     const NOT_FOUND = 'notFound';
     const PARSE_ERROR = 'error';
 
+    const DATA_JSON = 'json';
+    const DATA_TEXT = 'text';
+
     /**
      * @param Request $request
      * @param Response $response
@@ -59,6 +62,17 @@ interface IRouteHandler
      * @return static
      */
     public function add(string $command, $handler);
+
+    public function log(string $message, string $type = 'info', array $data = []);
+
+    public function isJsonType();
+
+    /**
+     * @param string $key
+     * @param mixed $default
+     * @return mixed
+     */
+    public function getOption(string $key, $default = null);
 
     /**
      * @param Application $app

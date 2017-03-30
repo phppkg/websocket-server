@@ -8,7 +8,7 @@
 
 namespace inhere\webSocket\dataParser;
 
-use inhere\webSocket\Application;
+use inhere\webSocket\handlers\IRouteHandler;
 
 /**
  * Class ComplexDataParser
@@ -19,10 +19,10 @@ class ComplexDataParser implements IDataParser
     /**
      * @param string $data
      * @param int $index
-     * @param Application $app
+     * @param IRouteHandler $handler
      * @return array|false
      */
-    public function parse(string $data, int $index, Application $app)
+    public function parse(string $data, int $index, IRouteHandler $handler)
     {
         // default format: [@command]data
         // eg:
@@ -40,10 +40,10 @@ class ComplexDataParser implements IDataParser
             $realData = $data;
         }
 
-        $app->log("The #{$index} request command: $command, data: $realData");
-        $to = $app->getOption('jsonParseTo') ?: self::JSON_TO_RAW;
+        $handler->log("The #{$index} request command: $command, data: $realData");
+        $to = $handler->getOption('jsonParseTo') ?: self::JSON_TO_RAW;
 
-        if ( $app->isJsonType() && $to !== self::JSON_TO_RAW ) {
+        if ( $handler->isJsonType() && $to !== self::JSON_TO_RAW ) {
             $realData = json_decode(trim($realData), $to === self::JSON_TO_ARRAY);
 
             // parse error
@@ -52,7 +52,7 @@ class ComplexDataParser implements IDataParser
                 $realData = trim($matches[2]);
                 $errMsg = json_last_error_msg();
 
-                $app->log("Request data parse to json failed! MSG: {$errMsg}, JSON: {$realData}", 'error');
+                $handler->log("Request data parse to json failed! MSG: {$errMsg}, JSON: {$realData}", 'error');
 
                 return false;
             }

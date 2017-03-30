@@ -71,6 +71,18 @@ class MessageResponse implements \ArrayAccess
     }
 
     /**
+     * mark message sent
+     * @var bool
+     */
+    private $_sent = false;
+
+    /**
+     * last status code
+     * @var int
+     */
+    private $_status = 0;
+
+    /**
      * @param bool $reset
      * @return int
      */
@@ -80,11 +92,20 @@ class MessageResponse implements \ArrayAccess
             throw new \InvalidArgumentException('Please set the property [ws], is instance of the WebSocketServer');
         }
 
+        // if message have been sent, stop and return last status code
+        if ( $this->isSent() ) {
+            return $this->_status;
+        }
+
         $status = $this->ws->send($this->getData(), $this->sender, $this->receivers, $this->excepted);
 
         if ( $reset ) {
             $this->reset();
         }
+
+        // mark message have been sent
+        $this->_sent = true;
+        $this->_status = $status;
 
         return $status;
     }
@@ -94,7 +115,8 @@ class MessageResponse implements \ArrayAccess
      */
     public function reset()
     {
-        $this->sender = 0;
+        $this->_sent = false;
+        $this->sender = $this->_status = 0;
         $this->receivers = $this->excepted = $this->data = [];
     }
 
@@ -102,6 +124,22 @@ class MessageResponse implements \ArrayAccess
     {
         $this->ws = null;
         $this->reset();
+    }
+
+    /**
+     * @return bool
+     */
+    public function isSent(): bool
+    {
+        return $this->_sent;
+    }
+
+    /**
+     * @param bool $sent
+     */
+    public function setSent(bool $sent)
+    {
+        $this->_sent = $sent;
     }
 
     /**

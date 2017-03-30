@@ -11,6 +11,7 @@
 require __DIR__ . '/../../../autoload.php';
 
 use inhere\webSocket\Application;
+use inhere\webSocket\parts\MessageResponse;
 use inhere\webSocket\WebSocketServer;
 use inhere\webSocket\parts\Request;
 
@@ -38,11 +39,13 @@ $rootHandler->add('test', function ($data, $index, Application $app) {
 
 // if use `$app->jsonDataParser()` client send: {"cmd":"login","name":"john","pwd":123456}
 // if use `$app->complexDataParser()` client send: [@login]{"name":"john","pwd":123456}
-$rootHandler->add('login', function ($data, $index, Application $app) {
+$rootHandler->add('login', function ($data, $id, Application $app) {
 
     $name = $data['name'] ?? 'Please input your name.';
 
-    $app->target($index)->respond("hello, $name. you login success");
+    $app->respond("hello, $name. you login success, welcome!", '', 0, false)
+        ->setSender($id)
+        ->send();
 
     // 1. will return text
     // return "hello, $name";
@@ -57,11 +60,11 @@ $rootHandler->add('login', function ($data, $index, Application $app) {
     $app->respond("welcome new friend: $name join us.");
 });
 
-$rootHandler->add('logout', function ($data, $index, Application $app) {
-    $user = $app->getUser($index);
+$rootHandler->add('logout', function ($data, $id, Application $app) {
+    $user = $app->getUser($id);
 
     return $app->respond("goodbye, {$user['name']}");
 });
 
 // start
-$app->run();
+$app->parseOptRun();
