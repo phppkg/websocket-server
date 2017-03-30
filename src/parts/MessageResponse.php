@@ -8,8 +8,8 @@
 
 namespace inhere\webSocket\parts;
 
-use inhere\librarys\traits\TraitArrayAccess;
-use inhere\librarys\traits\TraitGetterSetterAccess;
+use inhere\library\traits\TraitArrayAccess;
+use inhere\library\traits\TraitGetterSetterAccess;
 use inhere\webSocket\WebSocketServer;
 
 /**

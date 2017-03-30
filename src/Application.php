@@ -8,12 +8,12 @@
 
 namespace inhere\webSocket;
 
-use inhere\librarys\traits\TraitUseSimpleOption;
+use inhere\library\traits\TraitUseSimpleOption;
 use inhere\webSocket\handlers\IRouteHandler;
 use inhere\webSocket\handlers\RootHandler;
 use inhere\webSocket\parts\MessageResponse;
-use inhere\librarys\http\Request;
-use inhere\librarys\http\Response;
+use inhere\library\http\Request;
+use inhere\library\http\Response;
 
 /**
  * Class Application

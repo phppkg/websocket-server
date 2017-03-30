@@ -8,12 +8,12 @@
 
 namespace inhere\webSocket\handlers;
 
-use inhere\librarys\traits\TraitUseSimpleOption;
+use inhere\library\traits\TraitUseSimpleOption;
 use inhere\webSocket\Application;
 use inhere\webSocket\dataParser\ComplexDataParser;
 use inhere\webSocket\dataParser\IDataParser;
-use inhere\librarys\http\Request;
-use inhere\librarys\http\Response;
+use inhere\library\http\Request;
+use inhere\library\http\Response;
 
 /**
  * Class ARouteHandler

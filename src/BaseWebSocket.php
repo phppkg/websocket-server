@@ -8,7 +8,7 @@
 
 namespace inhere\webSocket;
 
-use inhere\librarys\traits\TraitUseSimpleOption;
+use inhere\library\traits\TraitUseSimpleOption;
 
 /**
  * Class BaseWebSocket

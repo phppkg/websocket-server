@@ -8,8 +8,8 @@
 
 namespace inhere\webSocket\handlers;
 
-use inhere\librarys\http\Request;
-use inhere\librarys\http\Response;
+use inhere\library\http\Request;
+use inhere\library\http\Response;
 
 /**
  * Class RootHandler
