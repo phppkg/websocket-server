@@ -223,7 +223,11 @@ abstract class BaseMessage
      */
     public function setCookies(array $cookies)
     {
-        $this->cookies = new Cookies($cookies);
+        if ( !$this->cookies ) {
+            $this->cookies = new Cookies($cookies);
+        } else {
+            $this->cookies->sets($cookies);
+        }
 
         return $this;
     }

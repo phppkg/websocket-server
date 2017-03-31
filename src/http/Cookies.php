@@ -9,12 +9,13 @@
  */
 
 namespace inhere\webSocket\http;
+use inhere\library\collections\SimpleCollection;
 
 /**
  * Class Cookies
  * @package inhere\webSocket\parts
  */
-class Cookies
+class Cookies extends SimpleCollection
 {
     /**
      * Cookies
@@ -47,16 +48,6 @@ class Cookies
     {
         return new self($cookies);
     }
-
-    /**
-     * Create new cookies helper
-     * @param array $cookies
-     */
-    public function __construct(array $cookies = [])
-    {
-        $this->data = $cookies;
-    }
-
     /**
      * Set default cookie properties
      * @param array $settings
@@ -67,17 +58,20 @@ class Cookies
     }
 
     /**
-     * Set response cookie
-     *
-     * @param string       $name  Cookie name
+     * Set cookie
+     * @param string $name Cookie name
      * @param string|array $value Cookie value, or cookie properties
+     * @return $this
      */
     public function set($name, $value)
     {
         if (!is_array($value)) {
             $value = ['value' => (string)$value];
         }
-        $this->data[$name] = array_replace($this->defaults, $value);
+
+        parent::set($name, array_replace($this->defaults, $value));
+
+        return $this;
     }
 
     /**
@@ -169,21 +163,5 @@ class Cookies
         }
 
         return $cookies;
-    }
-
-    /**
-     * @return array
-     */
-    public function getData(): array
-    {
-        return $this->data;
-    }
-
-    /**
-     * @param array $cookies
-     */
-    public function setData(array $cookies)
-    {
-        $this->data = $cookies;
     }
 }

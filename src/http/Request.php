@@ -87,11 +87,11 @@ class Request extends BaseMessage
 
         // set cookies
         $cookie = '';
-        foreach ($this->cookies->getData() as $name => $value) {
-            $cookie .= urlencode($name) . '=' . urlencode($value['value']);
+        foreach ($this->cookies->all() as $name => $value) {
+            $cookie .= urlencode($name) . '=' . urlencode($value['value']) . '; ';
         }
 
-        if ( $cookie ) {
+        if ($cookie = trim($cookie, '; ')) {
             $output .= "Cookie: $cookie" . self::EOL;
         }
 

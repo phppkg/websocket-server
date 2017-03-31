@@ -21,6 +21,10 @@ class Headers extends SimpleCollection
      */
     public function set($key, $value)
     {
+        if (!$value) {
+            return $this->remove($key);
+        }
+
         return parent::set($this->normalizeKey($key), $value);
     }
 
@@ -37,6 +41,10 @@ class Headers extends SimpleCollection
      */
     public function add($key, $value)
     {
+        if (!$value) {
+            return $this;
+        }
+
         return parent::add($this->normalizeKey($key), $value);
     }
 

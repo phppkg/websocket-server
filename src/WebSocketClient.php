@@ -56,16 +56,6 @@ class WebSocketClient extends BaseWebSocket
     private $key;
 
     /**
-     * @var string
-     */
-    private $origin;
-
-    /**
-     * @var string
-     */
-    private $path;
-
-    /**
      * @var Request
      */
     private $request;
@@ -94,9 +84,19 @@ class WebSocketClient extends BaseWebSocket
         // stream context
         'context' => null,
 
-        'origin' => '',
+        'auth' => [
+            // 'username'=>"",
+            // 'password'=>"",
+            // 'type'=>"" // basic | digest
+        ],
 
-        'headers' => [],
+        // append headers
+        'headers' => [
+            'origin' => '',
+        ],
+
+        // append headers
+        'cookies' => [],
     ];
 
     /**
@@ -117,15 +117,15 @@ class WebSocketClient extends BaseWebSocket
         parent::__construct($options);
 
         $this->url = $url;
-
         $uri = Uri::createFromString($url);
+        $this->request = new Request('GET', $uri);
 
         // Default headers
         $headers = array(
-            'Host' => $uri->getHost() . ":" . $uri->getPort(),
+            'Host' => $uri->getHost() . ':' . $uri->getPort(),
             'User-Agent' => 'php-webSocket-client',
             'Connection' => 'Upgrade',
-            'Upgrade' => 'websocket',
+            'Upgrade'   => 'websocket',
             'Sec-Websocket-Key' => $this->genKey(),
             'Sec-Websocket-Version' => self::WS_VERSION,
             'Sec-WebSocket-Protocol' => 'sws',
@@ -133,11 +133,18 @@ class WebSocketClient extends BaseWebSocket
 
         // Handle basic authentication.
         if ($user = $uri->getUserInfo()) {
-            $headers['authorization'] = 'Basic ' . base64_encode($user) . "\r\n";
+            $headers['authorization'] = 'Basic ' . base64_encode($user);
         }
 
-        $this->request = new Request('GET', $uri);
         $this->request->setHeaders($headers);
+
+        if ($csHeaders = $this->getOption('headers')) {
+            $this->request->setHeaders($csHeaders);
+        }
+
+        if ($csCookies = $this->getOption('cookies')) {
+            $this->request->setCookies($csCookies);
+        }
     }
 
     public function __destruct()
@@ -165,27 +172,27 @@ class WebSocketClient extends BaseWebSocket
     public function connect()
     {
         $uri = $this->request->getUri();
+        $scheme = $uri->getScheme();
 
-        if (!in_array($scheme = $uri->getScheme(), ['ws', 'wss'])) {
+        if (!in_array($scheme, [self::PROTOCOL_WS, self::PROTOCOL_WSS], true)) {
             throw new \InvalidArgumentException("Url should have scheme ws or wss, you setting is: $scheme");
         }
 
         // Set the stream context options if they're already set in the config
-        if (isset($this->options['context']) && $context = $this->options['context']) {
+        if ($context = $this->getOption('context')) {
             // Suppress the error since we'll catch it below
-            if (@get_resource_type($context) !== 'stream-context') {
+            if ( is_resource($context) && get_resource_type($context) !== 'stream-context') {
                 throw new \InvalidArgumentException("Stream context in options[context] isn't a valid context resource");
             }
         } else {
             $context = stream_context_create();
         }
 
-        $timeout = $this->getOption('timeout');
-
         $host = $uri->getHost();
         $port = $uri->getPort();
         $schemeHost = ($scheme === self::PROTOCOL_WSS ? 'ssl' : 'tcp') . "://$host";
         $remote = $schemeHost . ($port ? ":$port" : '');
+        $timeout = $this->getOption('timeout');
 
         // Open the socket.  @ is there to supress warning that we will catch in check below instead.
         $this->socket = stream_socket_client($remote, $errNo, $errStr, $timeout, STREAM_CLIENT_CONNECT, $context);
@@ -347,29 +354,6 @@ class WebSocketClient extends BaseWebSocket
     }
 
 
-    protected function createHeader()
-    {
-        $host = $this->getHost();
-
-        if ($host === '127.0.0.1' || $host === '0.0.0.0') {
-            $host = 'localhost';
-        }
-
-        $origin = $this->getOrigin() ?: 'null';
-
-        return
-            "GET {$this->getPath()} HTTP/1.1" . "\r\n" .
-            "Origin: {$origin}" . "\r\n" .
-            "Host: {$host}:{$this->getPort()}" . "\r\n" .
-            "Sec-WebSocket-Key: {$this->getKey()}" . "\r\n" .
-            "User-Agent: PHPWebSocketClient/" . self::VERSION . "\r\n" .
-            "Upgrade: websocket" . "\r\n" .
-            "Connection: Upgrade" . "\r\n" .
-            "Sec-WebSocket-Protocol: Wamp" . "\r\n" .
-            "Sec-WebSocket-Version: 13" . "\r\n" . "\r\n";
-    }
-
-
     /////////////////////////////////////////////////////////////////////////////////////////
     /// getter/setter method
     /////////////////////////////////////////////////////////////////////////////////////////
@@ -411,35 +395,7 @@ class WebSocketClient extends BaseWebSocket
      */
     public function getOrigin()
     {
-        return $this->origin;
-    }
-
-    /**
-     * @param mixed $origin
-     */
-    public function setOrigin($origin)
-    {
-        $this->origin = $origin;
-    }
-
-    /**
-     * @return mixed
-     */
-    public function getPath()
-    {
-        if (!$this->path) {
-            $this->path = '/';
-        }
-
-        return $this->path;
-    }
-
-    /**
-     * @param mixed $path
-     */
-    public function setPath($path)
-    {
-        $this->path = $path;
+        return $this->request->getOrigin();
     }
 
     /**

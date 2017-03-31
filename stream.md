@@ -142,3 +142,85 @@ Array
     [5] => compress.zlib
 )
 ```
+
+## stream_set_blocking
+
+为资源流设置阻塞或者阻塞模式
+
+```php
+bool stream_set_blocking ( resource $stream , int $mode )
+```
+
+此函数适用于支持非阻塞模式的任何资源流（常规文件，套接字资源流等）。
+
+- `stream` 资源流。
+- `mode` 如果 mode 为0，资源流将会被转换为非阻塞模式；如果是1，资源流将会被转换为阻塞模式。 
+该参数的设置将会影响到像 `fgets()` 和 `fread()` 这样的函数从资源流里读取数据。 
+在非阻塞模式下，调用 `fgets()` 总是会立即返回；而在阻塞模式下，将会一直等到从资源流里面获取到数据才能返回。
+
+## stream_set_chunk_size 
+ 
+设置资源流区块大小
+
+```php
+int stream_set_chunk_size ( resource $fp , int $chunk_size )
+```
+
+## stream_set_timeout
+
+设置资源流的超时时间
+
+```php
+bool stream_set_timeout ( resource $stream , int $seconds [, int $microseconds = 0 ] )
+```
+
+## stream_socket_accept
+
+接受由 `stream_socket_server()` 创建的套接字连接
+
+```php
+resource stream_socket_accept ( resource $server_socket [, float $timeout = ini_get("default_socket_timeout") [, string &$peername ]] )
+```
+
+> Warning
+  该函数不能被用于 UDP 套接字。可以使用 `stream_socket_recvfrom()` 和 `stream_socket_sendto()` 来取而代之。
+
+## stream_socket_client
+
+打开互联网或Unix域套接字连接
+
+```php
+resource stream_socket_client ( string $remote_socket [, int &$errno [, string &$errstr [, float $timeout = ini_get("default_socket_timeout") [, int $flags = STREAM_CLIENT_CONNECT [, resource $context ]]]]] )
+```
+
+- flags `STREAM_CLIENT_CONNECT` (default), `STREAM_CLIENT_ASYNC_CONNECT` and `STREAM_CLIENT_PERSISTENT`.
+
+> 流在默认情况下会在阻塞模式下打开。您可以通过使用 `stream_set_blocking()` 切换到非阻塞模式
+
+TCP client:
+
+```php
+<?php
+$fp = stream_socket_client('tcp://www.example.com:80', $errno, $errstr, 30);
+if (!$fp) {
+    echo "$errstr ($errno)<br />\n";
+} else {
+    fwrite($fp, "GET / HTTP/1.0\r\nHost: www.example.com\r\nAccept: */*\r\n\r\n");
+    while (!feof($fp)) {
+        echo fgets($fp, 1024);
+    }
+    fclose($fp);
+}
+```
+UDP client:
+
+```php
+$fp = stream_socket_client("udp://127.0.0.1:13", $errno, $errstr);
+if (!$fp) {
+    echo "ERROR: $errno - $errstr<br />\n";
+} else {
+    fwrite($fp, "\n");
+    echo fread($fp, 26);
+    fclose($fp);
+}
+```
