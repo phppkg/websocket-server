@@ -35,6 +35,15 @@ abstract class BaseWebSocket
      */
     const BINARY_TYPE_ARRAY_BUFFER = "\x82";
 
+
+    /**
+     * Websocket version
+     */
+    const WS_VERSION = '13';
+
+    const PROTOCOL_WS = 'ws';
+    const PROTOCOL_WSS = 'wss';
+
     const SIGN_KEY = '258EAFA5-E914-47DA-95CA-C5AB0DC85B11';
 
     // abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ!"§$%&/()=[]{}
@@ -92,6 +101,22 @@ abstract class BaseWebSocket
     /////////////////////////////////////////////////////////////////////////////////////////
     /// helper method
     /////////////////////////////////////////////////////////////////////////////////////////
+
+    /**
+     * @return array
+     */
+    public function getSupportedTransports()
+    {
+        return stream_get_transports();
+    }
+
+    /**
+     * @return array
+     */
+    public function getSupportedWrappers()
+    {
+        return stream_get_wrappers();
+    }
 
     /**
      * @param $s

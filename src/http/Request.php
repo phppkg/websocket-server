@@ -13,8 +13,8 @@ namespace inhere\webSocket\http;
  *
  * @property string $method
  *
- * @property string $host
- * @property string $uri
+ * @property Uri $uri
+ *
  * @property-read string $origin
  *
  */
@@ -26,22 +26,15 @@ class Request extends BaseMessage
     private $method;
 
     /**
-     * eg: site.com 127.0.0.1:9501
-     * @var string
-     */
-    private $host;
-
-    /**
-     * eg: /home
-     * @var string
+     * The request URI object
+     * @var Uri
      */
     private $uri;
 
     /**
      * Request constructor.
-     * @param string $host
      * @param string $method
-     * @param string $uri
+     * @param Uri $uri
      * @param string $protocol
      * @param string $protocolVersion
      * @param array $headers
@@ -49,14 +42,62 @@ class Request extends BaseMessage
      * @param array $cookies
      */
     public function __construct(
-        string $host = '', string $method = 'GET', string $uri = '/', string $protocol = 'HTTP',
+        string $method = 'GET', Uri $uri = null, string $protocol = 'HTTP',
         string $protocolVersion = '1.1', array $headers = [], array $cookies = [], string $body = ''
     ) {
         parent::__construct($protocol, $protocolVersion, $headers, $cookies, $body);
 
         $this->method = $method ?: 'GET';
-        $this->host = $host ?: '';
-        $this->uri = $uri ?: '/';
+        $this->uri = $uri;
+
+        if (!$this->headers->has('Host') || $this->uri->getHost() !== '') {
+            $this->headers->set('Host', $this->uri->getHost());
+        }
+    }
+
+    /**
+     * @return string
+     */
+    protected function buildFirstLine()
+    {
+        // `GET /path HTTP/1.1`
+        return sprintf(
+            '%s %s %s/%s',
+            $this->getMethod(),
+            $this->uri->getPathAndQuery(),
+            $this->getProtocol(),
+            $this->getProtocolVersion()
+        );
+    }
+
+    /**
+     * build response data
+     * @return string
+     */
+    public function toString()
+    {
+        // first line
+        $output = $this->buildFirstLine() . self::EOL;
+
+        // set headers
+        foreach ($this->headers as $name => $value) {
+            $name = ucwords($name);
+            $output .= "$name: $value" . self::EOL;
+        }
+
+        // set cookies
+        $cookie = '';
+        foreach ($this->cookies->getData() as $name => $value) {
+            $cookie .= urlencode($name) . '=' . urlencode($value['value']);
+        }
+
+        if ( $cookie ) {
+            $output .= "Cookie: $cookie" . self::EOL;
+        }
+
+        $output .= self::EOL;
+
+        return $output . $this->getBody();
     }
 
     /**
@@ -91,28 +132,36 @@ class Request extends BaseMessage
         // other header info
         $headers = [];
         foreach ($list as $item) {
-            if (!$item) {
-                continue;
+            if ($item) {
+                [$name, $value] = explode(': ', trim($item));
+                $headers[$name] = trim($value);
             }
-
-            [$name, $value] = explode(': ', trim($item));
-            $headers[$name] = trim($value);
         }
 
         $cookies = [];
         if (isset($headers['Cookie'])) {
             $cookieData = $headers['Cookie'];
-            unset($headers['Cookie']);
             $cookies = Cookies::parseFromRawHeader($cookieData);
         }
 
+        $port = 80;
         $host = '';
-        if (isset($headers['Host'])) {
-            $host = $headers['Host'];
-            unset($headers['Host']);
+        if ($val = $headers['Host'] ?? '') {
+            [$host, $port] = strpos($val, ':') ? implode(':', $val): [$val, 80];
         }
 
-        return new static($host, $method, $uri, $protocol, $protocolVersion, $headers, $cookies, $body);
+        $path = $uri;
+        $query = $fragment = '';
+        if ( strlen($uri) > 1 ) {
+            $parts = parse_url($uri);
+            $path = isset($parts['path']) ? $parts['path'] : '';
+            $query = isset($parts['query']) ? $parts['query'] : '';
+            $fragment = isset($parts['fragment']) ? $parts['fragment'] : '';
+        }
+
+        $uri = new Uri($protocol, $host, $port, $path, $query, $fragment);
+
+        return new static($method, $uri, $protocol, $protocolVersion, $headers, $cookies, $body);
     }
 
     /**
@@ -141,35 +190,27 @@ class Request extends BaseMessage
     }
 
     /**
-     * @return string
+     * @return Uri
      */
-    public function getHost(): string
-    {
-        return $this->host;
-    }
-
-    /**
-     * @param string $host
-     */
-    public function setHost(string $host)
-    {
-        $this->host = $host;
-    }
-
-    /**
-     * @return string
-     */
-    public function getPath(): string
+    public function getUri(): Uri
     {
         return $this->uri;
     }
 
     /**
-     * @param string $uri
+     * @param Uri $uri
      */
-    public function setPath(string $uri)
+    public function setUri(Uri $uri)
     {
         $this->uri = $uri;
+    }
+
+    /**
+     * @return string
+     */
+    public function getPath()
+    {
+        return $this->getUri()->getPath();
     }
 
 }

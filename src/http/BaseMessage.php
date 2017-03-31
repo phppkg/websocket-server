@@ -82,6 +82,25 @@ abstract class BaseMessage
     /**
      * @return string
      */
+    public function __toString()
+    {
+        return $this->toString();
+    }
+
+    /**
+     * @return string
+     */
+    abstract protected function buildFirstLine();
+
+    /**
+     * build response data
+     * @return string
+     */
+    abstract public function toString();
+
+    /**
+     * @return string
+     */
     public function getProtocol(): string
     {
         if ( !$this->protocol ) {

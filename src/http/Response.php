@@ -134,12 +134,45 @@ class Response  extends BaseMessage
         $this->setStatus($statusCode);
 
         parent::__construct($protocol, $protocolVersion, $headers, $cookies, $body);
+    }
 
-//        $stream = fopen('php://temp', 'w+');
-//        stream_copy_to_stream(fopen('php://input', 'r'), $stream);
-//        rewind($stream);
-//
-//        $this->stream = $stream;
+    /**
+     * @return string
+     */
+    protected function buildFirstLine()
+    {
+        return sprintf(
+            '%s/%s %s %s',
+            $this->getProtocol(),
+            $this->getProtocolVersion(),
+            $this->getStatusCode(),
+            $this->getReasonPhrase()
+        );
+    }
+
+    /**
+     * build response data
+     * @return string
+     */
+    public function toString()
+    {
+        // first line
+        $output = $this->buildFirstLine() . self::EOL;
+
+        // set headers
+        foreach ($this->headers as $name => $value) {
+            $name = ucwords($name);
+            $output .= "$name: $value" . self::EOL;
+        }
+
+        // set cookies
+        foreach ($this->cookies->toHeaders() as $value) {
+            $output .= "Set-Cookie: $value" . self::EOL;
+        }
+
+        $output .= self::EOL;
+
+        return $output . $this->getBody();
     }
 
     /**
@@ -186,38 +219,6 @@ class Response  extends BaseMessage
     }
 
     /**
-     * build response data
-     * @return string
-     */
-    public function toString()
-    {
-        // first line
-        $output = sprintf(
-            '%s/%s %s %s',
-            $this->getProtocol(),
-            $this->getProtocolVersion(),
-            $this->getStatusCode(),
-            $this->getReasonPhrase()
-        );
-        $output .= self::EOL;
-
-        // set headers
-        foreach ($this->headers as $name => $value) {
-            $name = ucwords($name);
-            $output .= "$name: $value" . self::EOL;
-        }
-
-        // set cookies
-        foreach ($this->cookies->toHeaders() as $value) {
-            $output .= "Set-Cookie: $value" . self::EOL;
-        }
-
-        $output .= self::EOL;
-
-        return $output . $this->getBody();
-    }
-
-    /**
      * @return int
      */
     public function getStatusCode(): int
@@ -257,8 +258,4 @@ class Response  extends BaseMessage
         return $this;
     }
 
-    public function __toString()
-    {
-        return $this->toString();
-    }
 }
