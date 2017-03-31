@@ -11,7 +11,7 @@
 require __DIR__ . '/../../../autoload.php';
 
 use inhere\webSocket\Application;
-use inhere\webSocket\parts\MessageResponse;
+use inhere\webSocket\parts\MessageBag;
 use inhere\webSocket\WebSocketServer;
 use inhere\library\http\Request;
 use \inhere\webSocket\handlers\IRouteHandler;

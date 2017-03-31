@@ -11,7 +11,7 @@ namespace inhere\webSocket\handlers;
 use inhere\webSocket\Application;
 use inhere\library\http\Request;
 use inhere\library\http\Response;
-use inhere\webSocket\parts\MessageResponse;
+use inhere\webSocket\parts\MessageBag;
 
 /**
  * Interface IRouteHandler
@@ -75,7 +75,7 @@ interface IRouteHandler
      * @param string $msg
      * @param int $code
      * @param bool $doSend
-     * @return int|MessageResponse
+     * @return int|MessageBag
      */
     public function respond($data, string $msg = 'success', int $code = 0, bool $doSend = true);
 

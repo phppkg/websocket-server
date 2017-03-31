@@ -14,7 +14,7 @@ use inhere\webSocket\dataParser\ComplexDataParser;
 use inhere\webSocket\dataParser\IDataParser;
 use inhere\library\http\Request;
 use inhere\library\http\Response;
-use inhere\webSocket\parts\MessageResponse;
+use inhere\webSocket\parts\MessageBag;
 
 /**
  * Class ARouteHandler
@@ -297,7 +297,7 @@ abstract class ARouteHandler implements IRouteHandler
      * @param string $msg
      * @param int $code
      * @param bool $doSend
-     * @return int|MessageResponse
+     * @return int|MessageBag
      */
     public function respond($data, string $msg = 'success', int $code = 0, bool $doSend = true)
     {
@@ -307,7 +307,7 @@ abstract class ARouteHandler implements IRouteHandler
     /**
      * @param $data
      * @param bool $doSend
-     * @return MessageResponse|int
+     * @return MessageBag|int
      */
     public function respondText($data, bool $doSend = true)
     {

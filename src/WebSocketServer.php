@@ -8,8 +8,8 @@
 
 namespace inhere\webSocket;
 
-use inhere\library\http\Request;
-use inhere\library\http\Response;
+use inhere\webSocket\http\Request;
+use inhere\webSocket\http\Response;
 
 /**
  * Class WebSocketServer
@@ -25,19 +25,21 @@ use inhere\library\http\Response;
  */
 class WebSocketServer extends BaseWebSocket
 {
-    // 事件的回调函数名
-    const ON_CONNECT   = 'connect';
-    const ON_HANDSHAKE = 'handshake';
-    const ON_OPEN      = 'open';
-    const ON_MESSAGE   = 'message';
-    const ON_CLOSE     = 'close';
-    const ON_ERROR     = 'error';
-
     /**
      * the master socket
      * @var resource
      */
     private $master;
+
+    /**
+     * @var string
+     */
+    protected $host;
+
+    /**
+     * @var int
+     */
+    protected $port;
 
     /**
      * 连接的客户端列表
@@ -102,9 +104,10 @@ class WebSocketServer extends BaseWebSocket
      */
     public function __construct(string $host = '0.0.0.0', int $port = 8080, array $options = [])
     {
-        parent::__construct($host, $port, $options);
+        $this->host = $host;
+        $this->port = $port;
 
-        $this->callbacks = new \SplFixedArray( count($this->getSupportedEvents()) );
+        parent::__construct($options);
     }
 
     /////////////////////////////////////////////////////////////////////////////////////////
@@ -281,6 +284,7 @@ class WebSocketServer extends BaseWebSocket
     protected function handshake($socket, string $data, int $cid)
     {
         $this->log("Ready to shake hands with the #$cid client connection");
+        $client = $this->clients[$cid];
         $response = new Response();
 
         // 解析请求头信息错误
@@ -297,7 +301,7 @@ class WebSocketServer extends BaseWebSocket
         }
 
         // 解析请求头信息
-        $request = Request::makeByParseData($data);
+        $request = Request::makeByParseRawData($data);
 
         // 触发 handshake 事件回调，如果返回 false -- 拒绝连接，比如需要认证，限定路由，限定ip，限定domain等
         // 就停止继续处理。并返回信息给客户端
@@ -322,10 +326,11 @@ class WebSocketServer extends BaseWebSocket
         $this->writeTo($socket, $response->toString());
 
         // 标记已经握手 更新路由 path
-        $this->clients[$cid]['handshake'] = true;
-        $this->clients[$cid]['path'] = $path = $request->getPath();
+        $client['handshake'] = true;
+        $client['path'] = $path = $request->getPath();
+        $this->clients[$cid] = $client;
 
-        $this->log("The #$cid client connection handshake successful! Info:", 'info', $this->clients[$cid]);
+        $this->log("The #$cid client connection handshake successful! Info:", 'info', $client);
 
         // 握手成功 触发 open 事件
         return $this->trigger(self::ON_OPEN, [$this, $request, $cid]);
@@ -752,4 +757,27 @@ class WebSocketServer extends BaseWebSocket
         return $this->master;
     }
 
+    /**
+     * @return string
+     */
+    public function getHost(): string
+    {
+        if ( !$this->host ) {
+            $this->host = self::DEFAULT_HOST;
+        }
+
+        return $this->host;
+    }
+
+    /**
+     * @return int
+     */
+    public function getPort(): int
+    {
+        if ( !$this->port || $this->port <= 0 ) {
+            $this->port = self::DEFAULT_PORT;
+        }
+
+        return $this->port;
+    }
 }

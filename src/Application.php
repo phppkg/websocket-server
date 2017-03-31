@@ -11,9 +11,9 @@ namespace inhere\webSocket;
 use inhere\library\traits\TraitUseSimpleOption;
 use inhere\webSocket\handlers\IRouteHandler;
 use inhere\webSocket\handlers\RootHandler;
-use inhere\webSocket\parts\MessageResponse;
-use inhere\library\http\Request;
-use inhere\library\http\Response;
+use inhere\webSocket\parts\MessageBag;
+use inhere\webSocket\http\Request;
+use inhere\webSocket\http\Response;
 
 /**
  * Class Application
@@ -480,24 +480,12 @@ EOF;
     }
 
     /**
-     * @param string $data
-     * @param int $sender
-     * @param array $receivers
-     * @param array $excepted
-     * @return MessageResponse
-     */
-    public function makeMR(string $data = '', int $sender = 0, array $receivers = [], array $excepted = []): MessageResponse
-    {
-        return MessageResponse::make($data, $sender, $receivers, $excepted)->setWs($this->ws);
-    }
-
-    /**
      * response data to client, will auto build formatted message by 'dataType'
      * @param mixed $data
      * @param string $msg
      * @param int $code
      * @param bool $doSend
-     * @return int|MessageResponse
+     * @return int|MessageBag
      */
     public function respond($data, string $msg = '', int $code = 0, bool $doSend = true)
     {
@@ -510,7 +498,7 @@ EOF;
      * response text data to client
      * @param $data
      * @param bool $doSend
-     * @return int|MessageResponse
+     * @return int|MessageBag
      */
     public function respondText($data, bool $doSend = true)
     {
@@ -518,7 +506,7 @@ EOF;
             $data = implode('', $data);
         }
 
-        $mr = MessageResponse::make($data)->setWs($this->ws);
+        $mr = MessageBag::make($data)->setWs($this->ws);
 
         if ( $doSend ) {
             $mr->send(true);
@@ -555,7 +543,7 @@ EOF;
             $data = implode('', $data);
         }
 
-        $mr = MessageResponse::make($data)->setWs($this->ws);
+        $mr = MessageBag::make($data)->setWs($this->ws);
 
         if ( $afterMakeMR ) {
             $status = $afterMakeMR($mr);

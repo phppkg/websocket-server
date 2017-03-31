@@ -7,6 +7,9 @@
  */
 namespace inhere\webSocket;
 
+use inhere\webSocket\http\Request;
+use inhere\webSocket\http\Response;
+
 /**
  * Class WebSocketClient
  * @package inhere\webSocket
@@ -17,13 +20,13 @@ class WebSocketClient extends BaseWebSocket
     const MSG_CONNECTED = 1;
     const MSG_DISCONNECTED = 2;
     const MSG_LOST_CONNECTION = 3;
-    const TOKEN_CHARACTERS = 'abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ!"§$%&/()=[]{}';
 
-    const ON_OPEN = 0;
-    const ON_MESSAGE = 1;
-    const ON_CLOSE = 2;
-    const ON_ERROR = 3;
-    const ON_TICK = 4;
+    const ON_TICK = 'tick';
+
+    /**
+     * @var string
+     */
+    private $url;
 
     /**
      * @var resource
@@ -43,10 +46,23 @@ class WebSocketClient extends BaseWebSocket
     private $path;
 
     /**
+     * @var Request
+     */
+    private $request;
+
+    /**
+     * @var Response
+     */
+    private $response;
+
+    /**
      * @var bool
      */
     private $connected = false;
 
+    /**
+     * @var array
+     */
     protected $options = [
         'debug'    => false,
 
@@ -54,21 +70,40 @@ class WebSocketClient extends BaseWebSocket
         'log_file' => '',
 
         'timeout' => 3,
+
+        // stream context
+        'context' => null,
     ];
 
     /**
+     * @return array
+     */
+    public function getSupportedEvents(): array
+    {
+        return [ self::ON_OPEN, self::ON_MESSAGE, self::ON_CLOSE, self::ON_ERROR];
+    }
+
+    /**
      * WebSocketClient constructor.
-     * @param string $host
-     * @param int $port
-     * @param string $path
+     * @param string $url eg `ws://127.0.0.1:9501/chat`
      * @param array $options
      */
-    public function __construct(string $host = '0.0.0.0', int $port = 8080, string $path = '/', array $options = [])
+    public function __construct(string $url, array $options = [])
     {
-        parent::__construct($host, $port, $options);
+        parent::__construct($options);
 
-        $this->path = $path;
-        $this->callbacks = new \SplFixedArray(5);
+        $this->url = $url;
+    }
+
+    public function __destruct()
+    {
+        if ($this->socket) {
+            if (get_resource_type($this->socket) === 'stream') {
+                fclose($this->socket);
+            }
+
+            $this->socket = null;
+        }
     }
 
     public function start()
@@ -91,6 +126,23 @@ class WebSocketClient extends BaseWebSocket
     public function connect()
     {
 
+    }
+
+    protected function buildRequest()
+    {
+        $parts = parse_url($this->url);
+
+        $scheme    = $parts['scheme'];
+        $host      = $parts['host'];
+
+        $user      = $parts['user'] ?? '';
+        $pass      = $parts['pass'] ?? '';
+        $port      = $parts['port'] ?? ($scheme === 'wss' ? 443 : 80);
+        $path      = $parts['path'] ?? '/';
+        $query     = $parts['query'] ?? '';
+        $fragment  = $parts['fragment'] ?? '';
+
+        $this->request = Request::make();
     }
 
     /**
@@ -242,5 +294,29 @@ class WebSocketClient extends BaseWebSocket
     public function setConnected(bool $connected)
     {
         $this->connected = $connected;
+    }
+
+    /**
+     * @return string
+     */
+    public function getUrl(): string
+    {
+        return $this->url;
+    }
+
+    /**
+     * @return Request
+     */
+    public function getRequest(): Request
+    {
+        return $this->request;
+    }
+
+    /**
+     * @return Response
+     */
+    public function getResponse(): Response
+    {
+        return $this->response;
     }
 }

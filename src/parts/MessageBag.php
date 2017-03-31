@@ -17,7 +17,7 @@ use inhere\webSocket\WebSocketServer;
  * webSocket message response
  * @package inhere\webSocket\parts
  */
-class MessageResponse implements \ArrayAccess
+class MessageBag implements \ArrayAccess
 {
     use TraitArrayAccess;
     use TraitGetterSetterAccess;
