@@ -147,19 +147,19 @@ class Request extends BaseMessage
         $port = 80;
         $host = '';
         if ($val = $headers['Host'] ?? '') {
-            [$host, $port] = strpos($val, ':') ? implode(':', $val): [$val, 80];
+            [$host, $port] = strpos($val, ':') ? explode(':', $val): [$val, 80];
         }
 
         $path = $uri;
         $query = $fragment = '';
         if ( strlen($uri) > 1 ) {
             $parts = parse_url($uri);
-            $path = isset($parts['path']) ? $parts['path'] : '';
-            $query = isset($parts['query']) ? $parts['query'] : '';
-            $fragment = isset($parts['fragment']) ? $parts['fragment'] : '';
+            $path = $parts['path'] ?? '';
+            $query = $parts['query'] ?? '';
+            $fragment = $parts['fragment'] ?? '';
         }
 
-        $uri = new Uri($protocol, $host, $port, $path, $query, $fragment);
+        $uri = new Uri($protocol, $host, (int)$port, $path, $query, $fragment);
 
         return new static($method, $uri, $protocol, $protocolVersion, $headers, $cookies, $body);
     }

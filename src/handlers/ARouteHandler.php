@@ -12,8 +12,8 @@ use inhere\library\traits\TraitUseSimpleOption;
 use inhere\webSocket\Application;
 use inhere\webSocket\dataParser\ComplexDataParser;
 use inhere\webSocket\dataParser\IDataParser;
-use inhere\library\http\Request;
-use inhere\library\http\Response;
+use inhere\webSocket\http\Request;
+use inhere\webSocket\http\Response;
 use inhere\webSocket\parts\MessageBag;
 
 /**

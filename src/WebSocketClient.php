@@ -295,15 +295,16 @@ class WebSocketClient extends BaseWebSocket
      * @param string $binStr
      * @return string
      */
-    protected static function bin2String($binStr) 
+    protected static function bin2String($binStr)
     {
-        $return = '';
+        $string = '';
+        $len = strlen($binStr);
 
-        for ($i = 0; $i < strlen($binStr); $i++) {
-            $return .= sprintf("%08b", ord($binStr[$i]));
+        for ($i = 0; $i < $len; $i++) {
+            $string .= sprintf('%08b', ord($binStr[$i]));
         }
 
-        return $return;
+        return $string;
     }
 
     /**

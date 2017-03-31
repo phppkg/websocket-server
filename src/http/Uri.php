@@ -128,14 +128,14 @@ class Uri
         }
 
         $parts = parse_url($uri);
-        $scheme = isset($parts['scheme']) ? $parts['scheme'] : '';
-        $user = isset($parts['user']) ? $parts['user'] : '';
-        $pass = isset($parts['pass']) ? $parts['pass'] : '';
-        $host = isset($parts['host']) ? $parts['host'] : '';
-        $port = isset($parts['port']) ? $parts['port'] : null;
-        $path = isset($parts['path']) ? $parts['path'] : '';
-        $query = isset($parts['query']) ? $parts['query'] : '';
-        $fragment = isset($parts['fragment']) ? $parts['fragment'] : '';
+        $scheme = $parts['scheme'] ?? '';
+        $user = $parts['user'] ?? '';
+        $pass = $parts['pass'] ?? '';
+        $host = $parts['host'] ?? '';
+        $port = $parts['port'] ?? null;
+        $path = $parts['path'] ?? '';
+        $query = $parts['query'] ?? '';
+        $fragment = $parts['fragment'] ?? '';
 
         return new static($scheme, $host, $port, $path, $query, $fragment, $user, $pass);
     }
@@ -298,7 +298,7 @@ class Uri
     {
         $clone = clone $this;
         $clone->user = $user;
-        $clone->password = $password ? $password : '';
+        $clone->password = $password ?: '';
 
         return $clone;
     }
@@ -405,7 +405,7 @@ class Uri
      */
     protected function filterPort($port)
     {
-        if (is_null($port) || (is_integer($port) && ($port >= 1 && $port <= 65535))) {
+        if (null === $port || (is_int($port) && ($port >= 1 && $port <= 65535))) {
             return $port;
         }
 
@@ -478,7 +478,7 @@ class Uri
         $clone->path = $this->filterPath($path);
 
         // if the path is absolute, then clear basePath
-        if (substr($path, 0, 1) == '/') {
+        if ($path[0] === '/') {
             $clone->basePath = '';
         }
 
@@ -717,7 +717,7 @@ class Uri
         $authority = $this->getAuthority();
         $basePath = $this->getBasePath();
 
-        if ($authority && substr($basePath, 0, 1) !== '/') {
+        if ($authority && $basePath[0] !== '/') {
             $basePath = $basePath . '/' . $basePath;
         }
 
