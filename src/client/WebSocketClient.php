@@ -5,10 +5,10 @@
  * Date: 2017-03-27
  * Time: 9:14
  */
-namespace inhere\webSocket;
+namespace inhere\webSocket\client;
 
 use inhere\exceptions\ConnectException;
-use inhere\exceptions\HttpException;
+use inhere\webSocket\BaseWebSocket;
 use inhere\webSocket\http\Request;
 use inhere\webSocket\http\Response;
 use inhere\webSocket\parts\Uri;
@@ -17,9 +17,14 @@ use inhere\webSocket\parts\Uri;
  * Class WebSocketClient
  * @package inhere\webSocket
  */
-class WebSocketClient extends BaseWebSocket
+class WebSocketClient
 {
-    const TOKEN_LENGHT = 16;
+    /**
+     * version
+     */
+    const VERSION = '0.5.1';
+
+    const TOKEN_LENGTH = 16;
     const MSG_CONNECTED = 1;
     const MSG_DISCONNECTED = 2;
     const MSG_LOST_CONNECTION = 3;
@@ -43,10 +48,19 @@ class WebSocketClient extends BaseWebSocket
     const OPCODE_CONTROL_RESERVED_4 = 0xE;
     const OPCODE_CONTROL_RESERVED_5 = 0xF;
 
+    const DEFAULT_HOST = '127.0.0.1';
+
     /**
+     * eg `ws://127.0.0.1:9501/chat`
      * @var string
      */
     private $url;
+
+    /**
+     * `/chat`
+     * @var string
+     */
+    private $path;
 
     /**
      * @var resource
@@ -80,6 +94,7 @@ class WebSocketClient extends BaseWebSocket
         'log_file' => '',
 
         'timeout' => 3,
+        'protocol' => 'ws', // wss
 
         // stream context
         'context' => null,
@@ -99,25 +114,20 @@ class WebSocketClient extends BaseWebSocket
         'cookies' => [],
     ];
 
-    /**
-     * @return array
-     */
-    public function getSupportedEvents(): array
-    {
-        return [self::ON_OPEN, self::ON_MESSAGE, self::ON_CLOSE, self::ON_ERROR];
-    }
 
     /**
      * WebSocketClient constructor.
-     * @param string $url eg `ws://127.0.0.1:9501/chat`
+     * @param string $host
+     * @param int $port
+     * @param string $path
      * @param array $options
      */
-    public function __construct(string $url, array $options = [])
+    public function __construct(string $host = '127.0.0.1', int $port = 8080, string $path = '/', array $options = [])
     {
-        parent::__construct($options);
+        parent::__construct($host, $port, $options);
 
-        $this->url = $url;
-        $uri = Uri::createFromString($url);
+        $this->path = $path;
+        $uri = Uri::createFromString($path); // todo ...
         $this->request = new Request('GET', $uri);
 
         // Default headers

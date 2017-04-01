@@ -6,7 +6,7 @@
  * Time: 13:01
  */
 
-namespace inhere\webSocket;
+namespace inhere\webSocket\server;
 
 use inhere\library\traits\TraitSimpleFixedEvent;
 use inhere\library\traits\TraitUseSimpleOption;
@@ -35,20 +35,7 @@ abstract class BaseWebSocket
      */
     const BINARY_TYPE_ARRAY_BUFFER = "\x82";
 
-
-    /**
-     * Websocket version
-     */
-    const WS_VERSION = '13';
-
-    const PROTOCOL_WS = 'ws';
-    const PROTOCOL_WSS = 'wss';
-
     const SIGN_KEY = '258EAFA5-E914-47DA-95CA-C5AB0DC85B11';
-
-    // abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ!"§$%&/()=[]{}
-    const TOKEN_CHARS = 'abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ!"$&/()=[]{}0123456789';
-
 
     const DEFAULT_HOST = '0.0.0.0';
     const DEFAULT_PORT = 8080;
@@ -62,17 +49,14 @@ abstract class BaseWebSocket
     const ON_ERROR     = 'error';
 
     /**
-     * all available opCodes
-     * @var array
+     * @var string
      */
-    protected static $opCodes = [
-        'continuation' => 0,
-        'text' => 1,
-        'binary' => 2,
-        'close' => 8,
-        'ping' => 9,
-        'pong' => 10,
-    ];
+    protected $host;
+
+    /**
+     * @var int
+     */
+    protected $port;
 
     /**
      * @var array
@@ -84,12 +68,18 @@ abstract class BaseWebSocket
         'log_file' => '',
     ];
 
+
     /**
      * WebSocket constructor.
+     * @param string $host
+     * @param int $port
      * @param array $options
      */
-    public function __construct(array $options = [])
+    public function __construct(string $host = '0.0.0.0', int $port = 8080, array $options = [])
     {
+        $this->host = $host;
+        $this->port = $port;
+
         $this->setOptions($options, true);
     }
 
@@ -97,21 +87,6 @@ abstract class BaseWebSocket
     /// helper method
     /////////////////////////////////////////////////////////////////////////////////////////
 
-    /**
-     * @return array
-     */
-    public function getSupportedTransports()
-    {
-        return stream_get_transports();
-    }
-
-    /**
-     * @return array
-     */
-    public function getSupportedWrappers()
-    {
-        return stream_get_wrappers();
-    }
 
     /**
      * @param $s
@@ -164,63 +139,6 @@ abstract class BaseWebSocket
     }
 
     /**
-     * @param string $data
-     * @param string $opCode
-     * @param bool $masked
-     * @param bool $final
-     * @return string
-     */
-    protected function encode(string $data, string $opCode = 'text', bool $masked = true, bool $final = true)
-    {
-        $length = strlen($data);
-        $head = '';
-        $head .= $final ? '1' : '0';
-        $head .= '000';
-        $head .= sprintf('%04b', static::$opCodes[$opCode]);
-        $head .= $masked ? '1' : '0';
-
-        if ($length > 65535) {
-            $head .= decbin(127);
-            $head .= sprintf('%064b', $length);
-        } elseif ($length > 125) {
-            $head .= decbin(126);
-            $head .= sprintf('%016b', $length);
-        } else {
-            $head .= sprintf('%07b', $length);
-        }
-
-        $frame = '';
-
-        foreach (str_split($head, 8) as $binStr) {
-            $frame .= chr(bindec($binStr));
-        }
-
-        $mask = '';
-        if ($masked) {
-
-            for ($i = 0; $i < 4; ++$i) {
-                $mask .= chr(rand(0, 255));
-            }
-
-            $frame .= $mask;
-        }
-
-        for ($i = 0; $i < $length; ++$i) {
-            $frame .= ($masked === true) ? $data[$i] ^ $mask[$i % 4] : $data[$i];
-        }
-
-        return $frame;
-    }
-
-    /**
-     * @return array
-     */
-    public static function getOpCodes(): array
-    {
-        return self::$opCodes;
-    }
-
-    /**
      * Generate WebSocket sign.(for server)
      * @param string $key
      * @return string
@@ -228,23 +146,6 @@ abstract class BaseWebSocket
     public function genSign(string $key): string
     {
         return base64_encode(sha1(trim($key) . self::SIGN_KEY, true));
-    }
-
-    /**
-     * Generate a random string for WebSocket key.(for client)
-     * @return string Random string
-     */
-    public function genKey(): string
-    {
-        $key = '';
-        $chars = self::TOKEN_CHARS;
-        $chars_length = strlen($chars);
-
-        for ($i = 0; $i < 16; $i++) {
-            $key .= $chars[mt_rand(0, $chars_length - 1)];
-        }
-
-        return base64_encode($key);
     }
 
     /**
@@ -274,5 +175,29 @@ abstract class BaseWebSocket
         if ( $exit !== null ) {
             exit((int)$exit);
         }
+    }
+
+    /**
+     * @return string
+     */
+    public function getHost(): string
+    {
+        if ( !$this->host ) {
+            $this->host = self::DEFAULT_HOST;
+        }
+
+        return $this->host;
+    }
+
+    /**
+     * @return int
+     */
+    public function getPort(): int
+    {
+        if ( !$this->port || $this->port <= 0 ) {
+            $this->port = self::DEFAULT_PORT;
+        }
+
+        return $this->port;
     }
 }

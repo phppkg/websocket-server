@@ -6,12 +6,12 @@
  * Time: 13:26
  */
 
-namespace inhere\webSocket;
+namespace inhere\webSocket\client;
 
 /**
  * Class InteractiveClient
  *  Interactive Terminal environment
- * @package inhere\webSocket
+ * @package inhere\webSocket\client
  */
 class InteractiveClient
 {

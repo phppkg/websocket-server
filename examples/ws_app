@@ -10,7 +10,7 @@
 
 require __DIR__ . '/../../../autoload.php';
 
-use inhere\webSocket\Application;
+use inhere\webSocket\server\Application;
 use inhere\webSocket\http\Request;
 use \inhere\webSocket\handlers\IRouteHandler;
 

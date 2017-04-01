@@ -212,6 +212,7 @@ if (!$fp) {
     fclose($fp);
 }
 ```
+
 UDP client:
 
 ```php
@@ -224,3 +225,183 @@ if (!$fp) {
     fclose($fp);
 }
 ```
+
+## stream_socket_enable_crypto
+
+```php
+mixed stream_socket_enable_crypto ( resource $stream , bool $enable [, int $crypto_type [, resource $session_stream ]] )
+```
+
+启用或者关闭加密传输
+
+## stream_socket_get_name
+
+```php
+string stream_socket_get_name ( resource $handle , bool $want_peer )
+```
+
+返回给定的本地或者远程套接字连接的名称。
+
+- `$want_peer` 如果设置为 TRUE ，那么将返回 remote 套接字连接名称；如果设置为 FALSE 则返回 local 套接字连接名称。
+
+## stream_socket_pair
+
+```php
+array stream_socket_pair ( int $domain , int $type , int $protocol )
+```
+
+创建一对完全一样的网络套接字连接，这个函数通常会被用在进程间通信(Inter-Process Communication)
+
+参数：
+
+- `domain` 使用的协议族： STREAM_PF_INET, STREAM_PF_INET6 or STREAM_PF_UNIX
+- `type` 通信类型: STREAM_SOCK_DGRAM, STREAM_SOCK_RAW, STREAM_SOCK_RDM, STREAM_SOCK_SEQPACKET or STREAM_SOCK_STREAM
+- `protocol` 使用的传输协议: STREAM_IPPROTO_ICMP, STREAM_IPPROTO_IP, STREAM_IPPROTO_RAW, STREAM_IPPROTO_TCP or STREAM_IPPROTO_UDP
+
+如果成功将返回一个数组包括了两个socket资源，错误时返回FALSE
+
+> 这个函数在windows平台不可用
+
+example:
+
+```php
+<?php
+
+$sockets = stream_socket_pair(STREAM_PF_UNIX, STREAM_SOCK_STREAM, STREAM_IPPROTO_IP);
+$pid     = pcntl_fork();
+
+if ($pid == -1) {
+     die('could not fork');
+
+} else if ($pid) {
+     /* parent */
+    fclose($sockets[0]);
+
+    fwrite($sockets[1], "child PID: $pid\n");
+    echo fgets($sockets[1]);
+
+    fclose($sockets[1]);
+
+} else {
+    /* child */
+    fclose($sockets[1]);
+
+    fwrite($sockets[0], "message from child\n");
+    echo fgets($sockets[0]);
+
+    fclose($sockets[0]);
+}
+```
+
+## stream_socket_recvfrom
+
+```php
+string stream_socket_recvfrom ( resource $socket , int $length [, int $flags = 0 [, string &$address ]] )
+```
+
+accepts data from a remote socket(connected or not) up to length bytes.
+
+```php
+/* Open a server socket to port 1234 on localhost */
+$server = stream_socket_server('tcp://127.0.0.1:1234');
+
+/* Accept a connection */
+$socket = stream_socket_accept($server);
+
+/* Grab a packet (1500 is a typical MTU size) of OOB data */
+echo "Received Out-Of-Band: '" . stream_socket_recvfrom($socket, 1500, STREAM_OOB) . "'\n";
+
+/* Take a peek at the normal in-band data, but don't comsume it. */
+echo "Data: '" . stream_socket_recvfrom($socket, 1500, STREAM_PEEK) . "'\n";
+
+/* Get the exact same packet again, but remove it from the buffer this time. */
+echo "Data: '" . stream_socket_recvfrom($socket, 1500) . "'\n";
+
+/* Close it up */
+fclose($socket);
+fclose($server);
+```
+
+## stream_socket_sendto
+
+
+```php
+int stream_socket_sendto ( resource $socket , string $data [, int $flags = 0 [, string $address ]] )
+```
+
+ Sends a message to a socket, whether it is connected or not
+ 
+example:
+ 
+```php
+<?php
+/* Open a socket to port 1234 on localhost */
+$socket = stream_socket_client('tcp://127.0.0.1:1234');
+
+/* Send ordinary data via ordinary channels. */
+fwrite($socket, "Normal data transmit.");
+
+/* Send more data out of band. */
+stream_socket_sendto($socket, "Out of Band data.", STREAM_OOB);
+
+/* Close it up */
+fclose($socket);
+``` 
+
+## stream_socket_server
+
+创建一个网络或Unix域服务器套接字
+
+```php
+resource stream_socket_server ( string $local_socket [, int &$errno [, string &$errstr [, int $flags = STREAM_SERVER_BIND | STREAM_SERVER_LISTEN [, resource $context ]]]] )
+```
+
+Creates a stream or datagram socket on the specified local_socket.
+
+This function only creates a socket, to begin accepting connections use `stream_socket_accept()`.
+
+
+> For UDP sockets, you must use `STREAM_SERVER_BIND` as the `flags` parameter.
+
+TCP server sockets:
+
+```php
+<?php
+$socket = stream_socket_server("tcp://0.0.0.0:8000", $errno, $errstr);
+if (!$socket) {
+  echo "$errstr ($errno)<br />\n";
+} else {
+  while ($conn = stream_socket_accept($socket)) {
+    fwrite($conn, 'The local time is ' . date('n/j/Y g:i a') . "\n");
+    fclose($conn);
+  }
+  fclose($socket);
+}
+```
+
+
+UDP server sockets:
+
+```php
+<?php
+$socket = stream_socket_server("udp://127.0.0.1:1113", $errno, $errstr, STREAM_SERVER_BIND);
+if (!$socket) {
+    die("$errstr ($errno)");
+}
+
+do {
+    $pkt = stream_socket_recvfrom($socket, 1, 0, $peer);
+    echo "$peer\n";
+    stream_socket_sendto($socket, date("D M j H:i:s Y\r\n"), 0, $peer);
+} while ($pkt !== false);
+```
+
+## stream_socket_shutdown
+
+```php
+bool stream_socket_shutdown ( resource $stream , int $how )
+```
+
+Shutdowns (partially or not) a full-duplex connection.
+
+> 相关的缓冲区数据 可能会也可能不会被清空

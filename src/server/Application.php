@@ -6,7 +6,7 @@
  * Time: 23:13
  */
 
-namespace inhere\webSocket;
+namespace inhere\webSocket\server;
 
 use inhere\library\traits\TraitUseSimpleOption;
 use inhere\webSocket\handlers\IRouteHandler;

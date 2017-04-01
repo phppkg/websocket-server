@@ -6,7 +6,7 @@
  * Time: 下午8:29
  */
 
-namespace inhere\webSocket;
+namespace inhere\webSocket\server;
 
 use inhere\webSocket\http\Request;
 use inhere\webSocket\http\Response;
@@ -30,16 +30,6 @@ class WebSocketServer extends BaseWebSocket
      * @var resource
      */
     private $master;
-
-    /**
-     * @var string
-     */
-    protected $host;
-
-    /**
-     * @var int
-     */
-    protected $port;
 
     /**
      * 连接的客户端列表
@@ -94,20 +84,6 @@ class WebSocketServer extends BaseWebSocket
     public function getSupportedEvents(): array
     {
         return [ self::ON_CONNECT, self::ON_HANDSHAKE, self::ON_OPEN, self::ON_MESSAGE, self::ON_CLOSE, self::ON_ERROR];
-    }
-
-    /**
-     * WebSocket constructor.
-     * @param string $host
-     * @param int $port
-     * @param array $options
-     */
-    public function __construct(string $host = '0.0.0.0', int $port = 8080, array $options = [])
-    {
-        $this->host = $host;
-        $this->port = $port;
-
-        parent::__construct($options);
     }
 
     /////////////////////////////////////////////////////////////////////////////////////////
@@ -379,6 +355,7 @@ class WebSocketServer extends BaseWebSocket
 
         // close socket connection
         if ( is_resource($socket)  ) {
+            socket_shutdown($socket, 2);
             socket_close($socket);
         }
 
@@ -755,29 +732,5 @@ class WebSocketServer extends BaseWebSocket
     public function getMaster(): resource
     {
         return $this->master;
-    }
-
-    /**
-     * @return string
-     */
-    public function getHost(): string
-    {
-        if ( !$this->host ) {
-            $this->host = self::DEFAULT_HOST;
-        }
-
-        return $this->host;
-    }
-
-    /**
-     * @return int
-     */
-    public function getPort(): int
-    {
-        if ( !$this->port || $this->port <= 0 ) {
-            $this->port = self::DEFAULT_PORT;
-        }
-
-        return $this->port;
     }
 }

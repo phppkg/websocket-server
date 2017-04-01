@@ -8,7 +8,7 @@
 
 namespace inhere\webSocket\handlers;
 
-use inhere\webSocket\Application;
+use inhere\webSocket\server\Application;
 use inhere\webSocket\http\Request;
 use inhere\webSocket\http\Response;
 use inhere\webSocket\parts\MessageBag;

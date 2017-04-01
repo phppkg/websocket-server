@@ -9,7 +9,7 @@
 namespace inhere\webSocket\handlers;
 
 use inhere\library\traits\TraitUseSimpleOption;
-use inhere\webSocket\Application;
+use inhere\webSocket\server\Application;
 use inhere\webSocket\dataParser\ComplexDataParser;
 use inhere\webSocket\dataParser\IDataParser;
 use inhere\webSocket\http\Request;
