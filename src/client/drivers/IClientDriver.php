@@ -20,6 +20,8 @@ interface IClientDriver
     const ON_CLOSE     = 'close';
     const ON_ERROR     = 'error';
 
+    const HEADER_END     = "\r\n\r\n";
+
     /**
      * @return bool
      */
