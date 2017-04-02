@@ -10,7 +10,7 @@ namespace inhere\webSocket\parts;
 
 use inhere\library\traits\TraitArrayAccess;
 use inhere\library\traits\TraitGetterSetterAccess;
-use inhere\webSocket\WebSocketServer;
+use inhere\webSocket\server\WebSocketServer;
 
 /**
  * Class MessageResponse

@@ -133,6 +133,21 @@ class Cookies extends SimpleCollection
     }
 
     /**
+     * @return string
+     * header: `"Cookie: $cookieValue" . Header::EOL`
+     */
+    public function toRequestHeader()
+    {
+        $cookieValue = '';
+
+        foreach ($this->data as $name => $value) {
+            $cookieValue .= urlencode($name) . '=' . urlencode($value['value']) . '; ';
+        }
+
+        return trim($cookieValue, '; ');
+    }
+
+    /**
      * Parse HTTP request `Cookie:` header and extract
      * into a PHP associative array.
      * @param  string $cookieData The raw HTTP request `Cookie:` header

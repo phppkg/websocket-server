@@ -264,7 +264,7 @@ class WebSocketServer extends BaseWebSocket
         $response = new Response();
 
         // 解析请求头信息错误
-        if ( !preg_match("/Sec-WebSocket-Key: (.*)\r\n/",$data, $match) ) {
+        if ( !preg_match("/Sec-WebSocket-Key: (.*)\r\n/i",$data, $match) ) {
             $this->log("handle handshake failed! [Sec-WebSocket-Key] not found in header. Data: \n $data", 'error');
 
             $response
@@ -387,6 +387,7 @@ class WebSocketServer extends BaseWebSocket
     /////////////////////////////////////////////////////////////////////////////////////////
 
     /**
+     * send message
      * @param string $data
      * @param int $sender
      * @param int|array|null $receiver
@@ -395,13 +396,18 @@ class WebSocketServer extends BaseWebSocket
      */
     public function send(string $data, int $sender = 0, $receiver = null, array $expected = [])
     {
-        return is_int($receiver) ?
-            $this->sendTo($receiver, $data, $sender) :
-            $this->broadcast($data, (array)$receiver,  $expected, $sender);
+        // only one receiver
+        if ($receiver && (($isInt = is_int($receiver)) || 1 === count($receiver))) {
+            $receiver = $isInt ? $receiver: array_shift($receiver);
+
+            return $this->sendTo($receiver, $data, $sender);
+        }
+
+        return $this->broadcast($data, (array)$receiver,  $expected, $sender);
     }
 
     /**
-     * 发送消息给指定的目标
+     * Send a message to the specified user 发送消息给指定的用户
      * @param int    $receiver 接收者
      * @param string $data
      * @param int    $sender   发送者
@@ -422,7 +428,7 @@ class WebSocketServer extends BaseWebSocket
         $res = $this->frame($data);
         $fromUser = $sender < 1 ? 'SYSTEM' : $sender;
 
-        $this->log("The #{$fromUser} send message to #{$receiver}. Data: {$data}");
+        $this->log("(private)The #{$fromUser} send message to the user #{$receiver}. Data: {$data}");
 
         return $this->writeTo($socket, $res);
     }
@@ -441,6 +447,11 @@ class WebSocketServer extends BaseWebSocket
             return 0;
         }
 
+        // only one receiver
+        if (1 === count($receivers)) {
+            return $this->sendTo(array_shift($receivers), $data, $sender);
+        }
+
         $res = $this->frame($data);
         $len = strlen($res);
         $fromUser = $sender < 1 ? 'SYSTEM' : $sender;
@@ -455,6 +466,7 @@ class WebSocketServer extends BaseWebSocket
 
         // to receivers
         } elseif ($receivers) {
+            $this->log("(broadcast)The #{$fromUser} gave some specified user sending a message. Data: {$data}");
             foreach ($receivers as $receiver) {
                 if ( $socket = $this->getSocket($receiver) ) {
                     $this->writeTo($socket, $res, $len);
@@ -463,7 +475,7 @@ class WebSocketServer extends BaseWebSocket
 
         // to all
         } else {
-            $this->log("(broadcast)The #{$fromUser} gave some specified user sending a message. Data: {$data}");
+            $this->log("(broadcast)The #{$fromUser} send the message to everyone except some people. Data: {$data}");
             foreach ($this->sockets as $cid => $socket) {
                 if ( isset($expected[$cid]) ) {
                     continue;
@@ -513,25 +525,29 @@ class WebSocketServer extends BaseWebSocket
     $ws->asDaemon();
     $ws->changeIdentity(65534, 65534); // nobody/nogroup
     $ws->registerSignals();
+    $pid = $ws->getMasterPID();
+    ...
+    $ws->start();
      */
 
     /**
      * run as daemon process
-     * @return $this
      */
     public function asDaemon()
     {
         $this->checkPcntlExtension();
 
+        umask(0);
         // Forks the currently running process
         $pid = pcntl_fork();
 
         // 父进程和子进程都会执行下面代码
         if ( $pid === -1) {
-            /* fork failed */
+            /* fork failed, exit */
             $this->print('fork sub-process failure!', true, - __LINE__);
+        }
 
-        } elseif ($pid) {
+        if ($pid) {
             // 父进程会得到子进程号，所以这里是父进程执行的逻辑
             // 即 fork 进程成功，这是在父进程（自己通过命令行调用启动的进程）内，得到了fork的进程(子进程)的pid
 
@@ -548,10 +564,13 @@ class WebSocketServer extends BaseWebSocket
             chdir('/');
             umask(0);
 
-            //return posix_getpid();
+            // return posix_getpid();
         }
+    }
 
-        return $this;
+    public function getMasterPID()
+    {
+        return posix_getpid();
     }
 
     /**
@@ -575,33 +594,50 @@ class WebSocketServer extends BaseWebSocket
         return $this;
     }
 
-    public function registerSignals()
+    public function installSignals()
     {
         $this->checkPcntlExtension();
 
         /* handle signals */
-        pcntl_signal(SIGTERM, [ $this, 'sigHandler']);
-        pcntl_signal(SIGINT, [ $this, 'sigHandler']);
-        pcntl_signal(SIGCHLD, [ $this, 'sigHandler']);
-
         // eg: 向当前进程发送SIGUSR1信号
         // posix_kill(posix_getpid(), SIGUSR1);
+
+        // stop
+        pcntl_signal(SIGINT, [ $this, 'signalHandler'], false);
+        // reload
+        pcntl_signal(SIGUSR1, [ $this, 'signalHandler'], false);
+        // status
+        pcntl_signal(SIGUSR2, [ $this, 'signalHandler'], false);
+        // ignore
+        pcntl_signal(SIGPIPE, SIG_IGN, false);
+
+        pcntl_signal(SIGCHLD, [ $this, 'signalHandler'], false);
 
         return $this;
     }
 
     /**
      * Signal handler
-     * @param $sig
+     * @param $signal
      */
-    public function sigHandler($sig)
+    public function signalHandler($signal)
     {
         $this->checkPcntlExtension();
 
-        switch($sig) {
+        switch ($signal) {
+            // Stop.
             case SIGTERM:
             case SIGINT:
-                exit();
+                self::stopServer();
+                break;
+            // Reload.
+            case SIGUSR1:
+                self::$_pidsToRestart = self::getAllWorkerPids();
+                self::reload();
+                break;
+            // Show status.
+            case SIGUSR2:
+                self::writeStatisticsToStatusFile();
                 break;
 
             case SIGCHLD:

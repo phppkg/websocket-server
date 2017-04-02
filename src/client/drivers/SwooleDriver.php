@@ -8,6 +8,7 @@
 
 namespace inhere\webSocket\client\drivers;
 
+use inhere\exceptions\UnknownCalledException;
 use Swoole\Client;
 
 /**
@@ -54,5 +55,14 @@ class SwooleDriver extends AClientDriver
     public function close(bool $force = false)
     {
         $this->client->close();
+    }
+
+    public function __call($method, array $args = [])
+    {
+        if (method_exists($this->client, $method)) {
+            return call_user_func_array([$this->client, $method], $args);
+        }
+
+        throw new UnknownCalledException("Call the method [$method] not exists!");
     }
 }

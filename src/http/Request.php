@@ -79,19 +79,11 @@ class Request extends BaseMessage
         // first line
         $output = $this->buildFirstLine() . self::EOL;
 
-        // set headers
-        foreach ($this->headers as $name => $value) {
-            $name = ucwords($name);
-            $output .= "$name: $value" . self::EOL;
-        }
+        // add headers
+        $output .= $this->headers->toHeaderLines(1);
 
-        // set cookies
-        $cookie = '';
-        foreach ($this->cookies->all() as $name => $value) {
-            $cookie .= urlencode($name) . '=' . urlencode($value['value']) . '; ';
-        }
-
-        if ($cookie = trim($cookie, '; ')) {
+        // append cookies
+        if ($cookie = $this->cookies->toRequestHeader()) {
             $output .= "Cookie: $cookie" . self::EOL;
         }
 

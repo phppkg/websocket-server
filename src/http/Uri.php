@@ -204,6 +204,8 @@ class Uri
         '' => true,
         'https' => true,
         'http' => true,
+        'ws' => true,
+        'wss' => true,
     ];
 
     /**

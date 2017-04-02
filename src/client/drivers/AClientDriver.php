@@ -8,8 +8,12 @@
 
 namespace inhere\webSocket\client\drivers;
 
+use inhere\exceptions\ConnectException;
 use inhere\library\traits\TraitSimpleFixedEvent;
 use inhere\library\traits\TraitUseSimpleOption;
+use inhere\webSocket\http\Request;
+use inhere\webSocket\http\Response;
+use inhere\webSocket\http\Uri;
 
 /**
  * Class AClientDriver
@@ -19,7 +23,6 @@ abstract class AClientDriver implements IClientDriver
 {
     use TraitSimpleFixedEvent;
     use TraitUseSimpleOption;
-
 
     /**
      * Websocket version
@@ -35,6 +38,13 @@ abstract class AClientDriver implements IClientDriver
     const DEFAULT_HOST = '127.0.0.1';
     const DEFAULT_PORT = 8080;
 
+
+    /**
+     * eg `ws://127.0.0.1:9501/chat`
+     * @var string
+     */
+    protected $url;
+
     /**
      * @var string
      */
@@ -44,6 +54,11 @@ abstract class AClientDriver implements IClientDriver
      * @var int
      */
     protected $port;
+
+    /**
+     * @var resource
+     */
+    protected $socket;
 
     /**
      * all available opCodes
@@ -59,6 +74,21 @@ abstract class AClientDriver implements IClientDriver
     ];
 
     /**
+     * @var Request
+     */
+    protected $request;
+
+    /**
+     * @var Response
+     */
+    protected $response;
+
+    /**
+     * @var bool
+     */
+    private $connected = false;
+
+    /**
      * @var array
      */
     protected $options = [
@@ -68,7 +98,6 @@ abstract class AClientDriver implements IClientDriver
         'log_file' => '',
 
         'timeout' => 3,
-        'protocol' => 'ws', // wss
 
         // stream context
         'context' => null,
@@ -98,23 +127,176 @@ abstract class AClientDriver implements IClientDriver
 
     /**
      * WebSocket constructor.
-     * @param string $host
-     * @param int $port
+     * @param string $url `ws://127.0.0.1:9501/chat`
      * @param array $options
      */
-    public function __construct(string $host = '127.0.0.1', int $port = 8080, array $options = [])
+    public function __construct(string $url, array $options = [])
     {
-        $this->host = $host;
-        $this->port = $port;
-
         $this->setOptions($options, true);
+
+        $this->url = $url;
+
+        $uri = Uri::createFromString($url); // todo ...
+        $this->request = new Request('GET', $uri);
+
+        $this->host = $uri->getHost();
+        $this->port = $uri->getPort();
 
         $this->init();
     }
 
+    public function __destruct()
+    {
+        $this->close();
+    }
+
     protected function init()
     {
-        // ...
+        $headers = $this->getDefaultHeaders();
+
+        // Handle basic authentication.
+        if ($user = $this->request->getUri()->getUserInfo()) {
+            $headers['authorization'] = 'Basic ' . base64_encode($user);
+        }
+
+        $this->request->setHeaders($headers);
+
+        if ($csHeaders = $this->getOption('headers')) {
+            $this->request->setHeaders($csHeaders);
+        }
+
+        if ($csCookies = $this->getOption('cookies')) {
+            $this->request->setCookies($csCookies);
+        }
+    }
+
+    abstract public function connect($timeout = 0.1, $flag = 0);
+
+    public function wait()
+    {
+
+    }
+
+    public function onOpen(callable $callback)
+    {
+        $this->callbacks[self::ON_OPEN] = $callback;
+    }
+
+    public function onMessage(callable $callback)
+    {
+        $this->callbacks[self::ON_MESSAGE] = $callback;
+    }
+
+    public function onClose(callable $callback)
+    {
+        $this->callbacks[self::ON_CLOSE] = $callback;
+    }
+
+    public function onError(callable $callback)
+    {
+        $this->callbacks[self::ON_ERROR] = $callback;
+    }
+
+    /**
+     * @inheritdoc
+     */
+    public function send($data, $flag = null)
+    {
+        $written = fwrite($this->socket, $data);
+
+        if ($written < ($dataLen = strlen($data))) {
+            throw new ConnectException("Could only write $written out of $dataLen bytes.");
+        }
+
+        return $written;
+    }
+
+    public function sendFile(string $filename)
+    {
+
+    }
+
+    public function receive($size = null, $flag = null)
+    {
+
+    }
+
+    public function readResponseHeader()
+    {
+        $header = '';
+
+        // fgets() 从文件指针中读取一行。 从 handle 指向的文件中读取一行并返回长度最多为 length - 1 字节的字符串。
+        // 碰到换行符（包括在返回值中）、EOF 或者已经读取了 length - 1 字节后停止（看先碰到那一种情况）。
+        // 如果没有指定 length，则默认为 1K，或者说 1024 字节。
+        while ($str = trim(fgets($this->socket, 4096))) {
+            $header .= "$str\n";
+        }
+
+        return $header;
+    }
+
+    /**
+     * http://php.net/manual/zh/stream.examples.php
+     * @return array
+     */
+    public function readResponse()
+    {
+        $header = $body = '';
+
+        // fgets() 从文件指针中读取一行。 从 handle 指向的文件中读取一行并返回长度最多为 length - 1 字节的字符串。
+        // 碰到换行符（包括在返回值中）、EOF 或者已经读取了 length - 1 字节后停止（看先碰到那一种情况）。
+        // 如果没有指定 length，则默认为 1K，或者说 1024 字节。
+        while ($str = trim(fgets($this->socket, 4096))) {
+            $header .= "$str\n";
+        }
+
+        // feof() — 测试文件指针是否到了文件结束的位置
+        while (!feof($this->socket)) {
+            $body .= fgets($this->socket, 4096);
+        }
+
+        return [$header, $body];
+    }
+
+    public function close(bool $force = false)
+    {
+        if ( $this->socket ) {
+            $this->socket = null;
+        }
+    }
+
+    /**
+     * Helper to convert a binary to a string of '0' and '1'.
+     * @param string $binStr
+     * @return string
+     */
+    protected static function bin2String($binStr)
+    {
+        $string = '';
+        $len = strlen($binStr);
+
+        for ($i = 0; $i < $len; $i++) {
+            $string .= sprintf('%08b', ord($binStr[$i]));
+        }
+
+        return $string;
+    }
+
+    /**
+     * Default headers
+     * @return array
+     */
+    public function getDefaultHeaders()
+    {
+        return [
+            'Host' => $this->getHost() . ':' . $this->getPort(),
+            'User-Agent' => 'php-webSocket-client',
+            'Connection' => 'Upgrade',
+            'Upgrade'   => 'websocket',
+            'Sec-WebSocket-Key' => $this->genKey(),
+            'Sec-WebSocket-Version' => self::WS_VERSION,
+            'Sec-WebSocket-Protocol' => 'sws',
+        ];
     }
 
     /**
@@ -142,6 +324,34 @@ abstract class AClientDriver implements IClientDriver
     }
 
     /**
+     * @param null|resource $socket
+     * @return bool
+     */
+    abstract public function getLastErrorNo($socket = null);
+
+    /**
+     * @param null|resource $socket
+     * @return string
+     */
+    abstract public function getLastError($socket = null);
+
+    /**
+     * @return resource
+     */
+    public function getSocket(): resource
+    {
+        return $this->socket;
+    }
+
+    /**
+     * @param resource $socket
+     */
+    public function setSocket(resource $socket)
+    {
+        $this->socket = $socket;
+    }
+
+    /**
      * @return string
      */
     public function getHost(): string
@@ -165,6 +375,45 @@ abstract class AClientDriver implements IClientDriver
         return $this->port;
     }
 
+    /**
+     * @return Uri
+     */
+    public function getUri()
+    {
+        return $this->request->getUri();
+    }
+
+    /**
+     * @return Request
+     */
+    public function getRequest(): Request
+    {
+        return $this->request;
+    }
+
+    /**
+     * @return Response
+     */
+    public function getResponse(): Response
+    {
+        return $this->response;
+    }
+
+    /**
+     * @return bool
+     */
+    public function isConnected(): bool
+    {
+        return $this->connected;
+    }
+
+    /**
+     * @param bool $connected
+     */
+    public function setConnected(bool $connected)
+    {
+        $this->connected = $connected;
+    }
 
     /**
      * Generate a random string for WebSocket key.(for client)
@@ -177,7 +426,7 @@ abstract class AClientDriver implements IClientDriver
         $chars_length = strlen($chars);
 
         for ($i = 0; $i < 16; $i++) {
-            $key .= $chars[mt_rand(0, $chars_length - 1)];
+            $key .= $chars[random_int(0, $chars_length - 1)]; //mt_rand
         }
 
         return base64_encode($key);
@@ -217,9 +466,8 @@ abstract class AClientDriver implements IClientDriver
 
         $mask = '';
         if ($masked) {
-
             for ($i = 0; $i < 4; ++$i) {
-                $mask .= chr(rand(0, 255));
+                $mask .= chr(random_int(0, 255));
             }
 
             $frame .= $mask;

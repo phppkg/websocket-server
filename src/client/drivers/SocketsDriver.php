@@ -27,33 +27,104 @@ class SocketsDriver extends AClientDriver
         return extension_loaded('sockets');
     }
 
-    public function connect($host, $port, $timeout = 0.1, $flag = 0)
+    public function init()
     {
-        $host = "127.0.0.1";
-        $port = "80";
-        $timeout = 15;  //timeout in seconds
+        $this->socket = socket_create(AF_INET, SOCK_STREAM, SOL_TCP);
 
-        $socket = socket_create(AF_INET, SOCK_STREAM, SOL_TCP) or die("Unable to create socket\n");
+        if ( !is_resource($this->socket) ) {
+            $this->print('[ERROR] Unable to create socket: '. $this->getLastError(), true, socket_last_error());
+        }
 
-        socket_set_nonblock($socket) or die("Unable to set nonblock on socket\n");
+        parent::init();
+    }
 
+    /**
+     * @inheritdoc
+     */
+    public function connect($timeout = 1, $flag = 0)
+    {
+        if (!socket_set_nonblock($this->socket)) {
+            $this->print('[ERROR] Unable to set non-block on socket: '. $this->getLastError($this->socket), true, socket_last_error());
+        }
+
+        $host = $this->getHost();
+        $port = $this->getPort();
+        $timeout = $timeout ?: $this->getOption('timeout');
         $time = time();
-        while ( !socket_connect($socket, $host, $port) ) {
-            $err = socket_last_error($socket);
 
-            if ($err === SOCKET_EINPROGRESS || $err === SOCKET_EALREADY) {
+        while (!socket_connect($this->socket, $host, $port)) {
+            $errNo = socket_last_error($this->socket);
+
+            if ($errNo === SOCKET_EINPROGRESS || $errNo === SOCKET_EALREADY) {
                 if ((time() - $time) >= $timeout) {
-                    socket_close($socket);
-                    die("Connection timed out.\n");
+                    socket_close($this->socket);
+                    $this->log('Connection timed out.', 'warning');
                 }
 
                 sleep(1);
                 continue;
             }
 
-            die(socket_strerror($err) . "\n");
+            $this->print('[ERROR] Unable to set block on socket: '. socket_strerror($errNo) , true, $errNo);
         }
 
-        socket_set_block($socket) or die("Unable to set block on socket\n");
+        if ( !socket_set_block($this->socket) ) {
+            $this->print('[ERROR] Unable to set block on socket: '. $this->getLastError($this->socket), true, socket_last_error());
+        }
     }
+
+    /**
+     * @param bool $force
+     */
+    public function close(bool $force = false)
+    {
+        if ( $this->socket ) {
+            socket_close($this->socket);
+
+            $this->socket = null;
+        }
+    }
+
+    /**
+     * 用于获取客户端socket的本地host:port，必须在连接之后才可以使用
+     * @return array
+     */
+    public function getSockName()
+    {
+        socket_getsockname($this->socket, $host, $port);
+
+        return [
+            'host' => $host,
+            'port' => $port,
+        ];
+    }
+
+    /**
+     * 获取对端(远端)socket的IP地址和端口
+     * @return array
+     */
+    public function getPeerName()
+    {
+        socket_getpeername($this->socket, $host, $port);
+
+        return [
+            'host' => $host,
+            'port' => $port,
+        ];
+    }
+
+    public function getLastErrorNo($socket = null)
+    {
+        return socket_last_error($socket);
+    }
+
+    /**
+     * @param null|resource $socket
+     * @return string
+     */
+    public function getLastError($socket = null)
+    {
+        return socket_strerror(socket_last_error($socket));
+    }
+
 }

@@ -17,6 +17,13 @@ use inhere\library\collections\SimpleCollection;
 class Headers extends SimpleCollection
 {
     /**
+     * the connection header line data end char
+     */
+    const EOL = "\r\n";
+
+    const HEADER_END = "\r\n\r\n";
+
+    /**
      * @inheritdoc
      */
     public function set($key, $value)
@@ -70,9 +77,11 @@ class Headers extends SimpleCollection
      */
     public function normalizeKey($key)
     {
-        $key = str_replace('_', '-', strtolower($key));
+        // $key = str_replace('_', '-', strtolower($key));
+        $key = str_replace('_', '-', trim($key));
+        $key = ucwords($key, '-');
 
-        if (strpos($key, 'http-') === 0) {
+        if (strpos($key, 'Http-') === 0) {
             $key = substr($key, 5);
         }
 
@@ -119,5 +128,21 @@ class Headers extends SimpleCollection
         }
 
         return $ens;
+    }
+
+    /**
+     * @param bool $toString
+     * @return array
+     */
+    public function toHeaderLines($toString = false)
+    {
+        $output = [];
+
+        foreach ($this->data as $name => $value) {
+            // $name = ucwords($name, '-');
+            $output[] .= "$name: $value" . self::EOL;
+        }
+
+        return $toString ? implode('', $output) : $output;
     }
 }

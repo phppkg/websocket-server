@@ -164,16 +164,16 @@ abstract class ARouteHandler implements IRouteHandler
      */
     public function dispatch(string $data, int $cid)
     {
-        $route = $this->request->path;
+        $route = $this->request->getPath();
 
         // parse: get command and real data
         if ( $results = $this->getDataParser()->parse($data, $cid, $this) ) {
             [$command, $data] = $results;
             $command = $command ?: $this->getOption('defaultCmd') ?? self::DEFAULT_CMD;
-            $this->log("The #{$cid} request command is: $command in route [$route]");
+            $this->log("The #{$cid} request command is: $command, in route: $route, handler: " . static::class);
         } else {
             $command = self::PARSE_ERROR;
-            $this->log("The #{$cid} request data parse failed in route [$route]! Data: $data", 'error');
+            $this->log("The #{$cid} request data parse failed in route: $route. Data: $data", 'error');
         }
 
         // dispatch command

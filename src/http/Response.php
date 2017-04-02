@@ -159,11 +159,8 @@ class Response  extends BaseMessage
         // first line
         $output = $this->buildFirstLine() . self::EOL;
 
-        // set headers
-        foreach ($this->headers as $name => $value) {
-            $name = ucwords($name);
-            $output .= "$name: $value" . self::EOL;
-        }
+        // add headers
+        $output .= $this->headers->toHeaderLines(1);
 
         // set cookies
         foreach ($this->cookies->toHeaders() as $value) {

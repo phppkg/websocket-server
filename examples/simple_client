@@ -3,7 +3,8 @@
 
 require __DIR__ . '/../../../autoload.php';
 
-use inhere\webSocket\WebSocketClient;
+use inhere\webSocket\client\drivers\StreamsDriver;
+use inhere\webSocket\client\WebSocketClient;
 
 $options = [
     'headers' => [
@@ -14,6 +15,11 @@ $options = [
         'test1' => 'value1',
     ]
 ];
-$client = new WebSocketClient('ws://127.0.0.1:9501', $options);
 
-vd($client->getSupportedWrappers(), $client->getSupportedTransports(), $client->getRequest()->toString());
+$client = new StreamsDriver('ws://127.0.0.1:9501', $options);
+
+$client->connect();
+
+echo $client->receive();
+
+$client->close();
