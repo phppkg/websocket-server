@@ -113,23 +113,6 @@ class WebSocketClient
         $this->callbacks = new \SplFixedArray(4);
     }
 
-    public function start()
-    {
-        $this->connect();
-
-        $tickHandler = $this->callbacks[self::ON_TICK];
-
-        while (true) {
-            if ($tickHandler) {
-                if (call_user_func($tickHandler, $this) === false) {
-                    break;
-                }
-            }
-
-            usleep(5000);
-        }
-    }
-
     public function connect($timeout = 0.1, $flag = 0)
     {
         $this->getDriver()->connect($timeout, $flag);

@@ -25,9 +25,37 @@ class StreamsDriver extends AClientDriver
         return function_exists('stream_socket_accept');
     }
 
-//    protected function init()
-//    {
-//    }
+
+    public function start()
+    {
+        if (!$this->isConnected()) {
+            $this->connect();
+        }
+
+        $tickHandler = $this->callbacks[self::ON_TICK];
+        $msgHandler = $this->callbacks[self::ON_MESSAGE];
+
+        while (true) {
+            if ($tickHandler && (call_user_func($tickHandler, $this) === false)) {
+                break;
+            }
+
+            $write = $except = null;
+            $changed = [$this->socket];
+
+            if (stream_select($changed, $write, $except, null) > 0) {
+                foreach ($changed as $socket) {
+                    $message = $this->receive($socket);
+
+                    if ($message !== false && $msgHandler) {
+                        call_user_func($msgHandler, $message, $this);
+                    }
+                }
+            }
+
+            usleep(5000);
+        }
+    }
 
     public function connect($timeout = 3, $flag = 0)
     {
@@ -82,7 +110,7 @@ class StreamsDriver extends AClientDriver
             throw new ConnectException("Connection to '{$this->url}' failed: Server sent invalid upgrade response:\n $response");
         }
 
-        $data = $this->receive();
+        $this->setConnected(true);
     }
 
     public function readResponseHeader($length = 2048)
@@ -95,12 +123,12 @@ class StreamsDriver extends AClientDriver
         return stream_get_line($this->socket, $length, self::HEADER_END);
     }
 
-    public function receive($size = null, $flag = null)
-    {
-        return $this->read($size);
-    }
-
-    public function read($length = 1024)
+    /**
+     * @param $length
+     * @return string
+     * @throws ConnectException
+     */
+    protected function read($length)
     {
         $data = '';
 
@@ -132,11 +160,14 @@ class StreamsDriver extends AClientDriver
     {
         if ( $this->socket ) {
             if (get_resource_type($this->socket) === 'stream') {
+                stream_socket_shutdown($this->socket, STREAM_SHUT_WR);
                 fclose($this->socket);
             }
 
             $this->socket = null;
         }
+
+        $this->setConnected(false);
     }
 
     /**
