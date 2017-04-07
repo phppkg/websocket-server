@@ -45,7 +45,7 @@ class StreamsDriver extends AClientDriver
 
             if (stream_select($changed, $write, $except, null) > 0) {
                 foreach ($changed as $socket) {
-                    $message = $this->receive($socket);
+                    $message = $this->receive();
 
                     if ($message !== false && $msgHandler) {
                         call_user_func($msgHandler, $message, $this);
@@ -79,40 +79,39 @@ class StreamsDriver extends AClientDriver
         $host = $this->getHost();
         $port = $this->getPort();
         $timeout = $timeout ?: $this->getOption('timeout');
-        $schemeHost = ($scheme === self::PROTOCOL_WSS ? 'ssl' : 'tcp') . "://$host";
+        $schemeHost = ($scheme === self::PROTOCOL_WSS ? 'ssl' : 'tcp') . "://$host";// 'ssl', 'tls', 'wss'
         $remote = $schemeHost . ($port ? ":$port" : '');
 
         // Open the socket.  @ is there to suppress warning that we will catch in check below instead.
-        $this->socket = stream_socket_client($remote, $errNo, $errStr, $timeout, STREAM_CLIENT_CONNECT, $context);
+        $this->socket = @stream_socket_client($remote, $errNo, $errStr, $timeout, STREAM_CLIENT_CONNECT, $context);
 
         // can also use: fsockopen — 打开一个网络连接或者一个Unix套接字连接
         // $this->socket = fsockopen($schemeHost, $port, $errNo, $errStr, $timeout);
 
         if ($this->socket === false) {
-            throw new ConnectException("Could not connect socket to $host:$port, Error: $errStr ($errNo).");
+            throw new ConnectException("Could not connect socket to $remote, Error: $errStr ($errNo).");
         }
-
-        // handshake
-        $request = $this->request->toString();
-        $this->log("Send handshake request: \n $request");
-        $this->send($request);
 
         // Set timeout on the stream as well.
         stream_set_timeout($this->socket, $timeout);
 
-        // Get server response header
-        $response = $this->readResponseHeader();
-        $this->log("Response: \n $response");
-
-        // Validate response.
-        if (!preg_match('#Sec-WebSocket-Accept:\s(.*)$#mUi', $response, $matches)) {
-            // $address = $scheme . '://' . $host . $uri->getPathAndQuery();
-            throw new ConnectException("Connection to '{$this->url}' failed: Server sent invalid upgrade response:\n $response");
-        }
-
         $this->setConnected(true);
+
+        $request = $this->request->toString();
+        $this->log("Request header: \n$request");
+        $this->write($request);
+
+        // Get server response header
+        $header = $this->readResponseHeader();
+
+        // handshake
+        $this->doHandShake($header);
     }
 
+    /**
+     * @param int $length
+     * @return string
+     */
     public function readResponseHeader($length = 2048)
     {
         if ($length < 1024) {
@@ -156,6 +155,10 @@ class StreamsDriver extends AClientDriver
     /**
      * @param bool $force
      */
+    public function disconnect(bool $force = false)
+    {
+        $this->close($force);
+    }
     public function close(bool $force = false)
     {
         if ( $this->socket ) {

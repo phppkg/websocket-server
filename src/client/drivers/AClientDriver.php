@@ -34,10 +34,10 @@ abstract class AClientDriver implements IClientDriver
 
     // abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ!"§$%&/()=[]{}
     const TOKEN_CHARS = 'abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ!"$&/()=[]{}0123456789';
+    const GUID = '258EAFA5-E914-47DA-95CA-C5AB0DC85B11';
 
     const DEFAULT_HOST = '127.0.0.1';
     const DEFAULT_PORT = 8080;
-
 
     /**
      * eg `ws://127.0.0.1:9501/chat`
@@ -82,6 +82,11 @@ abstract class AClientDriver implements IClientDriver
      * @var Response
      */
     protected $response;
+
+    /**
+     * @var string
+     */
+    private $key;
 
     /**
      * @var bool
@@ -174,6 +179,34 @@ abstract class AClientDriver implements IClientDriver
 
     abstract public function connect($timeout = 0.1, $flag = 0);
 
+    /**
+     * @param string $header
+     * @return bool
+     * @throws ConnectException
+     */
+    public function doHandShake($header)
+    {
+        $this->log("Response header: \n$header");
+
+        // Validate response.
+        if (!preg_match('#Sec-WebSocket-Accept:\s(.*)$#mUi', $header, $matches)) {
+            $this->close();
+
+            // $address = $scheme . '://' . $host . $uri->getPathAndQuery();
+            throw new ConnectException("Connection to '{$this->url}' failed: Server sent invalid upgrade response header:\n$header");
+        }
+
+        $secAccept = $matches[1];
+
+        if ($secAccept !== base64_encode(pack('H*', sha1($this->key . self::GUID)))) {
+            $this->close();
+
+            return false;
+        }
+
+        return true;
+    }
+
     public function onOpen(callable $callback)
     {
         $this->callbacks[self::ON_OPEN] = $callback;
@@ -229,6 +262,11 @@ abstract class AClientDriver implements IClientDriver
         return $buffer;
     }
 
+    /**
+     * @param string $data
+     * @return bool|int
+     * @throws ConnectException
+     */
     protected function write($data)
     {
         $written = fwrite($this->socket, $data);
@@ -240,10 +278,16 @@ abstract class AClientDriver implements IClientDriver
         return $written;
     }
 
+    /**
+     * @param string $payload
+     * @param string $opcode
+     * @param bool $masked
+     * @return int
+     */
     public function sendByFragment($payload, $opcode = 'text', $masked = true)
     {
         if ( !$this->connected ) {
-            $this->connect(); // @todo This is a client function, fixme!
+            $this->connect();
         }
 
         if (!isset(self::$opCodes[$opcode])) {
@@ -282,6 +326,9 @@ abstract class AClientDriver implements IClientDriver
 
     }
 
+    /**
+     * @return string
+     */
     public function readResponseHeader()
     {
         $header = '';
@@ -289,7 +336,8 @@ abstract class AClientDriver implements IClientDriver
         // fgets() 从文件指针中读取一行。 从 handle 指向的文件中读取一行并返回长度最多为 length - 1 字节的字符串。
         // 碰到换行符（包括在返回值中）、EOF 或者已经读取了 length - 1 字节后停止（看先碰到那一种情况）。
         // 如果没有指定 length，则默认为 1K，或者说 1024 字节。
-        while ($str = trim(fgets($this->socket, 4096))) {
+        // 这里到了 head 与 body 分隔时的一行是 `\r\n\r\n` trim 就是空字符串，就会停止继续读取
+        while ($str = trim(fgets($this->socket, 1024))) {
             $header .= "$str\n";
         }
 
@@ -307,7 +355,7 @@ abstract class AClientDriver implements IClientDriver
         // fgets() 从文件指针中读取一行。 从 handle 指向的文件中读取一行并返回长度最多为 length - 1 字节的字符串。
         // 碰到换行符（包括在返回值中）、EOF 或者已经读取了 length - 1 字节后停止（看先碰到那一种情况）。
         // 如果没有指定 length，则默认为 1K，或者说 1024 字节。
-        while ($str = trim(fgets($this->socket, 4096))) {
+        while ($str = trim(fgets($this->socket, 1024))) {
             $header .= "$str\n";
         }
 
@@ -412,23 +460,33 @@ abstract class AClientDriver implements IClientDriver
         return $frame;
     }
 
+    /**
+     * @param null $size
+     * @param null $flag
+     * @return bool|string
+     */
     public function receive($size = null, $flag = null)
     {
         $data = fread($this->socket, 2);
+
         if (strlen($data) === 1) {
             $data .= fread($this->socket, 1);
         }
+
         if ($data === false || strlen($data) < 2) {
             return false;
         }
+
         $final = (bool) (ord($data[0]) & 1 << 7);
         $rsv1 = (bool) (ord($data[0]) & 1 << 6);
         $rsv2 = (bool) (ord($data[0]) & 1 << 5);
         $rsv3 = (bool) (ord($data[0]) & 1 << 4);
+
         $opcode = ord($data[0]) & 31;
         $masked = (bool) (ord($data[1]) >> 7);
         $payload = '';
         $length = (int) (ord($data[1]) & 127); // Bits 1-7 in byte 1
+
         if ($length > 125) {
             $temp = $length === 126 ? fread($this->socket, 2) : fread($this->socket, 8);
             if ($temp === false) {
@@ -480,108 +538,118 @@ abstract class AClientDriver implements IClientDriver
 
         return $final ? $payload : $payload . $this->receive();
     }
-
-    public function receive1($size = null, $flag = null)
+    /**
+     * @param $payload
+     * @param string $type
+     * @param bool $masked
+     * @return bool|string
+     */
+    private function hybi10Encode($payload, $type = 'text', $masked = true)
     {
-        // Just read the main fragment information first.
-        $data = $this->read(2);
+        $frameHead = array();
+        $payloadLength = strlen($payload);
 
-        // Is this the final fragment?  // Bit 0 in byte 0
-        /// @todo Handle huge payloads with multiple fragments.
-        $final = (bool) (ord($data[0]) & 1 << 7);
-
-        // Should be unused, and must be false…  // Bits 1, 2, & 3
-        $rsv1  = (bool) (ord($data[0]) & 1 << 6);
-        $rsv2  = (bool) (ord($data[0]) & 1 << 5);
-        $rsv3  = (bool) (ord($data[0]) & 1 << 4);
-
-        // Parse opcode
-        $opcode_int = ord($data[0]) & 31; // Bits 4-7
-        $opcode_ints = array_flip(self::$opCodes);
-
-        if (!array_key_exists($opcode_int, $opcode_ints)) {
-            throw new ConnectException("Bad opcode in websocket frame: $opcode_int");
+        switch ($type) {
+            //文本内容
+            case 'text':
+                // first byte indicates FIN, Text-Frame (10000001):
+                $frameHead[0] = 129;
+                break;
+            //二进制内容
+            case 'binary':
+            case 'bin':
+                // first byte indicates FIN, Text-Frame (10000010):
+                $frameHead[0] = 130;
+                break;
+            case 'close':
+                // first byte indicates FIN, Close Frame(10001000):
+                $frameHead[0] = 136;
+                break;
+            case 'ping':
+                // first byte indicates FIN, Ping frame (10001001):
+                $frameHead[0] = 137;
+                break;
+            case 'pong':
+                // first byte indicates FIN, Pong frame (10001010):
+                $frameHead[0] = 138;
+                break;
         }
 
-        $opcode = $opcode_ints[$opcode_int];
+        // set mask and payload length (using 1, 3 or 9 bytes)
+        if ($payloadLength > 65535) {
+            $payloadLengthBin = str_split(sprintf('%064b', $payloadLength), 8);
+            $frameHead[1] = ($masked === true) ? 255 : 127;
 
-        // record the opcode if we are not receiving a continutation fragment
-        if ($opcode !== 'continuation') {
-            $this->last_opcode = $opcode;
-        }
-
-        // Masking?
-        $mask = (bool) (ord($data[1]) >> 7);  // Bit 0 in byte 1
-        $payload = '';
-
-        // Payload length
-        $payloadLength = (int) ord($data[1]) & 127; // Bits 1-7 in byte 1
-        if ($payloadLength > 125) {
-            if ($payloadLength !== 126) {
-                $data = $this->read(8);
-            } // 126: Payload is a 16-bit unsigned int
-            else {
-                $data = $this->read(2);
-            } // 127: Payload is a 64-bit unsigned int
-
-            $payloadLength = bindec(self::bin2String($data));
-        }
-
-        // Get masking key.
-        $masking_key = $mask ? $this->read(4) : '';
-
-        // Get the actual payload, if any (might not be for e.g. close frames.
-        if ($payloadLength > 0) {
-            $data = $this->read($payloadLength);
-
-            if ($masking_key) {
-                // Unmask payload.
-                for ($i = 0; $i < $payloadLength; $i++) {
-                    $payload .= ($data[$i] ^ $masking_key[$i % 4]);
-                }
-            } else {
-                $payload = $data;
-            }
-        }
-
-        if ($opcode === 'close') {
-            // Get the close status.
-            if ($payloadLength >= 2) {
-                $status_bin = $payload[0] . $payload[1];
-                $status = bindec(sprintf('%08b%08b', ord($payload[0]), ord($payload[1])));
-                $this->close_status = $status;
-                $payload = substr($payload, 2);
-
-                // Respond.
-                if (!$this->is_closing) {
-                    $this->send($status_bin . 'Close acknowledged: ' . $status, 'close', true);
-                }
+            for ($i = 0; $i < 8; $i++) {
+                $frameHead[$i + 2] = bindec($payloadLengthBin[$i]);
             }
 
-            // A close response, all done.
-            if ($this->is_closing) {
-                $this->is_closing = false;
+            // most significant bit MUST be 0 (close connection if frame too big)
+            if ($frameHead[2] > 127) {
+                $this->close(); // todo ...
+                return false;
+            }
+        } elseif ($payloadLength > 125) {
+            $payloadLengthBin = str_split(sprintf('%016b', $payloadLength), 8);
+            $frameHead[1] = ($masked === true) ? 254 : 126;
+            $frameHead[2] = bindec($payloadLengthBin[0]);
+            $frameHead[3] = bindec($payloadLengthBin[1]);
+        } else {
+            $frameHead[1] = ($masked === true) ? $payloadLength + 128 : $payloadLength;
+        }
+
+        // convert frame-head to string:
+        foreach (array_keys($frameHead) as $i) {
+            $frameHead[$i] = chr($frameHead[$i]);
+        }
+
+        // generate a random mask:
+        $mask = array();
+        if ($masked === true) {
+            for ($i = 0; $i < 4; $i++) {
+                $mask[$i] = chr(rand(0, 255));
             }
 
-            // And close the socket.
-            fclose($this->socket);
-            $this->is_connected = false;
+            $frameHead = array_merge($frameHead, $mask);
         }
 
-        // if this is not the last fragment, then we need to save the payload
-        if (!$final) {
-            $this->huge_payload .= $payload;
-            return null;
+        $frame = implode('', $frameHead);
+
+        // append payload to frame:
+        for ($i = 0; $i < $payloadLength; $i++) {
+            $frame .= $masked ? $payload[$i] ^ $mask[$i % 4] : $payload[$i];
         }
 
-        // this is the last fragment, and we are processing a huge_payload
-        if ($this->huge_payload) {
-            // sp we need to retreive the whole payload
-            $payload = $this->huge_payload .= $payload;
-            $this->huge_payload = null;
+        return $frame;
+    }
+    /**
+     * @param $data
+     * @return string
+     * @throws \InvalidArgumentException
+     */
+    private function hybi10Decode($data)
+    {
+        if (!$data) {
+            throw new \InvalidArgumentException("data is empty");
         }
 
-        return $payload;
+        $bytes = $data;
+        $secondByte = sprintf('%08b', ord($bytes[1]));
+        $masked = ($secondByte[0] == '1') ? true : false;
+        $dataLength = ($masked === true) ? ord($bytes[1]) & 127 : ord($bytes[1]);
+
+        //服务器不会设置mask
+        if ($dataLength === 126) {
+            $decodedData = substr($bytes, 4);
+        } elseif ($dataLength === 127) {
+            $decodedData = substr($bytes, 10);
+        } else {
+            $decodedData = substr($bytes, 2);
+        }
+
+        $this->log("len=".$dataLength);
+
+        return $decodedData;
     }
 
     /**
@@ -623,12 +691,14 @@ abstract class AClientDriver implements IClientDriver
      */
     public function getDefaultHeaders()
     {
+        $this->key = $this->genKey();
+
         return [
             'Host' => $this->getHost() . ':' . $this->getPort(),
             'User-Agent' => 'php-webSocket-client',
             'Connection' => 'Upgrade',
             'Upgrade'   => 'websocket',
-            'Sec-WebSocket-Key' => $this->genKey(),
+            'Sec-WebSocket-Key' => $this->key,
             'Sec-WebSocket-Version' => self::WS_VERSION,
             'Sec-WebSocket-Protocol' => 'sws',
         ];
@@ -669,6 +739,14 @@ abstract class AClientDriver implements IClientDriver
      * @return string
      */
     abstract public function getLastError($socket = null);
+
+    /**
+     * @return string
+     */
+    public function getKey(): string
+    {
+        return $this->key;
+    }
 
     /**
      * @return resource

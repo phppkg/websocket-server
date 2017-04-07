@@ -158,11 +158,11 @@ class Request extends BaseMessage
 
     /**
      * `Origin: http://foo.example`
-     * @return mixed
+     * @return string
      */
     public function getOrigin()
     {
-        return $this->headers->get('Origin');
+        return $this->headers->get('Origin', '');
     }
 
     /**

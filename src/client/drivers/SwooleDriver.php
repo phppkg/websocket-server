@@ -30,17 +30,66 @@ class SwooleDriver extends AClientDriver
         return extension_loaded('swoole');
     }
 
-    public function init()
+    public function connect($timeout = 0.1, $flag = 0)
     {
-        $this->client = new Client(SWOOLE_SOCK_TCP);
-    }
+        $type = SWOOLE_SOCK_TCP;
 
-    public function connect($host, $port, $timeout = 0.1, $flag = 0)
-    {
-        if ( !$this->client->connect($host, $port, $timeout) ) {
+        if ( $this->getOption('ssl') ) {
+            $type |= SWOOLE_SSL;
+        }
+
+        $this->client = new Client($type);
+
+        if ($keyFile = $this->getOption('ssl_key_file')) {
+            $this->client->set([
+                'ssl_key_file' => $keyFile,
+                'ssl_cert_file' => $this->getOption('ssl_cert_file')
+            ]);
+        }
+
+        if ( !$this->client->connect($this->getHost(), $this->getPort(), $timeout) ) {
             exit("connect failed. Error: {$this->client->errCode}\n");
         }
+
+        $headerBuffer = '';
+        while(true) {
+            $_tmp = $this->client->recv();
+            if ($_tmp) {
+                $headerBuffer .= $_tmp;
+
+                if (substr($headerBuffer, -4, 4) !== self::HEADER_END) {
+                    continue;
+                }
+            } else {
+                return false;
+            }
+
+            return $this->doHandShake($headerBuffer);
+        }
+
+        return false;
     }
+
+    public function readResponseHeader($length = 2048)
+    {
+        $headerBuffer = '';
+
+        while(true) {
+            $_tmp = $this->client->recv();
+            if ($_tmp) {
+                $headerBuffer .= $_tmp;
+
+                if (substr($headerBuffer, -4, 4) !== self::HEADER_END) {
+                    break;
+                }
+            } else {
+                return '';
+            }
+        }
+
+        return $headerBuffer;
+    }
+
 
     public function send($message, $flag = null)
     {
