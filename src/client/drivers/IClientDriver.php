@@ -101,7 +101,7 @@ interface IClientDriver
 
     public function sendFile(string $filename);
 
-    public function receive($size = null, $flag = null);
+    public function receive($size = 65535, $flag = null);
 
     public function close(bool $force = false);
 

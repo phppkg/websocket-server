@@ -227,20 +227,7 @@ abstract class AClientDriver implements IClientDriver
         $this->callbacks[self::ON_ERROR] = $callback;
     }
 
-    const SEND_ALL_ONCE = 1;
-    const SEND_ALL_FRAGMENT = 2;
 
-    /**
-     * @inheritdoc
-     */
-    public function send($data, $flag = null)
-    {
-        if ($flag === self::SEND_ALL_ONCE) {
-            return $this->write($data);
-        }
-
-        return $this->sendByFragment($data);
-    }
 
     /**
      * @param $length
@@ -276,6 +263,21 @@ abstract class AClientDriver implements IClientDriver
         }
 
         return $written;
+    }
+
+    const SEND_ALL_ONCE = 1;
+    const SEND_ALL_FRAGMENT = 2;
+
+    /**
+     * @inheritdoc
+     */
+    public function send($data, $flag = null)
+    {
+        if ($flag === self::SEND_ALL_ONCE) {
+            return $this->write($data);
+        }
+
+        return $this->sendByFragment($data);
     }
 
     /**
@@ -461,11 +463,11 @@ abstract class AClientDriver implements IClientDriver
     }
 
     /**
-     * @param null $size
+     * @param int $size
      * @param null $flag
      * @return bool|string
      */
-    public function receive($size = null, $flag = null)
+    public function receive($size = 65535, $flag = null)
     {
         $data = fread($this->socket, 2);
 
@@ -599,7 +601,7 @@ abstract class AClientDriver implements IClientDriver
         }
 
         // convert frame-head to string:
-        foreach (array_keys($frameHead) as $i) {
+        foreach ($frameHead as $i => $v) {
             $frameHead[$i] = chr($frameHead[$i]);
         }
 
@@ -607,7 +609,7 @@ abstract class AClientDriver implements IClientDriver
         $mask = array();
         if ($masked === true) {
             for ($i = 0; $i < 4; $i++) {
-                $mask[$i] = chr(rand(0, 255));
+                $mask[$i] = chr(random_int(0, 255));
             }
 
             $frameHead = array_merge($frameHead, $mask);
@@ -630,12 +632,12 @@ abstract class AClientDriver implements IClientDriver
     private function hybi10Decode($data)
     {
         if (!$data) {
-            throw new \InvalidArgumentException("data is empty");
+            throw new \InvalidArgumentException('data is empty');
         }
 
         $bytes = $data;
         $secondByte = sprintf('%08b', ord($bytes[1]));
-        $masked = ($secondByte[0] == '1') ? true : false;
+        $masked = '1' === $secondByte[0];
         $dataLength = ($masked === true) ? ord($bytes[1]) & 127 : ord($bytes[1]);
 
         //服务器不会设置mask
@@ -647,7 +649,7 @@ abstract class AClientDriver implements IClientDriver
             $decodedData = substr($bytes, 2);
         }
 
-        $this->log("len=".$dataLength);
+        $this->log("len=$dataLength");
 
         return $decodedData;
     }
@@ -729,16 +731,14 @@ abstract class AClientDriver implements IClientDriver
     }
 
     /**
-     * @param null|resource $socket
-     * @return bool
+     * @return int
      */
-    abstract public function getLastErrorNo($socket = null);
+    abstract public function getErrorNo();
 
     /**
-     * @param null|resource $socket
      * @return string
      */
-    abstract public function getLastError($socket = null);
+    abstract public function getErrorMsg();
 
     /**
      * @return string

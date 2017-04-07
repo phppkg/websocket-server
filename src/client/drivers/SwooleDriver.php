@@ -30,6 +30,11 @@ class SwooleDriver extends AClientDriver
         return extension_loaded('swoole');
     }
 
+    /**
+     * @param float $timeout
+     * @param int $flag
+     * @return bool
+     */
     public function connect($timeout = 0.1, $flag = 0)
     {
         $type = SWOOLE_SOCK_TCP;
@@ -48,12 +53,23 @@ class SwooleDriver extends AClientDriver
         }
 
         if ( !$this->client->connect($this->getHost(), $this->getPort(), $timeout) ) {
-            exit("connect failed. Error: {$this->client->errCode}\n");
+            $this->print("[ERROR] connect failed. Error: {$this->client->errCode}", true, -404);
+        }
+
+        $this->setConnected(true);
+
+        $request = $this->request->toString();
+        $this->log("Request header: \n$request");
+
+        // WebSocket握手
+        if ($this->send($request) === false) {
+            return false;
         }
 
         $headerBuffer = '';
         while(true) {
-            $_tmp = $this->client->recv();
+            $_tmp = $this->receive();
+
             if ($_tmp) {
                 $headerBuffer .= $_tmp;
 
@@ -90,20 +106,46 @@ class SwooleDriver extends AClientDriver
         return $headerBuffer;
     }
 
-
+    /**
+     * @param string $message
+     * @param null $flag
+     * @return bool|int
+     */
     public function send($message, $flag = null)
     {
-        $this->client->send($message, $flag);
+        return $this->client->send($message, $flag);
     }
 
+    /**
+     * @param null $size
+     * @param null $flag
+     * @return mixed
+     */
     public function receive($size = null, $flag = null)
     {
-        $this->client->recv($size, $flag);
+        return $this->client->recv($size, $flag);
     }
 
     public function close(bool $force = false)
     {
         $this->client->close();
+    }
+
+    /**
+     * @param $name
+     * @param $value
+     */
+    public function setClientOption($name, $value)
+    {
+        $this->setClientOptions([$name => $value]);
+    }
+
+    /**
+     * @param array $options
+     */
+    public function setClientOptions(array $options)
+    {
+        $this->client->set($options);
     }
 
     public function __call($method, array $args = [])

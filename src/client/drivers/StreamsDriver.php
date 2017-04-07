@@ -197,13 +197,13 @@ class StreamsDriver extends AClientDriver
         ];
     }
 
-    public function getLastErrorNo($socket = null)
+    public function getErrorNo()
     {
-        // TODO: Implement getLastErrorNo() method.
+        // TODO: Implement getErrorNo() method.
     }
 
-    public function getLastError($socket = null)
+    public function getErrorMsg()
     {
-        // TODO: Implement getLastErrorNo() method.
+        // TODO: Implement getErrorNo() method.
     }
 }
