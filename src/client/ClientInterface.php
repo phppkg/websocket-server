@@ -6,13 +6,13 @@
  * Time: 12:41
  */
 
-namespace inhere\webSocket\client\drivers;
+namespace inhere\webSocket\client;
 
 /**
- * Interface IClientDriver
- * @package inhere\webSocket\client\drivers
+ * Interface ClientInterface
+ * @package inhere\webSocket\client
  */
-interface IClientDriver
+interface ClientInterface
 {
     const ON_CONNECT   = 'connect';
     const ON_OPEN      = 'open';

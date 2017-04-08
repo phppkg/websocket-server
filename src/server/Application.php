@@ -8,7 +8,7 @@
 
 namespace inhere\webSocket\server;
 
-use inhere\library\traits\TraitUseSimpleOption;
+use inhere\library\traits\TraitSimpleOption;
 use inhere\webSocket\handlers\IRouteHandler;
 use inhere\webSocket\handlers\RootHandler;
 use inhere\webSocket\parts\MessageBag;
@@ -48,7 +48,7 @@ use inhere\webSocket\http\Response;
  */
 class Application
 {
-    use TraitUseSimpleOption;
+    use TraitSimpleOption;
 
     // custom ws handler position
     const OPEN_HANDLER = 0;

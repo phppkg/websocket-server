@@ -9,7 +9,7 @@
 namespace inhere\webSocket\server;
 
 use inhere\library\traits\TraitSimpleFixedEvent;
-use inhere\library\traits\TraitUseSimpleOption;
+use inhere\library\traits\TraitSimpleOption;
 
 /**
  * Class BaseWebSocket
@@ -17,7 +17,7 @@ use inhere\library\traits\TraitUseSimpleOption;
  */
 abstract class BaseWebSocket
 {
-    use TraitUseSimpleOption;
+    use TraitSimpleOption;
     use TraitSimpleFixedEvent;
 
     /**

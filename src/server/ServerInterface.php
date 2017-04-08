@@ -6,13 +6,13 @@
  * Time: 12:41
  */
 
-namespace inhere\webSocket\server\drivers;
+namespace inhere\webSocket\server;
 
 /**
- * Interface IServerDriver
- * @package inhere\webSocket\server\drivers
+ * Interface ServerInterface
+ * @package inhere\webSocket\server
  */
-interface IServerDriver
+interface ServerInterface
 {
     /**
      * @return bool

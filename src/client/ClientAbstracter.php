@@ -6,35 +6,22 @@
  * Time: 15:55
  */
 
-namespace inhere\webSocket\client\drivers;
+namespace inhere\webSocket\client;
 
 use inhere\exceptions\ConnectException;
-use inhere\library\traits\TraitSimpleFixedEvent;
-use inhere\library\traits\TraitUseSimpleOption;
+use inhere\webSocket\BaseAbstracter;
 use inhere\webSocket\http\Request;
 use inhere\webSocket\http\Response;
 use inhere\webSocket\http\Uri;
 
 /**
- * Class AClientDriver
- * @package inhere\webSocket\client\drivers
+ * Class ClientAbstracter
+ * @package inhere\webSocket\client
  */
-abstract class AClientDriver implements IClientDriver
+abstract class ClientAbstracter extends BaseAbstracter implements ClientInterface
 {
-    use TraitSimpleFixedEvent;
-    use TraitUseSimpleOption;
-
-    /**
-     * Websocket version
-     */
-    const WS_VERSION = '13';
-
     const PROTOCOL_WS = 'ws';
     const PROTOCOL_WSS = 'wss';
-
-    // abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ!"§$%&/()=[]{}
-    const TOKEN_CHARS = 'abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ!"$&/()=[]{}0123456789';
-    const GUID = '258EAFA5-E914-47DA-95CA-C5AB0DC85B11';
 
     const DEFAULT_HOST = '127.0.0.1';
     const DEFAULT_PORT = 8080;
@@ -279,7 +266,7 @@ abstract class AClientDriver implements IClientDriver
         }
 
         $secAccept = trim($matches[1]);
-        $genKey = base64_encode(pack('H*', sha1($this->key . self::GUID)));
+        $genKey = base64_encode(pack('H*', sha1($this->key . self::SIGN_KEY)));
 
         if ($secAccept !== $genKey) {
             $this->log("check response header is failed!\n sec-accept: {$secAccept}，sec-local: {$genKey}");
@@ -447,24 +434,6 @@ abstract class AClientDriver implements IClientDriver
         return $string;
     }
 
-
-    /**
-     * Generate a random string for WebSocket key.(for client)
-     * @return string Random string
-     */
-    public function genKey(): string
-    {
-        $key = '';
-        $chars = self::TOKEN_CHARS;
-        $chars_length = strlen($chars);
-
-        for ($i = 0; $i < 16; $i++) {
-            $key .= $chars[random_int(0, $chars_length - 1)]; //mt_rand
-        }
-
-        return base64_encode($key);
-    }
-
     /**
      * @param string $data
      * @param string $opCode
@@ -592,120 +561,7 @@ abstract class AClientDriver implements IClientDriver
             return false;
         }
 
-        return $final ? $payload : $payload . $this->receive();
-    }
-    /**
-     * @param $payload
-     * @param string $type
-     * @param bool $masked
-     * @return bool|string
-     */
-    private function hybi10Encode($payload, $type = 'text', $masked = true)
-    {
-        $frameHead = array();
-        $payloadLength = strlen($payload);
-
-        switch ($type) {
-            //文本内容
-            case 'text':
-                // first byte indicates FIN, Text-Frame (10000001):
-                $frameHead[0] = 129;
-                break;
-            //二进制内容
-            case 'binary':
-            case 'bin':
-                // first byte indicates FIN, Text-Frame (10000010):
-                $frameHead[0] = 130;
-                break;
-            case 'close':
-                // first byte indicates FIN, Close Frame(10001000):
-                $frameHead[0] = 136;
-                break;
-            case 'ping':
-                // first byte indicates FIN, Ping frame (10001001):
-                $frameHead[0] = 137;
-                break;
-            case 'pong':
-                // first byte indicates FIN, Pong frame (10001010):
-                $frameHead[0] = 138;
-                break;
-        }
-
-        // set mask and payload length (using 1, 3 or 9 bytes)
-        if ($payloadLength > 65535) {
-            $payloadLengthBin = str_split(sprintf('%064b', $payloadLength), 8);
-            $frameHead[1] = ($masked === true) ? 255 : 127;
-
-            for ($i = 0; $i < 8; $i++) {
-                $frameHead[$i + 2] = bindec($payloadLengthBin[$i]);
-            }
-
-            // most significant bit MUST be 0 (close connection if frame too big)
-            if ($frameHead[2] > 127) {
-                $this->close(); // todo ...
-                return false;
-            }
-        } elseif ($payloadLength > 125) {
-            $payloadLengthBin = str_split(sprintf('%016b', $payloadLength), 8);
-            $frameHead[1] = ($masked === true) ? 254 : 126;
-            $frameHead[2] = bindec($payloadLengthBin[0]);
-            $frameHead[3] = bindec($payloadLengthBin[1]);
-        } else {
-            $frameHead[1] = ($masked === true) ? $payloadLength + 128 : $payloadLength;
-        }
-
-        // convert frame-head to string:
-        foreach ($frameHead as $i => $v) {
-            $frameHead[$i] = chr($frameHead[$i]);
-        }
-
-        // generate a random mask:
-        $mask = array();
-        if ($masked === true) {
-            for ($i = 0; $i < 4; $i++) {
-                $mask[$i] = chr(random_int(0, 255));
-            }
-
-            $frameHead = array_merge($frameHead, $mask);
-        }
-
-        $frame = implode('', $frameHead);
-
-        // append payload to frame:
-        for ($i = 0; $i < $payloadLength; $i++) {
-            $frame .= $masked ? $payload[$i] ^ $mask[$i % 4] : $payload[$i];
-        }
-
-        return $frame;
-    }
-    /**
-     * @param $data
-     * @return string
-     * @throws \InvalidArgumentException
-     */
-    private function hybi10Decode($data)
-    {
-        if (!$data) {
-            throw new \InvalidArgumentException('data is empty');
-        }
-
-        $bytes = $data;
-        $secondByte = sprintf('%08b', ord($bytes[1]));
-        $masked = '1' === $secondByte[0];
-        $dataLength = ($masked === true) ? ord($bytes[1]) & 127 : ord($bytes[1]);
-
-        //服务器不会设置mask
-        if ($dataLength === 126) {
-            $decodedData = substr($bytes, 4);
-        } elseif ($dataLength === 127) {
-            $decodedData = substr($bytes, 10);
-        } else {
-            $decodedData = substr($bytes, 2);
-        }
-
-        $this->log("len=$dataLength");
-
-        return $decodedData;
+        return $final ? $payload : ($payload . $this->receive());
     }
 
     /**

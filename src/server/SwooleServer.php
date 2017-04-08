@@ -6,13 +6,15 @@
  * Time: 12:47
  */
 
-namespace inhere\webSocket\server\drivers;
+namespace inhere\webSocket\server;
+
+use inhere\webSocket\server\ServerAbstracter;
 
 /**
- * Class SwooleDriver
- * @package inhere\webSocket\server\drivers
+ * Class Server
+ * @package inhere\webSocket\server
  */
-class SwooleDriver implements IServerDriver
+class SwooleServer extends ServerAbstracter
 {
     /**
      * @return bool

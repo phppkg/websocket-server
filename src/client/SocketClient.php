@@ -6,15 +6,15 @@
  * Time: 11:13
  */
 
-namespace inhere\webSocket\client\drivers;
+namespace inhere\webSocket\client;
 
 use inhere\library\helpers\PhpHelper;
 
 /**
- * Class SocketDriver
- * @package inhere\webSocket\client\drivers
+ * Class SocketClient
+ * @package inhere\webSocket\client
  */
-class SocketsDriver extends AClientDriver
+class SocketClient extends ClientAbstracter
 {
     /**
      * @var string

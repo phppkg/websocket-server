@@ -6,16 +6,15 @@
  * Time: 12:44
  */
 
-namespace inhere\webSocket\client\drivers;
+namespace inhere\webSocket\client;
 
 use inhere\exceptions\ConnectException;
-use inhere\webSocket\http\Request;
 
 /**
- * Class StreamsDriver
- * @package inhere\webSocket\client\drivers
+ * Class StreamsClient
+ * @package inhere\webSocket\client
  */
-class StreamsDriver extends AClientDriver
+class StreamsClient extends ClientAbstracter
 {
     /**
      * @var string

@@ -6,13 +6,15 @@
  * Time: 12:05
  */
 
-namespace inhere\webSocket\server\drivers;
+namespace inhere\webSocket\server;
+
+use inhere\webSocket\server\ServerAbstracter;
 
 /**
- * Class StreamDriver
- * @package inhere\webSocket\server\drivers
+ * Class StreamsServer
+ * @package inhere\webSocket\server
  */
-class StreamDriver implements IServerDriver
+class StreamsServer extends ServerAbstracter
 {
     /**
      * @inheritdoc

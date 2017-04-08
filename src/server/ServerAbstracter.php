@@ -8,23 +8,14 @@
 
 namespace inhere\webSocket\server;
 
-use inhere\library\traits\TraitSimpleFixedEvent;
-use inhere\library\traits\TraitUseSimpleOption;
+use inhere\webSocket\BaseAbstracter;
 
 /**
  * Class AServerDriver
- * @package inhere\webSocket
+ * @package inhere\webSocket\server
  */
-abstract class AServerDriver
+abstract class ServerAbstracter extends BaseAbstracter implements ServerInterface
 {
-    use TraitUseSimpleOption;
-    use TraitSimpleFixedEvent;
-
-    /**
-     * version
-     */
-    const VERSION = '0.5.1';
-
     /**
      * Websocket blob type.
      */
@@ -241,13 +232,13 @@ abstract class AServerDriver
      * @param null|resource $socket
      * @return bool
      */
-    abstract public function getLastErrorNo($socket = null);
+    abstract public function getErrorNo($socket = null);
 
     /**
      * @param null|resource $socket
      * @return string
      */
-    abstract public function getLastError($socket = null);
+    abstract public function getErrorMsg($socket = null);
 
     /////////////////////////////////////////////////////////////////////////////////////////
     /// helper method
@@ -302,16 +293,6 @@ abstract class AServerDriver
         }
 
         return $decoded;
-    }
-
-    /**
-     * Generate WebSocket sign.(for server)
-     * @param string $key
-     * @return string
-     */
-    public function genSign(string $key): string
-    {
-        return base64_encode(sha1(trim($key) . self::SIGN_KEY, true));
     }
 
     /**

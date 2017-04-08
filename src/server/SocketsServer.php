@@ -6,16 +6,16 @@
  * Time: 12:03
  */
 
-namespace inhere\webSocket\server\drivers;
+namespace inhere\webSocket\server;
 
-use inhere\webSocket\server\AServerDriver;
+use inhere\webSocket\server\ServerAbstracter;
 
 /**
- * Class SocketsDriver
+ * Class SocketsServer
  * power by `sockets` extension
- * @package inhere\webSocket\server\drivers
+ * @package inhere\webSocket\server
  */
-class SocketsDriver extends AServerDriver
+class SocketsServer extends ServerAbstracter
 {
     /**
      * @return bool
@@ -37,14 +37,14 @@ class SocketsDriver extends AServerDriver
         // response data to client
         socket_write($socket, $data, $length > 0 ? $length : strlen($data));
 
-        return $this->getLastErrorNo($socket);
+        return $this->getErrorNo($socket);
     }
 
     /**
      * @param null|resource $socket
      * @return bool
      */
-    public function getLastErrorNo($socket = null)
+    public function getErrorNo($socket = null)
     {
         return socket_last_error($socket);
     }
@@ -53,7 +53,7 @@ class SocketsDriver extends AServerDriver
      * @param null|resource $socket
      * @return string
      */
-    public function getLastError($socket = null)
+    public function getErrorMsg($socket = null)
     {
         return socket_strerror(socket_last_error($socket));
     }

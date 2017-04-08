@@ -8,7 +8,7 @@
 
 namespace inhere\webSocket\handlers;
 
-use inhere\library\traits\TraitUseSimpleOption;
+use inhere\library\traits\TraitSimpleOption;
 use inhere\webSocket\server\Application;
 use inhere\webSocket\dataParser\ComplexDataParser;
 use inhere\webSocket\dataParser\IDataParser;
@@ -22,7 +22,7 @@ use inhere\webSocket\parts\MessageBag;
  */
 abstract class ARouteHandler implements IRouteHandler
 {
-    use TraitUseSimpleOption;
+    use TraitSimpleOption;
 
     // custom ws handler position
     const OPEN_HANDLER = 0;

@@ -6,7 +6,7 @@
  * Time: 12:46
  */
 
-namespace inhere\webSocket\client\drivers;
+namespace inhere\webSocket\client;
 
 use inhere\exceptions\ConnectException;
 use inhere\exceptions\UnknownCalledException;
@@ -14,9 +14,9 @@ use Swoole\Client;
 
 /**
  * Class SwooleDriver
- * @package inhere\webSocket\client\drivers
+ * @package inhere\webSocket\client
  */
-class SwooleDriver extends AClientDriver
+class SwooleClient extends ClientAbstracter
 {
     /**
      * @var string
