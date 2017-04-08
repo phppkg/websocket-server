@@ -64,7 +64,7 @@ class WebSocketServer extends BaseWebSocket
         // 最大允许连接数量
         'max_conn' => 25,
         // 最大数据接收长度 1024 2048
-        'max_data_len' => 1024,
+        'max_data_len' => 2048,
     ];
 
     /**
@@ -146,7 +146,7 @@ class WebSocketServer extends BaseWebSocket
         // create and prepare
         $this->prepareMasterSocket();
 
-        $maxLen = (int)$this->getOption('max_data_len', 1024);
+        $maxLen = (int)$this->getOption('max_data_len', 2048);
 
         // interval time
         $setTime = (int)$this->getOption('sleep_ms', 800);
@@ -443,7 +443,7 @@ class WebSocketServer extends BaseWebSocket
      */
     public function broadcast(string $data, array $receivers = [], array $expected = [], int $sender = 0): int
     {
-        if ( !$data ) {
+        if ( !$data || !$this->count()) {
             return 0;
         }
 

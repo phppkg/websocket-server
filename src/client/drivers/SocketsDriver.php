@@ -8,12 +8,19 @@
 
 namespace inhere\webSocket\client\drivers;
 
+use inhere\library\helpers\PhpHelper;
+
 /**
  * Class SocketDriver
  * @package inhere\webSocket\client\drivers
  */
 class SocketsDriver extends AClientDriver
 {
+    /**
+     * @var string
+     */
+    protected $name = 'sockets';
+
     /**
      * @var resource
      */
@@ -68,7 +75,7 @@ class SocketsDriver extends AClientDriver
         $this->setTimeout($timeout, $timeout);
         $this->setSocketOption(SO_REUSEADDR, 1);
 
-        if (!socket_set_nonblock($this->socket)) {
+        if (!PhpHelper::isWin() && !socket_set_nonblock($this->socket)) {
             $this->fetchError();
             $this->print('[ERROR] Unable to set non-block on socket: '. $this->errMsg, true, $this->errNo);
         }
@@ -94,10 +101,75 @@ class SocketsDriver extends AClientDriver
             $this->print('[ERROR] Unable to set block on socket: ' . $this->errMsg, true, $errNo);
         }
 
-        if ( !socket_set_block($this->socket) ) {
+        if (!PhpHelper::isWin() && !socket_set_block($this->socket)) {
             $this->fetchError();
             $this->print('[ERROR] Unable to set block on socket: ' . $this->errMsg, true, $this->errNo);
         }
+    }
+
+    /**
+     * @param int $length
+     * @return string
+     */
+    public function readResponseHeader($length = 2048)
+    {
+        $headerBuffer = '';
+
+        while(true) {
+            socket_recv($this->socket, $_tmp, $length, null);
+
+            if (!$_tmp) {
+                return '';
+            }
+
+            $headerBuffer .= $_tmp;
+
+            if (strpos($headerBuffer, self::HEADER_END) !== false) {
+                break;
+            }
+        }
+
+        return $headerBuffer;
+    }
+
+    /**
+     * 发送数据
+     * @param string $data
+     * @return int
+     */
+    public function write($data)
+    {
+        // socket_write($this->socket, $data, strlen($data));
+        $length = strlen($data);
+        $written = 0;
+        $timeoutSend = $this->getOption('timeout_send', 0.3);
+        $lastTime = $timeoutSend + microtime(true);
+
+        // 总超时，for循环中计时
+        while ($written < $length) {
+            $n = socket_write($this->socket, substr($data, $written), $length - $written);
+
+            //超过总时间
+            if (microtime(true) > $lastTime) {
+                return false;
+            }
+
+            if ($n === false) {
+                $this->fetchError();
+                $errNo = $this->errNo;
+
+                //判断错误信息，EAGAIN EINTR，重写一次
+                if ($errNo === SOCKET_EAGAIN || $errNo === SOCKET_EINTR) {
+                    continue;
+                }
+
+                return false;
+            }
+
+            $written += $n;
+        }
+
+        return $written;
     }
 
     /**
@@ -106,7 +178,7 @@ class SocketsDriver extends AClientDriver
      * @param null $flags allow: 1 MSG_OOB 128 MSG_EOR 512 MSG_EOF 4 MSG_DONTROUTE
      * @return bool|int
      */
-    public function send($data, $flags = null)
+    public function rawSend($data, $flags = null)
     {
         $length = strlen($data);
         $written = 0;
@@ -139,6 +211,13 @@ class SocketsDriver extends AClientDriver
 
         return $written;
     }
+
+//    public function sendTo($socket, $data)
+//    {
+          // socket_sendto 针对udp套接字发送数据
+//        socket_sendto($socket, $data);
+//    }
+
     /**
      * 接收数据
      * @param int $length 接收数据的长度

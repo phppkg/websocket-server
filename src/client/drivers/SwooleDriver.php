@@ -19,6 +19,11 @@ use Swoole\Client;
 class SwooleDriver extends AClientDriver
 {
     /**
+     * @var string
+     */
+    protected $name = 'swoole';
+
+    /**
      * @var Client
      */
     private $client;
@@ -82,6 +87,10 @@ class SwooleDriver extends AClientDriver
         }
     }
 
+    /**
+     * @param int $length
+     * @return string
+     */
     public function readResponseHeader($length = 2048)
     {
         $headerBuffer = '';
@@ -128,6 +137,11 @@ class SwooleDriver extends AClientDriver
         return $this->client->send($message, $flag);
     }
 
+    public function sendFile(string $filename)
+    {
+        return $this->client->sendfile($filename);
+    }
+
     /**
      * @param null $size
      * @param null $flag
@@ -138,9 +152,12 @@ class SwooleDriver extends AClientDriver
         return $this->client->recv($size, $flag);
     }
 
+    /**
+     * @param bool $force
+     */
     public function close(bool $force = false)
     {
-        $this->client->close();
+        $this->client->close($force);
     }
 
     /**

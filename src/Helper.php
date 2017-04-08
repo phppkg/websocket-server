@@ -8,7 +8,6 @@
 
 namespace inhere\webSocket;
 
-
 use inhere\webSocket\server\BaseWebSocket;
 
 class Helper

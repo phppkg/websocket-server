@@ -21,7 +21,7 @@ use inhere\webSocket\parts\Uri;
  * Class WebSocketClient
  * @package inhere\webSocket
  */
-class WebSocketClient
+class ClientFactory
 {
     /**
      * version
@@ -55,46 +55,6 @@ class WebSocketClient
     const DEFAULT_HOST = '127.0.0.1';
 
     /**
-     * @var resource
-     */
-    private $callbacks;
-
-    /**
-     * @var IClientDriver
-     */
-    private $driver;
-
-    /**
-     * @var array
-     */
-    protected $userOptions = [
-        'debug' => false,
-
-        'open_log' => true,
-        'log_file' => '',
-
-        'timeout' => 3,
-        'protocol' => 'ws', // wss
-
-        // stream context
-        'context' => null,
-
-        'auth' => [
-            // 'username'=>"",
-            // 'password'=>"",
-            // 'type'=>"" // basic | digest
-        ],
-
-        // append headers
-        'headers' => [
-            'origin' => '',
-        ],
-
-        // append headers
-        'cookies' => [],
-    ];
-
-    /**
      * @var array
      */
     protected static $availableDrivers = [
@@ -104,26 +64,26 @@ class WebSocketClient
     ];
 
     /**
-     * WebSocketClient constructor.
+     * @param string $url
      * @param array $options
-     */
-    public function __construct(array $options = [])
-    {
-        $this->userOptions = $options;
-        $this->callbacks = new \SplFixedArray(4);
-    }
-
-    public function connect($timeout = 0.1, $flag = 0)
-    {
-        $this->getDriver()->connect($timeout, $flag);
-    }
-
-    /**
      * @return IClientDriver
      */
-    protected function autoCreateDriver()
+    public static function make(string $url, array $options = [])
     {
-        $driver = null;
+        $driver = '';
+
+        // if defined the driver name
+        if (isset($options['driver'])) {
+            $driver = $options['driver'];
+            unset($options['driver']);
+        }
+
+        if ($driverClass = self::$availableDrivers[$driver] ?? '') {
+            return new $driverClass($url, $options);
+        }
+
+        // auto choice
+        $client = null;
         $names = [];
 
         /** @var IClientDriver $driverClass */
@@ -131,41 +91,17 @@ class WebSocketClient
             $names[] = $name;
 
             if ($driverClass::isSupported()) {
-                $driver = new $driverClass($this->userOptions);
+                $client = new $driverClass($url, $options);
+                break;
             }
         }
 
-        if (!$driver) {
+        if (!$client) {
             $nameStr = implode(',', $names);
 
             throw new \RuntimeException("You system [$nameStr] is not available. please install relative extension.");
         }
 
-        return $driver;
+        return $client;
     }
-
-    /**
-     * @return IClientDriver
-     */
-    public function getDriver(): IClientDriver
-    {
-        return $this->driver ?: $this->autoCreateDriver();
-    }
-
-    /**
-     * @param IClientDriver $driver
-     */
-    public function setDriver(IClientDriver $driver)
-    {
-        $this->driver = $driver;
-    }
-
-
-    /////////////////////////////////////////////////////////////////////////////////////////
-    /// getter/setter method
-    /////////////////////////////////////////////////////////////////////////////////////////
-
-
-
-
 }

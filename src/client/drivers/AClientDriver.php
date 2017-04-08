@@ -40,6 +40,11 @@ abstract class AClientDriver implements IClientDriver
     const DEFAULT_PORT = 8080;
 
     /**
+     * @var string
+     */
+    protected $name;
+
+    /**
      * eg `ws://127.0.0.1:9501/chat`
      * @var string
      */
@@ -139,6 +144,10 @@ abstract class AClientDriver implements IClientDriver
      */
     public function __construct(string $url, array $options = [])
     {
+        if (!static::isSupported()) {
+            $this->print("[ERROR] Your system is not supported the driver: {$this->name}, by " . static::class, true, -200);
+        }
+
         $this->setOptions($options, true);
 
         $this->url = $url;
@@ -150,11 +159,18 @@ abstract class AClientDriver implements IClientDriver
         $this->port = $uri->getPort();
 
         $this->init();
+
+        $this->log("The webSocket client power by [{$this->name}], server is {$url}");
     }
 
+    /**
+     * destruct
+     */
     public function __destruct()
     {
-        $this->close();
+        if ($this->isConnected()) {
+            $this->close();
+        }
     }
 
     protected function init()
@@ -177,6 +193,37 @@ abstract class AClientDriver implements IClientDriver
         }
     }
 
+    public function start()
+    {
+        if (!$this->isConnected()) {
+            $this->connect();
+        }
+
+        $tickHandler = $this->callbacks[self::ON_TICK];
+        $msgHandler = $this->callbacks[self::ON_MESSAGE];
+
+        while (true) {
+            if ($tickHandler && (call_user_func($tickHandler, $this) === false)) {
+                break;
+            }
+
+            $write = $except = null;
+            $changed = [$this->socket];
+
+            if (stream_select($changed, $write, $except, null) > 0) {
+                foreach ($changed as $socket) {
+                    $message = $this->receive();
+
+                    if ($message !== false && $msgHandler) {
+                        call_user_func($msgHandler, $message, $this);
+                    }
+                }
+            }
+
+            usleep(5000);
+        }
+    }
+
     /**
      * @param float $timeout
      * @param int $flags
@@ -194,7 +241,6 @@ abstract class AClientDriver implements IClientDriver
     /**
      * @param float $timeout
      * @param int $flags
-     * @return mixed
      */
     abstract protected function doConnect($timeout = 0.1, $flags = 0);
 
@@ -232,13 +278,17 @@ abstract class AClientDriver implements IClientDriver
             throw new ConnectException("Connection to '{$this->url}' failed: Server sent invalid upgrade response header:\n$header");
         }
 
-        $secAccept = $matches[1];
+        $secAccept = trim($matches[1]);
+        $genKey = base64_encode(pack('H*', sha1($this->key . self::GUID)));
 
-        if ($secAccept !== base64_encode(pack('H*', sha1($this->key . self::GUID)))) {
+        if ($secAccept !== $genKey) {
+            $this->log("check response header is failed!\n sec-accept: {$secAccept}，sec-local: {$genKey}");
             $this->close();
 
             return false;
         }
+
+        $this->log('the hand shake is successful!');
 
         return true;
     }
@@ -287,10 +337,6 @@ abstract class AClientDriver implements IClientDriver
      */
     public function send($data, $flag = null)
     {
-        if ($flag === self::SEND_ALL_ONCE) {
-            return $this->write($data);
-        }
-
         return $this->sendByFragment($data);
     }
 
@@ -300,7 +346,7 @@ abstract class AClientDriver implements IClientDriver
      * @param bool $masked
      * @return int
      */
-    public function sendByFragment($payload, $opcode = 'text', $masked = true)
+    protected function sendByFragment($payload, $opcode = 'text', $masked = true)
     {
         if ( !$this->connected ) {
             $this->connect();
@@ -366,14 +412,8 @@ abstract class AClientDriver implements IClientDriver
      */
     public function readResponse()
     {
-        $header = $body = '';
-
-        // fgets() 从文件指针中读取一行。 从 handle 指向的文件中读取一行并返回长度最多为 length - 1 字节的字符串。
-        // 碰到换行符（包括在返回值中）、EOF 或者已经读取了 length - 1 字节后停止（看先碰到那一种情况）。
-        // 如果没有指定 length，则默认为 1K，或者说 1024 字节。
-        while ($str = trim(fgets($this->socket, 1024))) {
-            $header .= "$str\n";
-        }
+        $body   = '';
+        $header = $this->readResponseHeader();
 
         // feof() — 测试文件指针是否到了文件结束的位置
         while (!feof($this->socket)) {
@@ -726,6 +766,22 @@ abstract class AClientDriver implements IClientDriver
     public static function getOpCodes(): array
     {
         return self::$opCodes;
+    }
+
+    /**
+     * @return string
+     */
+    public function getName(): string
+    {
+        return $this->name;
+    }
+
+    /**
+     * @return string
+     */
+    public function getUrl(): string
+    {
+        return $this->url;
     }
 
     /**

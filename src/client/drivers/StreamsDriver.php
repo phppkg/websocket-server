@@ -18,6 +18,11 @@ use inhere\webSocket\http\Request;
 class StreamsDriver extends AClientDriver
 {
     /**
+     * @var string
+     */
+    protected $name = 'streams';
+
+    /**
      * @inheritdoc
      */
     public static function isSupported()
@@ -25,38 +30,11 @@ class StreamsDriver extends AClientDriver
         return function_exists('stream_socket_accept');
     }
 
-
-    public function start()
-    {
-        if (!$this->isConnected()) {
-            $this->connect();
-        }
-
-        $tickHandler = $this->callbacks[self::ON_TICK];
-        $msgHandler = $this->callbacks[self::ON_MESSAGE];
-
-        while (true) {
-            if ($tickHandler && (call_user_func($tickHandler, $this) === false)) {
-                break;
-            }
-
-            $write = $except = null;
-            $changed = [$this->socket];
-
-            if (stream_select($changed, $write, $except, null) > 0) {
-                foreach ($changed as $socket) {
-                    $message = $this->receive();
-
-                    if ($message !== false && $msgHandler) {
-                        call_user_func($msgHandler, $message, $this);
-                    }
-                }
-            }
-
-            usleep(5000);
-        }
-    }
-
+    /**
+     * @param float $timeout
+     * @param int $flag
+     * @throws ConnectException
+     */
     protected function doConnect($timeout = 0.3, $flag = 0)
     {
         $uri = $this->getUri();
