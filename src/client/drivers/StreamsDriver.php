@@ -57,7 +57,7 @@ class StreamsDriver extends AClientDriver
         }
     }
 
-    public function connect($timeout = 3, $flag = 0)
+    protected function doConnect($timeout = 0.3, $flag = 0)
     {
         $uri = $this->getUri();
         $scheme = $uri->getScheme() ?: self::PROTOCOL_WS;
@@ -79,11 +79,11 @@ class StreamsDriver extends AClientDriver
         $host = $this->getHost();
         $port = $this->getPort();
         $timeout = $timeout ?: $this->getOption('timeout');
-        $schemeHost = ($scheme === self::PROTOCOL_WSS ? 'ssl' : 'tcp') . "://$host";// 'ssl', 'tls', 'wss'
+        $schemeHost = ($scheme === self::PROTOCOL_WSS ? 'ssl' : 'tcp') . "://$host"; // 'ssl', 'tls', 'wss'
         $remote = $schemeHost . ($port ? ":$port" : '');
 
         // Open the socket.  @ is there to suppress warning that we will catch in check below instead.
-        $this->socket = @stream_socket_client($remote, $errNo, $errStr, $timeout, STREAM_CLIENT_CONNECT, $context);
+        $this->socket = @stream_socket_client($remote, $errNo, $errStr, (int)$timeout, STREAM_CLIENT_CONNECT, $context);
 
         // can also use: fsockopen — 打开一个网络连接或者一个Unix套接字连接
         // $this->socket = fsockopen($schemeHost, $port, $errNo, $errStr, $timeout);
@@ -93,19 +93,7 @@ class StreamsDriver extends AClientDriver
         }
 
         // Set timeout on the stream as well.
-        stream_set_timeout($this->socket, $timeout);
-
-        $this->setConnected(true);
-
-        $request = $this->request->toString();
-        $this->log("Request header: \n$request");
-        $this->write($request);
-
-        // Get server response header
-        $header = $this->readResponseHeader();
-
-        // handshake
-        $this->doHandShake($header);
+        stream_set_timeout($this->socket, (int)$timeout);
     }
 
     /**

@@ -8,6 +8,7 @@
 
 namespace inhere\webSocket\client\drivers;
 
+use inhere\exceptions\ConnectException;
 use inhere\exceptions\UnknownCalledException;
 use Swoole\Client;
 
@@ -31,11 +32,35 @@ class SwooleDriver extends AClientDriver
     }
 
     /**
-     * @param float $timeout
-     * @param int $flag
-     * @return bool
+     * SwooleDriver constructor.
+     * @param string $url
+     * @param array $options
      */
-    public function connect($timeout = 0.1, $flag = 0)
+    public function __construct(string $url, array $options = [])
+    {
+        $this->options['client'] = [
+            // 结束符检测
+            'open_eof_check' => true,
+            'package_eof' => self::HEADER_END,
+            'package_max_length' => 1024 * 1024 * 2, //协议最大长度
+
+            // 长度检测
+//            'open_length_check'     => 1,
+//            'package_length_type'   => 'N',
+//            'package_length_offset' => 0,       //第N个字节是包长度的值
+//            'package_body_offset'   => 4,       //第几个字节开始计算长度
+
+            // Socket缓存区尺寸
+            'socket_buffer_size'     => 1024*1024*2, //2M缓存区
+        ];
+
+        parent::__construct($url, $options);
+    }
+
+    /**
+     * @inheritdoc
+     */
+    protected function doConnect($timeout = 0.1, $flag = 0)
     {
         $type = SWOOLE_SOCK_TCP;
 
@@ -55,35 +80,6 @@ class SwooleDriver extends AClientDriver
         if ( !$this->client->connect($this->getHost(), $this->getPort(), $timeout) ) {
             $this->print("[ERROR] connect failed. Error: {$this->client->errCode}", true, -404);
         }
-
-        $this->setConnected(true);
-
-        $request = $this->request->toString();
-        $this->log("Request header: \n$request");
-
-        // WebSocket握手
-        if ($this->send($request) === false) {
-            return false;
-        }
-
-        $headerBuffer = '';
-        while(true) {
-            $_tmp = $this->receive();
-
-            if ($_tmp) {
-                $headerBuffer .= $_tmp;
-
-                if (substr($headerBuffer, -4, 4) !== self::HEADER_END) {
-                    continue;
-                }
-            } else {
-                return false;
-            }
-
-            return $this->doHandShake($headerBuffer);
-        }
-
-        return false;
     }
 
     public function readResponseHeader($length = 2048)
@@ -104,6 +100,22 @@ class SwooleDriver extends AClientDriver
         }
 
         return $headerBuffer;
+    }
+
+    /**
+     * @param string $data
+     * @return bool|int
+     * @throws ConnectException
+     */
+    protected function write($data)
+    {
+        $written = $this->client->send($data);
+
+        if ($written < ($dataLen = strlen($data))) {
+            throw new ConnectException("Could only write $written out of $dataLen bytes.");
+        }
+
+        return $written;
     }
 
     /**
@@ -132,6 +144,30 @@ class SwooleDriver extends AClientDriver
     }
 
     /**
+     * @return resource
+     */
+    public function getSocket(): resource
+    {
+        return $this->client->sock;
+    }
+
+    /**
+     * @return array
+     */
+    public function getSockName()
+    {
+        return $this->client->getsockname();
+    }
+
+    /**
+     * @return mixed
+     */
+    public function getPeerName()
+    {
+        return $this->client->getpeername();
+    }
+
+    /**
      * @param $name
      * @param $value
      */
@@ -146,6 +182,22 @@ class SwooleDriver extends AClientDriver
     public function setClientOptions(array $options)
     {
         $this->client->set($options);
+    }
+
+    /**
+     * @return int
+     */
+    public function getErrorNo()
+    {
+        return $this->client->errCode;
+    }
+
+    /**
+     * @return string
+     */
+    public function getErrorMsg()
+    {
+        return socket_strerror($this->client->errCode);
     }
 
     public function __call($method, array $args = [])

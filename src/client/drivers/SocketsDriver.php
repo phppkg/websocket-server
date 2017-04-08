@@ -53,7 +53,7 @@ class SocketsDriver extends AClientDriver
     /**
      * @inheritdoc
      */
-    public function connect($timeout = 0.1, $flag = 0)
+    protected function doConnect($timeout = 0.1, $flag = 0)
     {
         $this->socket = socket_create(AF_INET, SOCK_STREAM, SOL_TCP);
 

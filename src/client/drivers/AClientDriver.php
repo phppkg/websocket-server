@@ -102,7 +102,7 @@ abstract class AClientDriver implements IClientDriver
         'open_log' => true,
         'log_file' => '',
 
-        'timeout' => 3,
+        'timeout' => 0.2,
         // 数据块大小 发送数据时将会按这个大小拆分发送
         'fragment_size' => 1024,
 
@@ -177,14 +177,50 @@ abstract class AClientDriver implements IClientDriver
         }
     }
 
-    abstract public function connect($timeout = 0.1, $flag = 0);
+    /**
+     * @param float $timeout
+     * @param int $flags
+     * @return bool
+     */
+    public function connect($timeout = 0.1, $flags = 0)
+    {
+        $this->doConnect($timeout, $flags);
+
+        $this->connected = true;
+
+        return $this->doHandShake();
+    }
 
     /**
+     * @param float $timeout
+     * @param int $flags
+     * @return mixed
+     */
+    abstract protected function doConnect($timeout = 0.1, $flags = 0);
+
+    /**
+     * doHandShake
+     * @return bool
+     */
+    public function doHandShake()
+    {
+        $request = $this->request->toString();
+        $this->log("Request header: \n$request");
+        $this->write($request);
+
+        // Get server response header
+        $header = $this->readResponseHeader();
+
+        return $this->checkResponse($header);
+    }
+
+    /**
+     * check the handShake Response
      * @param string $header
      * @return bool
      * @throws ConnectException
      */
-    public function doHandShake($header)
+    protected function checkResponse($header)
     {
         $this->log("Response header: \n$header");
 
@@ -206,28 +242,6 @@ abstract class AClientDriver implements IClientDriver
 
         return true;
     }
-
-    public function onOpen(callable $callback)
-    {
-        $this->callbacks[self::ON_OPEN] = $callback;
-    }
-
-    public function onMessage(callable $callback)
-    {
-        $this->callbacks[self::ON_MESSAGE] = $callback;
-    }
-
-    public function onClose(callable $callback)
-    {
-        $this->callbacks[self::ON_CLOSE] = $callback;
-    }
-
-    public function onError(callable $callback)
-    {
-        $this->callbacks[self::ON_ERROR] = $callback;
-    }
-
-
 
     /**
      * @param $length
