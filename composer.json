@@ -1,8 +1,8 @@
 {
   "name": "inhere/websocket",
   "type": "library",
-  "description": "a lightweight webSocket application library",
-  "keywords": ["library","webSocket","webSocket-application"],
+  "description": "a lightweight webSocket application library, server and client by sockets,streams,swoole",
+  "keywords": ["library","webSocket","webSocket-application", "sockets", "streams", "swoole"],
   "homepage": "http://github.com/inhere/php-webSocket",
   "license": "MIT",
   "authors": [
@@ -14,7 +14,6 @@
   ],
   "require": {
     "php": ">=7.0.0",
-    "ext-sockets": "*",
     "inhere/console": "dev-master",
     "inhere/library": "dev-master"
   },
