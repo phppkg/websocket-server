@@ -12,9 +12,7 @@ namespace inhere\webSocket\http;
  * Class Request
  *
  * @property string $method
- *
  * @property Uri $uri
- *
  * @property-read string $origin
  *
  */

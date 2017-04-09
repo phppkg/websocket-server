@@ -41,14 +41,6 @@ class Cookies extends SimpleCollection
     ];
 
     /**
-     * @param array $cookies
-     * @return Cookies
-     */
-    public static function make(array $cookies = [])
-    {
-        return new self($cookies);
-    }
-    /**
      * Set default cookie properties
      * @param array $settings
      */

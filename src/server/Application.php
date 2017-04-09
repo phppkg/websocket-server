@@ -9,8 +9,8 @@
 namespace inhere\webSocket\server;
 
 use inhere\library\traits\TraitSimpleOption;
-use inhere\webSocket\handlers\IRouteHandler;
-use inhere\webSocket\handlers\RootHandler;
+use inhere\webSocket\server\handlers\IRouteHandler;
+use inhere\webSocket\server\handlers\RootHandler;
 use inhere\webSocket\parts\MessageBag;
 use inhere\webSocket\http\Request;
 use inhere\webSocket\http\Response;

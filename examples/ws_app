@@ -12,7 +12,7 @@ require __DIR__ . '/../../../autoload.php';
 
 use inhere\webSocket\server\Application;
 use inhere\webSocket\http\Request;
-use \inhere\webSocket\handlers\IRouteHandler;
+use \inhere\webSocket\server\handlers\IRouteHandler;
 
 $app = new Application('', 9501);
 
@@ -28,7 +28,7 @@ $app->onClose(function (Application $app, int $id, array $client) {
     ]);
 });
 
-$rootHandler = $app->route('/', new \inhere\webSocket\handlers\RootHandler());
+$rootHandler = $app->route('/', new \inhere\webSocket\server\handlers\RootHandler());
 
 // commands
 $rootHandler->add('test', function ($data, $index, IRouteHandler $handler) {

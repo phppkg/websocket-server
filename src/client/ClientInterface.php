@@ -14,14 +14,6 @@ namespace inhere\webSocket\client;
  */
 interface ClientInterface
 {
-    const ON_CONNECT   = 'connect';
-    const ON_OPEN      = 'open';
-    const ON_MESSAGE   = 'message';
-    const ON_CLOSE     = 'close';
-    const ON_ERROR     = 'error';
-    const ON_TICK      = 'tick';
-
-    const HEADER_END     = "\r\n\r\n";
 
     /**
      * @return bool

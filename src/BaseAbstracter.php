@@ -39,6 +39,16 @@ abstract class BaseAbstracter
 
     const DEFAULT_PORT = 8080;
 
+    const HEADER_END     = "\r\n\r\n";
+
+    // 事件的回调函数名
+    const ON_CONNECT   = 'connect';
+    const ON_HANDSHAKE = 'handshake';
+    const ON_OPEN      = 'open';
+    const ON_MESSAGE   = 'message';
+    const ON_CLOSE     = 'close';
+    const ON_ERROR     = 'error';
+
     /**
      * @var string
      */

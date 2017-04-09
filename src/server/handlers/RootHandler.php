@@ -6,7 +6,7 @@
  * Time: 15:34
  */
 
-namespace inhere\webSocket\handlers;
+namespace inhere\webSocket\server\handlers;
 
 use inhere\webSocket\http\Request;
 use inhere\webSocket\http\Response;
@@ -16,7 +16,7 @@ use inhere\webSocket\http\Response;
  *
  * handle the root '/' webSocket request
  *
- * @package inhere\webSocket\handlers
+ * @package inhere\webSocket\server\handlers
  */
 class RootHandler extends ARouteHandler
 {

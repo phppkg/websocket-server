@@ -26,6 +26,8 @@ abstract class ClientAbstracter extends BaseAbstracter implements ClientInterfac
     const DEFAULT_HOST = '127.0.0.1';
     const DEFAULT_FRAGMENT_SIZE = 1024;
 
+    const ON_TICK      = 'tick';
+
     /**
      * @var string
      */

@@ -8,6 +8,7 @@
 
 namespace inhere\webSocket\server;
 
+use inhere\exceptions\ConnectException;
 use inhere\webSocket\server\ServerAbstracter;
 
 /**
@@ -24,22 +25,24 @@ class StreamsServer extends ServerAbstracter
         return function_exists('stream_socket_accept');
     }
 
-    public function start()
+    public function doStart()
     {
-        $this->socket = stream_socket_server(
+        $this->master = stream_socket_server(
             $this->getUri(),
-            $errno,
-            $errstr,
+            $errNo,
+            $errStr,
             STREAM_SERVER_BIND | STREAM_SERVER_LISTEN,
             $this->getStreamContext()
         );
-        if (!$this->socket) {
-            throw new ConnectionException(sprintf(
+
+        if (!$this->master) {
+            throw new ConnectException(sprintf(
                 'Could not listen on socket: %s (%d)',
-                $errstr,
-                $errno
+                $errStr,
+                $errNo
             ));
         }
+
         $this->listening = true;
     }
 }

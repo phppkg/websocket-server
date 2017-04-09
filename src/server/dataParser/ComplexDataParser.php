@@ -6,13 +6,13 @@
  * Time: 9:27
  */
 
-namespace inhere\webSocket\dataParser;
+namespace inhere\webSocket\server\dataParser;
 
-use inhere\webSocket\handlers\IRouteHandler;
+use inhere\webSocket\server\handlers\IRouteHandler;
 
 /**
  * Class ComplexDataParser
- * @package inhere\webSocket\dataParser
+ * @package inhere\webSocket\server\dataParser
  */
 class ComplexDataParser implements IDataParser
 {

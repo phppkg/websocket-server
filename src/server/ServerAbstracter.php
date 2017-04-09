@@ -9,6 +9,8 @@
 namespace inhere\webSocket\server;
 
 use inhere\webSocket\BaseAbstracter;
+use inhere\webSocket\http\Request;
+use inhere\webSocket\http\Response;
 
 /**
  * Class AServerDriver
@@ -26,19 +28,11 @@ abstract class ServerAbstracter extends BaseAbstracter implements ServerInterfac
      */
     const BINARY_TYPE_ARRAY_BUFFER = "\x82";
 
-    // 事件的回调函数名
-    const ON_CONNECT   = 'connect';
-    const ON_HANDSHAKE = 'handshake';
-    const ON_OPEN      = 'open';
-    const ON_MESSAGE   = 'message';
-    const ON_CLOSE     = 'close';
-    const ON_ERROR     = 'error';
-
     /**
      * the master socket
      * @var resource
      */
-    private $master;
+    protected $socket;
 
     /**
      * 连接的客户端列表
@@ -47,7 +41,7 @@ abstract class ServerAbstracter extends BaseAbstracter implements ServerInterfac
      *  id => socket,
      * ]
      */
-    private $sockets = [];
+    protected $clients = [];
 
     /**
      * 连接的客户端信息列表
@@ -56,7 +50,7 @@ abstract class ServerAbstracter extends BaseAbstracter implements ServerInterfac
      *  cid => [ ip=> string , port => int, handshake => bool ], // bool: handshake status.
      * ]
      */
-    private $clients = [];
+    protected $metas = [];
 
     /**
      * default client info data
@@ -80,6 +74,14 @@ abstract class ServerAbstracter extends BaseAbstracter implements ServerInterfac
     ];
 
     /**
+     * @return array
+     */
+    public function getSupportedEvents(): array
+    {
+        return [ self::ON_CONNECT, self::ON_HANDSHAKE, self::ON_OPEN, self::ON_MESSAGE, self::ON_CLOSE, self::ON_ERROR];
+    }
+
+    /**
      * WebSocket constructor.
      * @param string $host
      * @param int $port
@@ -92,6 +94,151 @@ abstract class ServerAbstracter extends BaseAbstracter implements ServerInterfac
 
         $this->setOptions($options, true);
     }
+
+    protected function beforeStart()
+    {}
+
+    protected function prepareMasterSocket()
+    {}
+
+    /**
+     * do start server
+     */
+    abstract protected function doStart();
+
+    /**
+     * start server
+     */
+    public function start()
+    {
+        $this->beforeStart();
+
+        // create and prepare
+        $this->prepareMasterSocket();
+
+        $this->doStart();
+    }
+
+    /////////////////////////////////////////////////////////////////////////////////////////
+    /// event method
+    /////////////////////////////////////////////////////////////////////////////////////////
+
+    /**
+     * 增加一个初次连接的客户端 同时记录到握手列表，标记为未握手
+     * @param resource $socket
+     */
+    protected function connect($socket)
+    {}
+
+    /**
+     * 响应升级协议(握手)
+     * Response to upgrade agreement (handshake)
+     * @param resource $socket
+     * @param string $data
+     * @param int $cid
+     * @return bool|mixed
+     */
+    protected function handshake($socket, string $data, int $cid)
+    {
+        $this->log("Ready to shake hands with the #$cid client connection. request:\n$data");
+        $meta = $this->metas[$cid];
+        $response = new Response();
+
+        // 解析请求头信息错误
+        if ( !preg_match("/Sec-WebSocket-Key: (.*)\r\n/i",$data, $match) ) {
+            $this->log("handle handshake failed! [Sec-WebSocket-Key] not found in header. Data: \n $data", 'error');
+
+            $response
+                ->setStatus(404)
+                ->setBody('<b>400 Bad Request</b><br>[Sec-WebSocket-Key] not found in header.');
+
+            $this->writeTo($socket, $response->toString());
+
+            return $this->close($cid, $socket, false);
+        }
+
+        // 解析请求头信息
+        $request = Request::makeByParseRawData($data);
+
+        // 触发 handshake 事件回调，如果返回 false -- 拒绝连接，比如需要认证，限定路由，限定ip，限定domain等
+        // 就停止继续处理。并返回信息给客户端
+        if ( false === $this->trigger(self::ON_HANDSHAKE, [$request, $response, $cid]) ) {
+            $this->log("The #$cid client handshake's callback return false, will close the connection", 'notice');
+            $this->writeTo($socket, $response->toString());
+
+            return $this->close($cid, $socket, false);
+        }
+
+        // general key
+        $key = $this->genSign($match[1]);
+        $response
+            ->setStatus(101)
+            ->setHeaders([
+                'Upgrade' => 'websocket',
+                'Connection' => 'Upgrade',
+                'Sec-WebSocket-Accept' => $key,
+            ]);
+
+        // 响应握手成功
+        $this->writeTo($socket, $response->toString());
+
+        // 标记已经握手 更新路由 path
+        $meta['handshake'] = true;
+        $meta['path'] = $path = $request->getPath();
+        $this->metas[$cid] = $meta;
+
+        $this->log("The #$cid client connection handshake successful! Info:", 'info', $meta);
+
+        // 握手成功 触发 open 事件
+        return $this->trigger(self::ON_OPEN, [$this, $request, $cid]);
+    }
+
+    /**
+     * handle client message
+     * @param int $cid
+     * @param string $data
+     * @param int $bytes
+     * @param array $meta The client info [@see $defaultInfo]
+     */
+    protected function message(int $cid, string $data, int $bytes, array $meta)
+    {
+        $data = $this->decode($data);
+
+        $this->log("Received $bytes bytes message from #$cid, Data: $data");
+
+        // call on message handler
+        $this->trigger(self::ON_MESSAGE, [$this, $data, $cid, $meta]);
+    }
+
+    /**
+     * @param $msg
+     */
+    protected function error($msg)
+    {
+        $this->log("An error occurred! Error: $msg", 'error');
+
+        $this->trigger(self::ON_ERROR, [$msg, $this]);
+    }
+
+    /**
+     * alias method of the `close()`
+     * @param int $cid
+     * @param null|resource $socket
+     * @return mixed
+     */
+    public function disconnect(int $cid, $socket = null)
+    {
+        return $this->close($cid, $socket);
+    }
+
+    /**
+     * Closing a connection
+     * @param int $cid
+     * @param null|resource $socket
+     * @param bool $triggerEvent
+     * @return bool
+     */
+    abstract public function close(int $cid, $socket = null, bool $triggerEvent = true);
 
     /////////////////////////////////////////////////////////////////////////////////////////
     /// send message to client
@@ -130,7 +277,7 @@ abstract class ServerAbstracter extends BaseAbstracter implements ServerInterfac
             return 0;
         }
 
-        if ( !($socket = $this->getSocket($receiver)) ) {
+        if ( !($socket = $this->getClient($receiver)) ) {
             $this->log("The target user #$receiver not connected or has been logout!", 'error');
 
             return 0;
@@ -171,7 +318,7 @@ abstract class ServerAbstracter extends BaseAbstracter implements ServerInterfac
         if ( !$expected && !$receivers) {
             $this->log("(broadcast)The #{$fromUser} send a message to all users. Data: {$data}");
 
-            foreach ($this->sockets as $socket) {
+            foreach ($this->clients as $socket) {
                 $this->writeTo($socket, $res, $len);
             }
 
@@ -179,7 +326,7 @@ abstract class ServerAbstracter extends BaseAbstracter implements ServerInterfac
         } elseif ($receivers) {
             $this->log("(broadcast)The #{$fromUser} gave some specified user sending a message. Data: {$data}");
             foreach ($receivers as $receiver) {
-                if ( $socket = $this->getSocket($receiver) ) {
+                if ($socket = $this->getClient($receiver)) {
                     $this->writeTo($socket, $res, $len);
                 }
             }
@@ -187,7 +334,7 @@ abstract class ServerAbstracter extends BaseAbstracter implements ServerInterfac
             // to all
         } else {
             $this->log("(broadcast)The #{$fromUser} send the message to everyone except some people. Data: {$data}");
-            foreach ($this->sockets as $cid => $socket) {
+            foreach ($this->clients as $cid => $socket) {
                 if ( isset($expected[$cid]) ) {
                     continue;
                 }
@@ -318,9 +465,9 @@ abstract class ServerAbstracter extends BaseAbstracter implements ServerInterfac
      * @param $cid
      * @return bool
      */
-    public function hasClient(int $cid)
+    public function hasMeta(int $cid)
     {
-        return isset($this->clients[$cid]);
+        return isset($this->metas[$cid]);
     }
 
     /**
@@ -328,17 +475,17 @@ abstract class ServerAbstracter extends BaseAbstracter implements ServerInterfac
      * @param int $cid
      * @return mixed
      */
-    public function getClient(int $cid)
+    public function getMeta(int $cid)
     {
-        return $this->clients[$cid] ?? $this->defaultInfo;
+        return $this->metas[$cid] ?? $this->defaultInfo;
     }
 
     /**
      * @return array
      */
-    public function getClients(): array
+    public function getMetas(): array
     {
-        return $this->clients;
+        return $this->metas;
     }
 
     /**
@@ -350,7 +497,7 @@ abstract class ServerAbstracter extends BaseAbstracter implements ServerInterfac
     }
     public function count(): int
     {
-        return count($this->clients);
+        return count($this->metas);
     }
 
     /**
@@ -360,8 +507,8 @@ abstract class ServerAbstracter extends BaseAbstracter implements ServerInterfac
      */
     public function hasHandshake(int $cid): bool
     {
-        if ( $this->hasClient($cid) ) {
-            return $this->getClient($cid)['handshake'];
+        if ( $this->hasMeta($cid) ) {
+            return $this->getMeta($cid)['handshake'];
         }
 
         return false;
@@ -375,7 +522,7 @@ abstract class ServerAbstracter extends BaseAbstracter implements ServerInterfac
     {
         $count = 0;
 
-        foreach ($this->clients as $info) {
+        foreach ($this->metas as $info) {
             if ($info['handshake']) {
                 $count++;
             }
@@ -385,14 +532,25 @@ abstract class ServerAbstracter extends BaseAbstracter implements ServerInterfac
     }
 
     /**
-     * check it is a accepted client
+     *  check it is a exists client
+     * @notice maybe don't complete handshake
+     * @param $cid
+     * @return bool
+     */
+    public function hasClient(int $cid)
+    {
+        return isset($this->clients[$cid]);
+    }
+
+    /**
+     * check it is a accepted client socket
      * @notice maybe don't complete handshake
      * @param  resource $socket
      * @return bool
      */
-    public function isClientSocket($socket)
+    public function isClient($socket)
     {
-        return in_array($socket, $this->sockets, true);
+        return in_array($socket, $this->clients, true);
     }
 
     /**
@@ -400,10 +558,10 @@ abstract class ServerAbstracter extends BaseAbstracter implements ServerInterfac
      * @param $cid
      * @return resource|false
      */
-    public function getSocket($cid)
+    public function getClient($cid)
     {
-        if ( $this->hasClient($cid) ) {
-            return $this->sockets[$cid];
+        if ( $this->hasMeta($cid) ) {
+            return $this->clients[$cid];
         }
 
         return false;
@@ -412,17 +570,17 @@ abstract class ServerAbstracter extends BaseAbstracter implements ServerInterfac
     /**
      * @return array
      */
-    public function getSockets(): array
+    public function getClients(): array
     {
-        return $this->sockets;
+        return $this->clients;
     }
 
     /**
      * @return resource
      */
-    public function getMaster(): resource
+    public function getSocket(): resource
     {
-        return $this->master;
+        return $this->socket;
     }
 
 }

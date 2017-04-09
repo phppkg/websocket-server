@@ -6,19 +6,19 @@
  * Time: 22:51
  */
 
-namespace inhere\webSocket\handlers;
+namespace inhere\webSocket\server\handlers;
 
 use inhere\library\traits\TraitSimpleOption;
 use inhere\webSocket\server\Application;
-use inhere\webSocket\dataParser\ComplexDataParser;
-use inhere\webSocket\dataParser\IDataParser;
+use inhere\webSocket\server\dataParser\ComplexDataParser;
+use inhere\webSocket\server\dataParser\IDataParser;
 use inhere\webSocket\http\Request;
 use inhere\webSocket\http\Response;
 use inhere\webSocket\parts\MessageBag;
 
 /**
  * Class ARouteHandler
- * @package inhere\webSocket\handlers
+ * @package inhere\webSocket\server\handlers
  */
 abstract class ARouteHandler implements IRouteHandler
 {
