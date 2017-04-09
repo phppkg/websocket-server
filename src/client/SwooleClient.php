@@ -88,23 +88,23 @@ class SwooleClient extends ClientAbstracter
     }
 
     /**
-     * @param int $length
      * @return string
      */
-    public function readResponseHeader($length = 2048)
+    public function readResponseHeader()
     {
         $headerBuffer = '';
 
         while(true) {
             $_tmp = $this->client->recv();
-            if ($_tmp) {
-                $headerBuffer .= $_tmp;
 
-                if (substr($headerBuffer, -4, 4) !== self::HEADER_END) {
-                    break;
-                }
-            } else {
+            if (!$_tmp) {
                 return '';
+            }
+
+            $headerBuffer .= $_tmp;
+
+            if (strpos($headerBuffer, self::HEADER_END) !== false) {
+                break;
             }
         }
 

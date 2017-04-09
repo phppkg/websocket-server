@@ -24,8 +24,10 @@ $client = ClientFactory::make('ws://127.0.0.1:9501', $options);
 
 $client->connect();
 
-//$client->send('hello');
+echo $client->receive() . PHP_EOL;
 
-echo $client->receive();
+$client->send('hello');
+
+echo $client->receive() . PHP_EOL;
 
 $client->close();

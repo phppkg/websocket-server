@@ -259,7 +259,7 @@ class WebSocketServer extends BaseWebSocket
      */
     protected function handshake($socket, string $data, int $cid)
     {
-        $this->log("Ready to shake hands with the #$cid client connection");
+        $this->log("Ready to shake hands with the #$cid client connection. request:\n$data");
         $client = $this->clients[$cid];
         $response = new Response();
 

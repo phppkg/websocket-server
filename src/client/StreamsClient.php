@@ -53,14 +53,16 @@ class StreamsClient extends ClientAbstracter
             $context = stream_context_create();
         }
 
+        $timeouts = $this->getOption('timeout', 2);
+        $timeouts = $timeouts < 1 ? 2 : (int)$timeouts;
+
         $host = $this->getHost();
         $port = $this->getPort();
-        $timeout = $timeout ?: $this->getOption('timeout');
         $schemeHost = ($scheme === self::PROTOCOL_WSS ? 'ssl' : 'tcp') . "://$host"; // 'ssl', 'tls', 'wss'
         $remote = $schemeHost . ($port ? ":$port" : '');
 
         // Open the socket.  @ is there to suppress warning that we will catch in check below instead.
-        $this->socket = @stream_socket_client($remote, $errNo, $errStr, (int)$timeout, STREAM_CLIENT_CONNECT, $context);
+        $this->socket = stream_socket_client($remote, $errNo, $errStr, $timeouts, STREAM_CLIENT_CONNECT, $context);
 
         // can also use: fsockopen — 打开一个网络连接或者一个Unix套接字连接
         // $this->socket = fsockopen($schemeHost, $port, $errNo, $errStr, $timeout);
@@ -70,7 +72,22 @@ class StreamsClient extends ClientAbstracter
         }
 
         // Set timeout on the stream as well.
-        stream_set_timeout($this->socket, (int)$timeout);
+        $this->setTimeout($timeouts, $this->getOption('timeout_ms'));
+    }
+
+    public function setTimeout($timeout, $timeoutMs = null)
+    {
+        $timeoutUs = null;
+
+        if ($timeout < 1) {
+            $timeoutUs = (int)($timeout * 1000 * 1000);
+            $timeout = 1;
+        } else if ($timeoutMs) {
+            $timeoutUs = (int)($timeoutMs * 1000);
+        }
+
+        // Set timeout on the stream as well.
+        stream_set_timeout($this->socket, (int)$timeout, $timeoutUs);
     }
 
     /**
@@ -84,7 +101,7 @@ class StreamsClient extends ClientAbstracter
         }
 
         // Get server response header (terminated with double CR+LF).
-        return stream_get_line($this->socket, $length, self::HEADER_END);
+        return stream_get_line($this->socket, $length, self::HEADER_END) . self::HEADER_END;
     }
 
     /**
@@ -92,7 +109,34 @@ class StreamsClient extends ClientAbstracter
      * @return string
      * @throws ConnectException
      */
-    protected function read($length)
+    protected function read($length = null)
+    {
+        if ($length > 0) {
+            return $this->readLength($length);
+        }
+
+        $data = '';
+        $fragmentSize = $this->getOption('fragment_size') ?: self::DEFAULT_FRAGMENT_SIZE;
+
+        do {
+            $buff = fread($this->socket, $fragmentSize);
+            $meta = stream_get_meta_data($this->socket);
+
+            if ($buff === false) {
+                $this->log('read data is failed. Stream state: ', 'error', $meta);
+                return false;
+            }
+
+            $data .= $buff;
+            $fragmentSize = min((int)$meta['unread_bytes'], $fragmentSize);
+            usleep(1000);
+
+        } while (!feof($this->socket) && (int)$meta['unread_bytes'] > 0);
+
+        return $data;
+    }
+
+    protected function readLength($length)
     {
         $data = '';
 
@@ -117,13 +161,6 @@ class StreamsClient extends ClientAbstracter
         return $data;
     }
 
-    /**
-     * @param bool $force
-     */
-    public function disconnect(bool $force = false)
-    {
-        $this->close($force);
-    }
     public function close(bool $force = false)
     {
         if ( $this->socket ) {

@@ -45,7 +45,7 @@ final class ClientFactory
      */
     protected static $availableDrivers = [
         'swoole' => SwooleClient::class,
-        'sockets' => SocketClient::class,
+        'sockets' => SocketsClient::class,
         'streams' => StreamsClient::class,
     ];
 

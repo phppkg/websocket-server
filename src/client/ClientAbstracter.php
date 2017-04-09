@@ -24,7 +24,7 @@ abstract class ClientAbstracter extends BaseAbstracter implements ClientInterfac
     const PROTOCOL_WSS = 'wss';
 
     const DEFAULT_HOST = '127.0.0.1';
-    const DEFAULT_PORT = 8080;
+    const DEFAULT_FRAGMENT_SIZE = 1024;
 
     /**
      * @var string
@@ -36,16 +36,6 @@ abstract class ClientAbstracter extends BaseAbstracter implements ClientInterfac
      * @var string
      */
     protected $url;
-
-    /**
-     * @var string
-     */
-    protected $host;
-
-    /**
-     * @var int
-     */
-    protected $port;
 
     /**
      * @var resource
@@ -94,7 +84,9 @@ abstract class ClientAbstracter extends BaseAbstracter implements ClientInterfac
         'open_log' => true,
         'log_file' => '',
 
-        'timeout' => 0.2,
+        'timeout' => 2,
+        'timeout_ms' => 2000,
+
         // 数据块大小 发送数据时将会按这个大小拆分发送
         'fragment_size' => 1024,
 
@@ -135,19 +127,11 @@ abstract class ClientAbstracter extends BaseAbstracter implements ClientInterfac
             $this->print("[ERROR] Your system is not supported the driver: {$this->name}, by " . static::class, true, -200);
         }
 
-        $this->setOptions($options, true);
-
         $this->url = $url;
-
-        $uri = Uri::createFromString($url); // todo ...
-        $this->request = new Request('GET', $uri);
-
-        $this->host = $uri->getHost();
-        $this->port = $uri->getPort();
-
+        $this->setOptions($options, true);
         $this->init();
 
-        $this->log("The webSocket client power by [{$this->name}], server is {$url}");
+        $this->log("The webSocket client power by [{$this->name}], remote server is {$url}");
     }
 
     /**
@@ -162,10 +146,16 @@ abstract class ClientAbstracter extends BaseAbstracter implements ClientInterfac
 
     protected function init()
     {
+        $uri = Uri::createFromString($this->url); // todo ...
+        $this->request = new Request('GET', $uri);
+
+        $this->host = $uri->getHost();
+        $this->port = $uri->getPort();
+
         $headers = $this->getDefaultHeaders();
 
         // Handle basic authentication.
-        if ($user = $this->request->getUri()->getUserInfo()) {
+        if ($user = $uri->getUserInfo()) {
             $headers['authorization'] = 'Basic ' . base64_encode($user);
         }
 
@@ -180,14 +170,15 @@ abstract class ClientAbstracter extends BaseAbstracter implements ClientInterfac
         }
     }
 
+    // start a keep-live client
     public function start()
     {
         if (!$this->isConnected()) {
             $this->connect();
         }
 
-        $tickHandler = $this->callbacks[self::ON_TICK];
-        $msgHandler = $this->callbacks[self::ON_MESSAGE];
+        $tickHandler = $this->getCallback(self::ON_TICK);
+        $msgHandler = $this->getCallback(self::ON_MESSAGE);
 
         while (true) {
             if ($tickHandler && (call_user_func($tickHandler, $this) === false)) {
@@ -242,9 +233,10 @@ abstract class ClientAbstracter extends BaseAbstracter implements ClientInterfac
         $this->write($request);
 
         // Get server response header
-        $header = $this->readResponseHeader();
+        $respHeader = $this->readResponseHeader();
+        $this->log("Response header: \n$respHeader");
 
-        return $this->checkResponse($header);
+        return $this->checkResponse($respHeader);
     }
 
     /**
@@ -255,8 +247,6 @@ abstract class ClientAbstracter extends BaseAbstracter implements ClientInterfac
      */
     protected function checkResponse($header)
     {
-        $this->log("Response header: \n$header");
-
         // Validate response.
         if (!preg_match('#Sec-WebSocket-Accept:\s(.*)$#mUi', $header, $matches)) {
             $this->close();
@@ -281,11 +271,41 @@ abstract class ClientAbstracter extends BaseAbstracter implements ClientInterfac
     }
 
     /**
+     * @param null|int $length If is NULL, read all.
+     * @return string
+     * @throws ConnectException
+     */
+    protected function read($length = null)
+    {
+        if ($length > 0) {
+            return $this->readLength($length);
+        }
+
+        $data = '';
+        $fragmentSize = $this->getOption('fragment_size') ?: self::DEFAULT_FRAGMENT_SIZE;
+
+        do {
+            $buff = fread($this->socket, $fragmentSize);
+
+            if ($buff === false) {
+                $this->log('read data is failed. Stream state: ', 'error');
+                return false;
+            }
+
+            $data .= $buff;
+            usleep(1000);
+
+        } while (!feof($this->socket));
+
+        return $data;
+    }
+
+    /**
      * @param $length
      * @return string
      * @throws ConnectException
      */
-    protected function read($length)
+    protected function readLength($length)
     {
         $buffer = fread($this->socket, $length);
 
@@ -324,6 +344,8 @@ abstract class ClientAbstracter extends BaseAbstracter implements ClientInterfac
      */
     public function send($data, $flag = null)
     {
+        $this->log("Send data to server, Data: $data");
+
         return $this->sendByFragment($data);
     }
 
@@ -346,7 +368,7 @@ abstract class ClientAbstracter extends BaseAbstracter implements ClientInterfac
         // record the length of the payload
         $payloadLength = strlen($payload);
         $fragmentCursor = 0;
-        $fragmentSize = $this->getOption('fragment_size');
+        $fragmentSize = $this->getOption('fragment_size') ?: self::DEFAULT_FRAGMENT_SIZE;
 
         // while we have data to send
         while ($payloadLength > $fragmentCursor) {
@@ -371,9 +393,7 @@ abstract class ClientAbstracter extends BaseAbstracter implements ClientInterfac
     }
 
     public function sendFile(string $filename)
-    {
-
-    }
+    {}
 
     /**
      * @return string
@@ -410,6 +430,13 @@ abstract class ClientAbstracter extends BaseAbstracter implements ClientInterfac
         return [$header, $body];
     }
 
+    /**
+     * @param bool $force
+     */
+    public function disconnect(bool $force = false)
+    {
+        $this->close($force);
+    }
     public function close(bool $force = false)
     {
         if ( $this->socket ) {
@@ -548,6 +575,7 @@ abstract class ClientAbstracter extends BaseAbstracter implements ClientInterfac
 
                 $temp .= $buff;
             } while (strlen($temp) < $length);
+
             if ($masked) {
                 for ($i = 0; $i < $length; ++$i) {
                     $payload .= ($temp[$i] ^ $mask[$i % 4]);
@@ -688,30 +716,6 @@ abstract class ClientAbstracter extends BaseAbstracter implements ClientInterfac
     public function setSocket(resource $socket)
     {
         $this->socket = $socket;
-    }
-
-    /**
-     * @return string
-     */
-    public function getHost(): string
-    {
-        if ( !$this->host ) {
-            $this->host = self::DEFAULT_HOST;
-        }
-
-        return $this->host;
-    }
-
-    /**
-     * @return int
-     */
-    public function getPort(): int
-    {
-        if ( !$this->port || $this->port <= 0 ) {
-            $this->port = self::DEFAULT_PORT;
-        }
-
-        return $this->port;
     }
 
     /**

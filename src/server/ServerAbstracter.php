@@ -26,11 +26,6 @@ abstract class ServerAbstracter extends BaseAbstracter implements ServerInterfac
      */
     const BINARY_TYPE_ARRAY_BUFFER = "\x82";
 
-    const SIGN_KEY = '258EAFA5-E914-47DA-95CA-C5AB0DC85B11';
-
-    const DEFAULT_HOST = '0.0.0.0';
-    const DEFAULT_PORT = 8080;
-
     // 事件的回调函数名
     const ON_CONNECT   = 'connect';
     const ON_HANDSHAKE = 'handshake';
@@ -75,16 +70,6 @@ abstract class ServerAbstracter extends BaseAbstracter implements ServerInterfac
     ];
 
     /**
-     * @var string
-     */
-    protected $host;
-
-    /**
-     * @var int
-     */
-    protected $port;
-
-    /**
      * @var array
      */
     protected $options = [
@@ -93,7 +78,6 @@ abstract class ServerAbstracter extends BaseAbstracter implements ServerInterfac
         'open_log' => true,
         'log_file' => '',
     ];
-
 
     /**
      * WebSocket constructor.
@@ -216,7 +200,7 @@ abstract class ServerAbstracter extends BaseAbstracter implements ServerInterfac
             }
         }
 
-        return $this->getLastErrorNo();
+        return $this->getErrorNo();
     }
 
     /**
@@ -441,27 +425,4 @@ abstract class ServerAbstracter extends BaseAbstracter implements ServerInterfac
         return $this->master;
     }
 
-    /**
-     * @return string
-     */
-    public function getHost(): string
-    {
-        if ( !$this->host ) {
-            $this->host = self::DEFAULT_HOST;
-        }
-
-        return $this->host;
-    }
-
-    /**
-     * @return int
-     */
-    public function getPort(): int
-    {
-        if ( !$this->port || $this->port <= 0 ) {
-            $this->port = self::DEFAULT_PORT;
-        }
-
-        return $this->port;
-    }
 }

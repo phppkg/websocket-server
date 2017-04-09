@@ -9,12 +9,13 @@
 namespace inhere\webSocket\client;
 
 use inhere\library\helpers\PhpHelper;
+use inhere\webSocket\Helper;
 
 /**
- * Class SocketClient
+ * Class SocketsClient
  * @package inhere\webSocket\client
  */
-class SocketClient extends ClientAbstracter
+class SocketsClient extends ClientAbstracter
 {
     /**
      * @var string
@@ -51,8 +52,8 @@ class SocketClient extends ClientAbstracter
      */
     public function __construct(string $url, array $options = [])
     {
-        $this->options['timeout_send'] = 0.3;
-        $this->options['timeout_recv'] = 0.3;
+        $this->options['timeout_send'] = 2.2;
+        $this->options['timeout_recv'] = 2.2;
 
         parent::__construct($url, $options);
     }
@@ -228,9 +229,9 @@ class SocketClient extends ClientAbstracter
     {
         // 1 MSG_OOB 2 MSG_PEEK 256 MSG_WAITALL 64 MSG_DONTWAIT
         $flags = $waitAll ? MSG_WAITALL : 0;
-        $ret = socket_recv($this->socket, $data, $length, $flags);
+        $bytes = socket_recv($this->socket, $data, $length, $flags);
 
-        if ($ret === false) {
+        if ($bytes === false) {
             $this->fetchError();
 
             // 重试一次，这里为防止意外，不使用递归循环
@@ -241,7 +242,7 @@ class SocketClient extends ClientAbstracter
             }
         }
 
-        return $data;
+        return Helper::hybi10Decode($data);
     }
 
     /**

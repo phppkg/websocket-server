@@ -17,7 +17,6 @@ use inhere\library\traits\TraitSimpleOption;
  */
 abstract class BaseAbstracter
 {
-
     use TraitSimpleOption;
     use TraitSimpleFixedEvent;
 
@@ -35,6 +34,44 @@ abstract class BaseAbstracter
 
 //    const TOKEN_CHARS = ' abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ!"§$%&/()=[]{}';
     const TOKEN_CHARS = 'abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ!"$&/()=[]{}0123456789';
+
+    const DEFAULT_HOST = '0.0.0.0';
+
+    const DEFAULT_PORT = 8080;
+
+    /**
+     * @var string
+     */
+    protected $host;
+
+    /**
+     * @var int
+     */
+    protected $port;
+
+    /**
+     * @return string
+     */
+    public function getHost(): string
+    {
+        if ( !$this->host ) {
+            $this->host = self::DEFAULT_HOST;
+        }
+
+        return $this->host;
+    }
+
+    /**
+     * @return int
+     */
+    public function getPort(): int
+    {
+        if ( !$this->port || $this->port <= 0 ) {
+            $this->port = self::DEFAULT_PORT;
+        }
+
+        return $this->port;
+    }
 
     /**
      * Generate a random string for WebSocket key.(for client)
