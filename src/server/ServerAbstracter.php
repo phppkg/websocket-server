@@ -8,7 +8,7 @@
 
 namespace inhere\webSocket\server;
 
-use inhere\webSocket\BaseAbstracter;
+use inhere\webSocket\WSAbstracter;
 use inhere\webSocket\http\Request;
 use inhere\webSocket\http\Response;
 
@@ -16,18 +16,8 @@ use inhere\webSocket\http\Response;
  * Class AServerDriver
  * @package inhere\webSocket\server
  */
-abstract class ServerAbstracter extends BaseAbstracter implements ServerInterface
+abstract class ServerAbstracter extends WSAbstracter implements ServerInterface
 {
-    /**
-     * Websocket blob type.
-     */
-    const BINARY_TYPE_BLOB = "\x81";
-
-    /**
-     * Websocket array buffer type.
-     */
-    const BINARY_TYPE_ARRAY_BUFFER = "\x82";
-
     /**
      * the master socket
      * @var resource
@@ -89,22 +79,20 @@ abstract class ServerAbstracter extends BaseAbstracter implements ServerInterfac
      */
     public function __construct(string $host = '0.0.0.0', int $port = 8080, array $options = [])
     {
+        if (!static::isSupported()) {
+            throw new \InvalidArgumentException("The extension [$this->name] is required for run the server.");
+        }
+
         $this->host = $host;
         $this->port = $port;
 
         $this->setOptions($options, true);
+
+        $this->log("The webSocket server power by [{$this->name}], driver class: " . static::class);
     }
 
     protected function beforeStart()
     {}
-
-    protected function prepareMasterSocket()
-    {}
-
-    /**
-     * do start server
-     */
-    abstract protected function doStart();
 
     /**
      * start server
@@ -114,10 +102,20 @@ abstract class ServerAbstracter extends BaseAbstracter implements ServerInterfac
         $this->beforeStart();
 
         // create and prepare
-        $this->prepareMasterSocket();
+        $this->prepareWork();
 
         $this->doStart();
     }
+
+    /**
+     * create and prepare socket resource
+     */
+    abstract protected function prepareWork();
+
+    /**
+     * do start server
+     */
+    abstract protected function doStart();
 
     /////////////////////////////////////////////////////////////////////////////////////////
     /// event method
@@ -375,7 +373,6 @@ abstract class ServerAbstracter extends BaseAbstracter implements ServerInterfac
     /// helper method
     /////////////////////////////////////////////////////////////////////////////////////////
 
-
     /**
      * @param $s
      * @return string
@@ -426,35 +423,6 @@ abstract class ServerAbstracter extends BaseAbstracter implements ServerInterfac
         return $decoded;
     }
 
-    /**
-     * @param string $message
-     * @param string $type
-     * @param array $data
-     */
-    public function log(string $message, string $type = 'info', array $data = [])
-    {
-        $date = date('Y-m-d H:i:s');
-        $type = strtoupper(trim($type));
-
-        $this->print("[$date] [$type] $message " . ( $data ? json_encode($data) : '' ) );
-    }
-
-    /**
-     * @param mixed $messages
-     * @param bool $nl
-     * @param null|int $exit
-     */
-    public function print($messages, $nl = true, $exit = null)
-    {
-        $text = is_array($messages) ? implode(($nl ? "\n" : ''), $messages) : $messages;
-
-        fwrite(\STDOUT, $text . ($nl ? "\n" : ''));
-
-        if ( $exit !== null ) {
-            exit((int)$exit);
-        }
-    }
-
     /////////////////////////////////////////////////////////////////////////////////////////
     /// helper method
     /////////////////////////////////////////////////////////////////////////////////////////
@@ -491,10 +459,6 @@ abstract class ServerAbstracter extends BaseAbstracter implements ServerInterfac
     /**
      * @return int
      */
-    public function countClient(): int
-    {
-        return $this->count();
-    }
     public function count(): int
     {
         return count($this->metas);

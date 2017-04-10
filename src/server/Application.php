@@ -14,6 +14,7 @@ use inhere\webSocket\server\handlers\RootHandler;
 use inhere\webSocket\parts\MessageBag;
 use inhere\webSocket\http\Request;
 use inhere\webSocket\http\Response;
+use inhere\webSocket\WSInterface;
 
 /**
  * Class Application
@@ -77,7 +78,7 @@ class Application
     private $port;
 
     /**
-     * @var WebSocketServer
+     * @var ServerInterface
      */
     private $ws;
 
@@ -91,6 +92,8 @@ class Application
      * @var array
      */
     protected $options = [
+        'driver' => '', // allow: sockets, swoole, streams
+
         // request and response data type: json text
         'dataType' => 'json',
 
@@ -108,11 +111,11 @@ class Application
     private $routesHandlers;
 
     /**
-     * WebSocketServerHandler constructor.
+     * Application constructor.
      * @param string $host
      * @param int $port
      * @param array $options
-     * @internal param null|WebSocketServer $ws
+     * @internal param null|ServerInterface $ws
      */
     public function __construct(string $host = '0.0.0.0', $port = 8080, array $options = [])
     {
@@ -129,15 +132,18 @@ class Application
     public function run()
     {
         if (!$this->ws) {
-            $this->ws = new WebSocketServer($this->host, $this->port);
+            $opts = [
+                'driver' => $this->getOption('driver'), // allow: sockets, swoole, streams
+            ];
+            $this->ws = ServerFactory::make($this->host, $this->port, $opts);
         }
 
-        // register events
-        $this->ws->on(WebSocketServer::ON_HANDSHAKE, [$this, 'handleHandshake']);
-        $this->ws->on(WebSocketServer::ON_OPEN, [$this, 'handleOpen']);
-        $this->ws->on(WebSocketServer::ON_MESSAGE, [$this, 'handleMessage']);
-        $this->ws->on(WebSocketServer::ON_CLOSE, [$this, 'handleClose']);
-        $this->ws->on(WebSocketServer::ON_ERROR, [$this, 'handleError']);
+        // register server events
+        $this->ws->on(WSInterface::ON_HANDSHAKE, [$this, 'handleHandshake']);
+        $this->ws->on(WSInterface::ON_OPEN, [$this, 'handleOpen']);
+        $this->ws->on(WSInterface::ON_MESSAGE, [$this, 'handleMessage']);
+        $this->ws->on(WSInterface::ON_CLOSE, [$this, 'handleClose']);
+        $this->ws->on(WSInterface::ON_ERROR, [$this, 'handleError']);
 
         // if not register route, add root path route handler
         if ( 0 === count($this->routesHandlers) ) {
@@ -174,7 +180,7 @@ class Application
      */
     public function parseOptRun()
     {
-        $opts = getopt('p::H::h', ['port::', 'host::', 'help']);
+        $opts = getopt('p::H::h', ['port::', 'host::', 'driver:', 'help']);
 
         if ( isset($opts['h']) || isset($opts['help']) ) {
             $help = <<<EOF
@@ -183,6 +189,7 @@ Start a webSocket Application Server.
 Options:
   -H,--host  Setting the webSocket server host.(default:9501)
   -p,--port  Setting the webSocket server port.(default:127.0.0.1)
+  --driver   You can custom server driver. allow: swoole, sockets, streams.
   -h,--help  Show help information
   
 EOF;
@@ -193,6 +200,7 @@ EOF;
 
         $this->host = $opts['H'] ?? $opts['host'] ?? $this->host;
         $this->port = $opts['p'] ?? $opts['port'] ?? $this->port;
+        $this->options['driver'] = $opts['driver'] ?? '';
 
         $this->run();
     }
@@ -254,11 +262,11 @@ EOF;
     }
 
     /**
-     * @param WebSocketServer $ws
+     * @param ServerInterface $ws
      * @param Request $request
      * @param int $cid
      */
-    public function handleOpen(WebSocketServer $ws, Request $request, int $cid)
+    public function handleOpen(ServerInterface $ws, Request $request, int $cid)
     {
         $this->log('A new user connection. Now, connected user count: ' . $ws->count());
         // $this->log("SERVER Data: \n" . var_export($_SERVER, 1), 'info');
@@ -273,12 +281,12 @@ EOF;
     }
 
     /**
-     * @param WebSocketServer $ws
+     * @param ServerInterface $ws
      * @param string $data
      * @param int $cid
      * @param array $client
      */
-    public function handleMessage(WebSocketServer $ws, string $data, int $cid, array $client)
+    public function handleMessage(ServerInterface $ws, string $data, int $cid, array $client)
     {
         $this->log("Received user #$cid sent message. MESSAGE: $data, LENGTH: " . mb_strlen($data));
 
@@ -298,11 +306,11 @@ EOF;
     }
 
     /**
-     * @param WebSocketServer $ws
+     * @param ServerInterface $ws
      * @param int $cid
      * @param array $client
      */
-    public function handleClose(WebSocketServer $ws, int $cid, array $client)
+    public function handleClose(ServerInterface $ws, int $cid, array $client)
     {
         $this->log("The #$cid user disconnected. Now, connected user count: " . $ws->count());
 
@@ -314,10 +322,10 @@ EOF;
     }
 
     /**
-     * @param WebSocketServer $ws
+     * @param ServerInterface $ws
      * @param string $msg
      */
-    public function handleError(string $msg, WebSocketServer $ws)
+    public function handleError(string $msg, ServerInterface $ws)
     {
         $this->log('Accepts a connection on a socket error: ' . $msg, 'error');
 
@@ -598,17 +606,17 @@ EOF;
     }
 
     /**
-     * @return WebSocketServer
+     * @return ServerInterface
      */
-    public function getWs(): WebSocketServer
+    public function getWs(): ServerInterface
     {
         return $this->ws;
     }
 
     /**
-     * @param WebSocketServer $ws
+     * @param ServerInterface $ws
      */
-    public function setWs(WebSocketServer $ws)
+    public function setWs(ServerInterface $ws)
     {
         $this->ws = $ws;
     }

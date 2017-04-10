@@ -6,14 +6,14 @@
  * Time: 13:01
  */
 
-namespace inhere\webSocket\server;
+namespace inhere\webSocket\server\deprecated;
 
 use inhere\library\traits\TraitSimpleFixedEvent;
 use inhere\library\traits\TraitSimpleOption;
 
 /**
  * Class BaseWebSocket
- * @package inhere\webSocket
+ * @package inhere\webSocket\server\deprecated
  */
 abstract class BaseWebSocket
 {

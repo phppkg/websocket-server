@@ -12,42 +12,23 @@ use inhere\library\traits\TraitSimpleFixedEvent;
 use inhere\library\traits\TraitSimpleOption;
 
 /**
- * Class BaseAbstracter
+ * Class WSAbstracter
  * @package inhere\webSocket
  */
-abstract class BaseAbstracter
+abstract class WSAbstracter implements WSInterface
 {
     use TraitSimpleOption;
     use TraitSimpleFixedEvent;
-
-    /**
-     * version
-     */
-    const VERSION = '0.5.1';
-
-    /**
-     * Websocket version
-     */
-    const WS_VERSION = '13';
-
-    const SIGN_KEY = '258EAFA5-E914-47DA-95CA-C5AB0DC85B11';
-
-//    const TOKEN_CHARS = ' abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ!"§$%&/()=[]{}';
-    const TOKEN_CHARS = 'abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ!"$&/()=[]{}0123456789';
 
     const DEFAULT_HOST = '0.0.0.0';
 
     const DEFAULT_PORT = 8080;
 
-    const HEADER_END     = "\r\n\r\n";
-
-    // 事件的回调函数名
-    const ON_CONNECT   = 'connect';
-    const ON_HANDSHAKE = 'handshake';
-    const ON_OPEN      = 'open';
-    const ON_MESSAGE   = 'message';
-    const ON_CLOSE     = 'close';
-    const ON_ERROR     = 'error';
+    /**
+     * the driver name
+     * @var string
+     */
+    protected $name = '';
 
     /**
      * @var string
@@ -58,6 +39,14 @@ abstract class BaseAbstracter
      * @var int
      */
     protected $port;
+
+    /**
+     * @return string
+     */
+    public function getName(): string
+    {
+        return $this->name;
+    }
 
     /**
      * @return string
@@ -108,5 +97,35 @@ abstract class BaseAbstracter
     public function genSign(string $key): string
     {
         return base64_encode(sha1(trim($key) . self::SIGN_KEY, true));
+    }
+
+
+    /**
+     * @param string $message
+     * @param string $type
+     * @param array $data
+     */
+    public function log(string $message, string $type = 'info', array $data = [])
+    {
+        $date = date('Y-m-d H:i:s');
+        $type = strtoupper(trim($type));
+
+        $this->print("[$date] [$type] $message " . ( $data ? json_encode($data) : '' ) );
+    }
+
+    /**
+     * @param mixed $messages
+     * @param bool $nl
+     * @param null|int $exit
+     */
+    public function print($messages, $nl = true, $exit = null)
+    {
+        $text = is_array($messages) ? implode(($nl ? "\n" : ''), $messages) : $messages;
+
+        fwrite(\STDOUT, $text . ($nl ? "\n" : ''));
+
+        if ( $exit !== null ) {
+            exit((int)$exit);
+        }
     }
 }

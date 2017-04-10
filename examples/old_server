@@ -9,7 +9,7 @@
 
 require __DIR__ . '/../../../autoload.php';
 
-use inhere\webSocket\server\WebSocketServer;
+use inhere\webSocket\server\deprecated\WebSocketServer;
 
 $ws = new WebSocketServer('', 9501);
 

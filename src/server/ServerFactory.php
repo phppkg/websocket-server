@@ -44,7 +44,7 @@ final class ServerFactory
         }
 
         if ($driverClass = self::$availableDrivers[$driver] ?? '') {
-            return new $driverClass($host, $host, $options);
+            return new $driverClass($host, $port, $options);
         }
 
         // auto choice
@@ -56,7 +56,7 @@ final class ServerFactory
             $names[] = $name;
 
             if ($driverClass::isSupported()) {
-                $client = new $driverClass($host, $host, $options);
+                $client = new $driverClass($host, $port, $options);
                 break;
             }
         }

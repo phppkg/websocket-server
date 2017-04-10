@@ -8,8 +8,10 @@
 
 namespace inhere\webSocket;
 
-use inhere\webSocket\server\BaseWebSocket;
-
+/**
+ * Class Helper
+ * @package inhere\webSocket
+ */
 class Helper
 {
     public static function encode()
@@ -25,7 +27,7 @@ class Helper
     public static function frame($s)
     {
         $a = str_split($s, 125);
-        $prefix = BaseWebSocket::BINARY_TYPE_BLOB;
+        $prefix = WSInterface::BINARY_TYPE_BLOB;
 
         if (count($a) === 1){
             return $prefix . chr(strlen($a[0])) . $a[0];
@@ -152,6 +154,7 @@ class Helper
 
         return $frame;
     }
+
     /**
      * @param $data
      * @return string

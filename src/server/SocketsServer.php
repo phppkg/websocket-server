@@ -38,6 +38,46 @@ class SocketsServer extends ServerAbstracter
         return extension_loaded('sockets');
     }
 
+    /**
+     * create and prepare socket resource
+     */
+    protected function prepareWork()
+    {
+        if ( count($this->callbacks) < 1 ) {
+            $sup = implode(',', $this->getSupportedEvents());
+            $this->print('[ERROR] Please register event handle callback before start. supported events: ' . $sup, true, -500);
+        }
+
+        // reset
+        socket_clear_error();
+        $this->metas = $this->clients = [];
+
+        // 创建一个 TCP socket
+        // AF_INET: IPv4 网络协议。TCP 和 UDP 都可使用此协议。
+        // AF_UNIX: 使用 Unix 套接字. 例如 /tmp/my.sock
+        // more see http://php.net/manual/en/function.socket-create.php
+        $this->socket = socket_create(AF_INET, SOCK_STREAM, SOL_TCP);
+
+        if ( !is_resource($this->socket) ) {
+            $this->fetchError();
+            $this->print('[ERROR] Unable to create socket: '. $this->errMsg, true, $this->errNo);
+        }
+
+        // 设置IP和端口重用,在重启服务器后能重新使用此端口;
+        socket_set_option($this->socket, SOL_SOCKET, SO_REUSEADDR, TRUE);
+        // socket_set_option($this->socket,SOL_SOCKET, SO_RCVTIMEO, ['sec' =>0, 'usec' =>100]);
+
+        // 给套接字绑定名字
+        socket_bind($this->socket, $this->getHost(), $this->getPort());
+
+        $max = $this->getOption('max_conn', 20);
+
+        // 监听套接字上的连接. 最多允许 $max 个连接，超过的客户端连接会返回 WSAECONNREFUSED 错误
+        socket_listen($this->socket, $max);
+
+        $this->log("Started WebSocket server on {$this->host}:{$this->port} (max allow connection: $max)");
+    }
+
     protected function doStart()
     {
         $maxLen = (int)$this->getOption('max_data_len', 2048);

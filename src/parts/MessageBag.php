@@ -10,7 +10,7 @@ namespace inhere\webSocket\parts;
 
 use inhere\library\traits\TraitArrayAccess;
 use inhere\library\traits\TraitGetterSetterAccess;
-use inhere\webSocket\server\WebSocketServer;
+use inhere\webSocket\server\ServerInterface;
 
 /**
  * Class MessageResponse
@@ -23,7 +23,7 @@ class MessageBag implements \ArrayAccess
     use TraitGetterSetterAccess;
 
     /**
-     * @var WebSocketServer
+     * @var ServerInterface
      */
     private $ws;
 
@@ -89,7 +89,7 @@ class MessageBag implements \ArrayAccess
     public function send(bool $reset = true)
     {
         if ( !$this->ws ) {
-            throw new \InvalidArgumentException('Please set the property [ws], is instance of the WebSocketServer');
+            throw new \InvalidArgumentException('Please set the property [ws], is instance of the ServerInterface');
         }
 
         // if message have been sent, stop and return last status code
@@ -277,18 +277,18 @@ class MessageBag implements \ArrayAccess
     }
 
     /**
-     * @return WebSocketServer
+     * @return ServerInterface
      */
-    public function getWs(): WebSocketServer
+    public function getWs(): ServerInterface
     {
         return $this->ws;
     }
 
     /**
-     * @param WebSocketServer $ws
+     * @param ServerInterface $ws
      * @return self
      */
-    public function setWs(WebSocketServer $ws)
+    public function setWs(ServerInterface $ws)
     {
         if ( !$this->ws ) {
             $this->ws = $ws;

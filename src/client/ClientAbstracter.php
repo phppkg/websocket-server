@@ -9,7 +9,7 @@
 namespace inhere\webSocket\client;
 
 use inhere\exceptions\ConnectException;
-use inhere\webSocket\BaseAbstracter;
+use inhere\webSocket\WSAbstracter;
 use inhere\webSocket\http\Request;
 use inhere\webSocket\http\Response;
 use inhere\webSocket\http\Uri;
@@ -18,20 +18,13 @@ use inhere\webSocket\http\Uri;
  * Class ClientAbstracter
  * @package inhere\webSocket\client
  */
-abstract class ClientAbstracter extends BaseAbstracter implements ClientInterface
+abstract class ClientAbstracter extends WSAbstracter implements ClientInterface
 {
     const PROTOCOL_WS = 'ws';
     const PROTOCOL_WSS = 'wss';
 
     const DEFAULT_HOST = '127.0.0.1';
     const DEFAULT_FRAGMENT_SIZE = 1024;
-
-    const ON_TICK      = 'tick';
-
-    /**
-     * @var string
-     */
-    protected $name;
 
     /**
      * eg `ws://127.0.0.1:9501/chat`
@@ -594,35 +587,6 @@ abstract class ClientAbstracter extends BaseAbstracter implements ClientInterfac
         return $final ? $payload : ($payload . $this->receive());
     }
 
-    /**
-     * @param string $message
-     * @param string $type
-     * @param array $data
-     */
-    public function log(string $message, string $type = 'info', array $data = [])
-    {
-        $date = date('Y-m-d H:i:s');
-        $type = strtoupper(trim($type));
-
-        $this->print("[$date] [$type] $message " . ( $data ? json_encode($data) : '' ) );
-    }
-
-    /**
-     * @param mixed $messages
-     * @param bool $nl
-     * @param null|int $exit
-     */
-    public function print($messages, $nl = true, $exit = null)
-    {
-        $text = is_array($messages) ? implode(($nl ? "\n" : ''), $messages) : $messages;
-
-        fwrite(\STDOUT, $text . ($nl ? "\n" : ''));
-
-        if ( $exit !== null ) {
-            exit((int)$exit);
-        }
-    }
-
     /////////////////////////////////////////////////////////////////////////////////////////
     /// getter/setter method
     /////////////////////////////////////////////////////////////////////////////////////////
@@ -652,14 +616,6 @@ abstract class ClientAbstracter extends BaseAbstracter implements ClientInterfac
     public static function getOpCodes(): array
     {
         return self::$opCodes;
-    }
-
-    /**
-     * @return string
-     */
-    public function getName(): string
-    {
-        return $this->name;
     }
 
     /**

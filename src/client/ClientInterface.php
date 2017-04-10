@@ -14,7 +14,6 @@ namespace inhere\webSocket\client;
  */
 interface ClientInterface
 {
-
     /**
      * @return bool
      */
