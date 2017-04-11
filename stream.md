@@ -174,6 +174,28 @@ int stream_set_chunk_size ( resource $fp , int $chunk_size )
 bool stream_set_timeout ( resource $stream , int $seconds [, int $microseconds = 0 ] )
 ```
 
+## stream_select
+
+```php
+int stream_select ( array &$read , array &$write , array &$except , int $tv_sec [, int $tv_usec = 0 ] )
+```
+
+
+会监控 $read 中的 socket 是否有变动
+
+eg:
+
+```php
+$write = $except = null;
+$read = [$socket];
+
+socket_select($read, $write, $except, null)
+```
+
+- `$tv_sec =0` 时此函数立即返回，可以用于轮询机制
+- `$tv_sec =null` 将会阻塞程序执行，直到有连接变动(新客户端加入、收到消息)时才会继续向下执行
+
+
 ## stream_socket_accept
 
 接受由 `stream_socket_server()` 创建的套接字连接

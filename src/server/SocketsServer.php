@@ -167,19 +167,19 @@ class SocketsServer extends ServerAbstracter
     protected function connect($socket)
     {
         $cid = (int)$socket;
-        socket_getpeername($socket, $ip, $port);
+        $data = $this->getPeerName($socket);
 
         // 初始化客户端信息
-        $this->metas[$cid] = $info = [
-            'ip' => $ip,
-            'port' => $port,
+        $this->metas[$cid] = $meta = [
+            'host' => $data['host'],
+            'port' => $data['port'],
             'handshake' => false,
             'path' => '/',
         ];
         // 客户端连接单独保存
         $this->clients[$cid] = $socket;
 
-        $this->log("A new client connected, ID: $cid, From {$info['ip']}:{$info['port']}. Count: " . $this->count());
+        $this->log("A new client connected, ID: $cid, From {$meta['host']}:{$meta['port']}. Count: " . $this->count());
 
         // 触发 connect 事件回调
         $this->trigger(self::ON_CONNECT, [$this, $cid]);
@@ -187,35 +187,20 @@ class SocketsServer extends ServerAbstracter
 
     // protected function handshake($socket, string $data, int $cid)
     // protected function message(int $cid, string $data, int $bytes, array $client)
+    // public function close(int $cid, $socket = null, bool $triggerEvent = true)
 
     /**
      * Closing a connection
-     * @param int $cid
-     * @param null|resource $socket
-     * @param bool $triggerEvent
+     * @param resource $socket
      * @return bool
      */
-    public function close(int $cid, $socket = null, bool $triggerEvent = true)
+    protected function doClose($socket)
     {
-        if ( !is_resource($socket) && !($socket = $this->clients[$cid] ?? null) ) {
-            $this->log("Close the client socket connection failed! #$cid client socket not exists", 'error');
-        }
-
         // close socket connection
         if ( is_resource($socket)  ) {
             socket_shutdown($socket, 2);
             socket_close($socket);
         }
-
-        $meta = $this->clients[$cid];
-        unset($this->metas[$cid], $this->clients[$cid]);
-
-        // call close handler
-        if ( $triggerEvent ) {
-            $this->trigger(self::ON_CLOSE, [$this, $cid, $meta]);
-        }
-
-        $this->log("The #$cid client connection has been closed! Count: " . $this->count());
 
         return true;
     }
@@ -245,6 +230,21 @@ class SocketsServer extends ServerAbstracter
 
         // clear error
         socket_clear_error($this->socket);
+    }
+
+    /**
+     * 获取对端socket的IP地址和端口
+     * @param resource $socket
+     * @return array
+     */
+    public function getPeerName($socket)
+    {
+        socket_getpeername($socket, $host, $port);
+
+        return [
+            'host' => $host,
+            'port' => $port,
+        ];
     }
 
     /**

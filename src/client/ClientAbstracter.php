@@ -79,8 +79,7 @@ abstract class ClientAbstracter extends WSAbstracter implements ClientInterface
         'open_log' => true,
         'log_file' => '',
 
-        'timeout' => 2,
-        'timeout_ms' => 2000,
+        'timeout' => 2.2,
 
         // 数据块大小 发送数据时将会按这个大小拆分发送
         'fragment_size' => 1024,
@@ -215,7 +214,7 @@ abstract class ClientAbstracter extends WSAbstracter implements ClientInterface
      * @param float $timeout
      * @param int $flags
      */
-    abstract protected function doConnect($timeout = 0.1, $flags = 0);
+    abstract protected function doConnect($timeout = 2.1, $flags = 0);
 
     /**
      * doHandShake

@@ -43,11 +43,11 @@ abstract class ServerAbstracter extends WSAbstracter implements ServerInterface
     protected $metas = [];
 
     /**
-     * default client info data
+     * default client meta info
      * @var array
      */
     protected $defaultInfo = [
-        'ip' => '',
+        'host' => '',
         'port' => 0,
         'handshake' => false,
         'path' => '/',
@@ -61,6 +61,19 @@ abstract class ServerAbstracter extends WSAbstracter implements ServerInterface
 
         'open_log' => true,
         'log_file' => '',
+
+        'driver_options' => [
+
+        ],
+
+        // while 循环时间间隔 毫秒 millisecond. 1s = 1000ms = 1000 000us
+        'sleep_ms' => 500,
+
+        // 最大允许连接数量
+        'max_conn' => 25,
+
+        // 最大数据接收长度 1024 2048
+        'max_data_len' => 2048,
     ];
 
     /**
@@ -125,8 +138,7 @@ abstract class ServerAbstracter extends WSAbstracter implements ServerInterface
      * 增加一个初次连接的客户端 同时记录到握手列表，标记为未握手
      * @param resource $socket
      */
-    protected function connect($socket)
-    {}
+    abstract protected function connect($socket);
 
     /**
      * 响应升级协议(握手)
@@ -236,7 +248,31 @@ abstract class ServerAbstracter extends WSAbstracter implements ServerInterface
      * @param bool $triggerEvent
      * @return bool
      */
-    abstract public function close(int $cid, $socket = null, bool $triggerEvent = true);
+    public function close(int $cid, $socket = null, bool $triggerEvent = true)
+    {
+        if ( !is_resource($socket) && !($socket = $this->clients[$cid] ?? null) ) {
+            $this->log("Close the client socket connection failed! #$cid client socket not exists", 'error');
+        }
+
+        // close socket connection
+        if ( is_resource($socket)  ) {
+            $this->doClose($socket);
+        }
+
+        $meta = $this->clients[$cid];
+        unset($this->metas[$cid], $this->clients[$cid]);
+
+        // call close handler
+        if ( $triggerEvent ) {
+            $this->trigger(self::ON_CLOSE, [$this, $cid, $meta]);
+        }
+
+        $this->log("The #$cid client connection has been closed! Count: " . $this->count());
+
+        return true;
+    }
+
+    abstract protected function doClose($socket);
 
     /////////////////////////////////////////////////////////////////////////////////////////
     /// send message to client
@@ -359,7 +395,7 @@ abstract class ServerAbstracter extends WSAbstracter implements ServerInterface
 
     /**
      * @param null|resource $socket
-     * @return bool
+     * @return int
      */
     abstract public function getErrorNo($socket = null);
 

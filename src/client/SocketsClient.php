@@ -61,7 +61,7 @@ class SocketsClient extends ClientAbstracter
     /**
      * @inheritdoc
      */
-    protected function doConnect($timeout = 0.1, $flag = 0)
+    protected function doConnect($timeout = 2.1, $flag = 0)
     {
         $this->socket = socket_create(AF_INET, SOCK_STREAM, SOL_TCP);
 
@@ -70,7 +70,7 @@ class SocketsClient extends ClientAbstracter
             $this->print('[ERROR] Unable to create socket: '. $this->errMsg, true, $this->errNo);
         }
 
-        $timeout = $timeout ?: $this->getOption('timeout', 0.1);
+        $timeout = $timeout ?: $this->getOption('timeout', 2.1);
 
         // 设置connect超时
         $this->setTimeout($timeout, $timeout);

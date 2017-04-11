@@ -7,8 +7,7 @@
  */
 
 namespace inhere\webSocket\server;
-
-use inhere\webSocket\server\ServerAbstracter;
+use Swoole\Websocket\Server;
 
 /**
  * Class Server
@@ -16,6 +15,11 @@ use inhere\webSocket\server\ServerAbstracter;
  */
 class SwooleServer extends ServerAbstracter
 {
+    /**
+     * @var string
+     */
+    protected $name = 'swoole';
+
     /**
      * @return bool
      */
@@ -37,19 +41,25 @@ class SwooleServer extends ServerAbstracter
      */
     protected function doStart()
     {
-        // TODO: Implement doStart() method.
+        $host = $this->getHost();
+        $port = $this->getPort();
+        $server = new Server($host, $port, $mode, $socketType);
+
+    }
+
+    protected function connect($socket)
+    {
+        // TODO: Implement connect() method.
     }
 
     /**
      * Closing a connection
-     * @param int $cid
-     * @param null|resource $socket
-     * @param bool $triggerEvent
+     * @param resource $socket
      * @return bool
      */
-    public function close(int $cid, $socket = null, bool $triggerEvent = true)
+    protected function doClose($socket)
     {
-        // TODO: Implement close() method.
+        // TODO: Implement doClose() method.
     }
 
     /**
@@ -66,7 +76,7 @@ class SwooleServer extends ServerAbstracter
 
     /**
      * @param null|resource $socket
-     * @return bool
+     * @return int
      */
     public function getErrorNo($socket = null)
     {

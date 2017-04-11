@@ -34,7 +34,7 @@ class StreamsClient extends ClientAbstracter
      * @param int $flag
      * @throws ConnectException
      */
-    protected function doConnect($timeout = 0.3, $flag = 0)
+    protected function doConnect($timeout = 1.3, $flag = 0)
     {
         $uri = $this->getUri();
         $scheme = $uri->getScheme() ?: self::PROTOCOL_WS;
@@ -53,8 +53,7 @@ class StreamsClient extends ClientAbstracter
             $context = stream_context_create();
         }
 
-        $timeouts = $this->getOption('timeout', 2);
-        $timeouts = $timeouts < 1 ? 2 : (int)$timeouts;
+        $timeout = $timeout ?: $this->getOption('timeout', 2.2);
 
         $host = $this->getHost();
         $port = $this->getPort();
@@ -62,7 +61,14 @@ class StreamsClient extends ClientAbstracter
         $remote = $schemeHost . ($port ? ":$port" : '');
 
         // Open the socket.  @ is there to suppress warning that we will catch in check below instead.
-        $this->socket = stream_socket_client($remote, $errNo, $errStr, $timeouts, STREAM_CLIENT_CONNECT, $context);
+        $this->socket = stream_socket_client(
+            $remote,
+            $errNo,
+            $errStr,
+            (int)$timeout < 1 ? 1: (int)$timeout,
+            STREAM_CLIENT_CONNECT,
+            $context
+        );
 
         // can also use: fsockopen — 打开一个网络连接或者一个Unix套接字连接
         // $this->socket = fsockopen($schemeHost, $port, $errNo, $errStr, $timeout);
@@ -72,22 +78,33 @@ class StreamsClient extends ClientAbstracter
         }
 
         // Set timeout on the stream as well.
-        $this->setTimeout($timeouts, $this->getOption('timeout_ms'));
+        $this->setTimeout($timeout);
     }
 
-    public function setTimeout($timeout, $timeoutMs = null)
+    public function setTimeout($timeout = 2.2)
     {
-        $timeoutUs = null;
-
-        if ($timeout < 1) {
-            $timeoutUs = (int)($timeout * 1000 * 1000);
-            $timeout = 1;
-        } else if ($timeoutMs) {
-            $timeoutUs = (int)($timeoutMs * 1000);
+        if (strpos($timeout, '.')) {
+            [$s, $us] = explode('.', $timeout);
+            $s = $s < 1 ? 1 : (int)$s;
+            $us = (int)($us * 1000 * 1000);
+        } else {
+            $s = (int)$timeout;
+            $us = null;
         }
 
         // Set timeout on the stream as well.
-        stream_set_timeout($this->socket, (int)$timeout, $timeoutUs);
+        stream_set_timeout($this->socket, $s, $us);
+    }
+
+    /**
+     * 设置buffer区
+     * @param int $sendBufferSize
+     * @param int $rcvBufferSize
+     */
+    public function setBufferSize($sendBufferSize, $rcvBufferSize)
+    {
+        stream_set_write_buffer($this->socket, $sendBufferSize);
+        stream_set_read_buffer($this->socket, $rcvBufferSize);
     }
 
     /**
@@ -181,10 +198,15 @@ class StreamsClient extends ClientAbstracter
      */
     public function getSockName()
     {
-        return [
+        $name = stream_socket_get_name($this->socket, false);
+        $data = [
             'host' => '',
             'port' => 0,
         ];
+
+        [$data['host'], $data['port']] = explode(':', $name);
+
+        return $data;
     }
 
     /**
@@ -193,10 +215,15 @@ class StreamsClient extends ClientAbstracter
      */
     public function getPeerName()
     {
-        return [
+        $name = stream_socket_get_name($this->socket, true);
+        $data = [
             'host' => '',
             'port' => 0,
         ];
+
+        [$data['host'], $data['port']] = explode(':', $name);
+
+        return $data;
     }
 
     public function getErrorNo()
