@@ -14,6 +14,7 @@ use Swoole\Client;
 
 /**
  * Class SwooleDriver
+ * power by `swoole` extension
  * @package inhere\webSocket\client
  */
 class SwooleClient extends ClientAbstracter
@@ -69,7 +70,7 @@ class SwooleClient extends ClientAbstracter
     {
         $type = SWOOLE_SOCK_TCP;
 
-        if ( $this->getOption('ssl') ) {
+        if ( $this->getOption('enable_ssl') ) {
             $type |= SWOOLE_SSL;
         }
 

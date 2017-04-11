@@ -10,6 +10,7 @@ namespace inhere\webSocket\server;
 
 /**
  * Class StreamsServer
+ * power by `streams` extension(php built-in)
  * @package inhere\webSocket\server
  */
 class StreamsServer extends ServerAbstracter

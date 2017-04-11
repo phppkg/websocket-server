@@ -19,6 +19,12 @@ use inhere\webSocket\http\Response;
 abstract class ServerAbstracter extends WSAbstracter implements ServerInterface
 {
     /**
+     * the callback on the before start server
+     * @var \Closure
+     */
+    private $beforeStartCb;
+
+    /**
      * the master socket
      * @var resource
      */
@@ -62,9 +68,8 @@ abstract class ServerAbstracter extends WSAbstracter implements ServerInterface
         'open_log' => true,
         'log_file' => '',
 
-        'driver_options' => [
-
-        ],
+        // enable ssl
+        'enable_ssl' => false,
 
         // while 循环时间间隔 毫秒 millisecond. 1s = 1000ms = 1000 000us
         'sleep_ms' => 500,
@@ -104,20 +109,28 @@ abstract class ServerAbstracter extends WSAbstracter implements ServerInterface
         $this->log("The webSocket server power by [{$this->name}], driver class: " . static::class);
     }
 
-    protected function beforeStart()
-    {}
-
     /**
      * start server
      */
     public function start()
     {
-        $this->beforeStart();
-
         // create and prepare
         $this->prepareWork();
 
+        // if `$this->beforeStartCb` exists.
+        if ($cb = $this->beforeStartCb) {
+            $cb($this);
+        }
+
         $this->doStart();
+    }
+
+    /**
+     * @param \Closure $closure
+     */
+    public function beforeStart(\Closure $closure = null)
+    {
+        $this->beforeStartCb = $closure;
     }
 
     /**

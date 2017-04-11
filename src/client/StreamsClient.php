@@ -12,6 +12,7 @@ use inhere\exceptions\ConnectException;
 
 /**
  * Class StreamsClient
+ * power by `streams` extension(php built-in)
  * @package inhere\webSocket\client
  */
 class StreamsClient extends ClientAbstracter

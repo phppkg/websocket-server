@@ -13,6 +13,7 @@ use inhere\webSocket\Helper;
 
 /**
  * Class SocketsClient
+ * power by `sockets` extension
  * @package inhere\webSocket\client
  */
 class SocketsClient extends ClientAbstracter

@@ -45,7 +45,7 @@ class Request extends BaseMessage
     ) {
         parent::__construct($protocol, $protocolVersion, $headers, $cookies, $body);
 
-        $this->method = $method ?: 'GET';
+        $this->method = $method ? strtoupper($method) : 'GET';
         $this->uri = $uri;
 
         if (!$this->headers->has('Host') || $this->uri->getHost() !== '') {
