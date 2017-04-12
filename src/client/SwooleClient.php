@@ -159,6 +159,8 @@ class SwooleClient extends ClientAbstracter
     public function close(bool $force = false)
     {
         $this->client->close($force);
+
+        $this->setConnected(false);
     }
 
     /**

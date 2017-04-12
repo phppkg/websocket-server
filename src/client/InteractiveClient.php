@@ -15,7 +15,7 @@ namespace inhere\webSocket\client;
  */
 class InteractiveClient
 {
-    const CMD_PREFIX = '@';
+    const CMD_PREFIX = ':';
     const DEFAULT_CMD = 'send';
 
     /**

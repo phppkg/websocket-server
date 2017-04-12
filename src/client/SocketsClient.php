@@ -256,6 +256,8 @@ class SocketsClient extends ClientAbstracter
 
             $this->socket = null;
         }
+
+        $this->setConnected(false);
     }
 
     /**

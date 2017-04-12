@@ -89,6 +89,10 @@ class SwooleServer extends ServerAbstracter
         // setting swoole config
         // 对于Server的配置即 $server->set() 中传入的参数设置，必须关闭/重启整个Server才可以重新加载
         $this->server->set($this->getOption('swoole', []));
+
+        $max = $this->getOption('max_conn', 20);
+
+        $this->log("Started WebSocket server on {$this->host}:{$this->port} (max allow connection: $max)");
     }
 
     /**
@@ -107,12 +111,15 @@ class SwooleServer extends ServerAbstracter
         $this->server->on(self::ON_MESSAGE, [$this, 'onMessage']);
         $this->server->on(self::ON_CLOSE, [$this, 'onClose']);
 
+        $this->server->on('task', [$this, 'onTask']);
+        $this->server->on('finish', [$this, 'onFinish']);
+
         $this->server->start();
     }
 
     public function onConnect(Server $server, int $fd)
     {
-
+        $this->connect($fd);
     }
 
     public function onHandShake(SWRequest $swRequest, SWResponse $swResponse)
@@ -194,24 +201,6 @@ class SwooleServer extends ServerAbstracter
     }
 
     /**
-     * handle client message
-     * @param int $cid
-     * @param string $data
-     * @param int $bytes
-     * @param array $meta The client info [@see $defaultInfo]
-     */
-    protected function message(int $cid, string $data, int $bytes, array $meta = [])
-    {
-        $meta = $meta ?: $this->getMeta($cid);
-        // $data = $this->decode($data);
-
-        $this->log("Received $bytes bytes message from #$cid, Data: $data");
-
-        // call on message handler
-        $this->trigger(self::ON_MESSAGE, [$this, $data, $cid, $meta]);
-    }
-
-    /**
      * @param Server $server
      * @param int $cid
      * @return bool
@@ -227,6 +216,77 @@ class SwooleServer extends ServerAbstracter
         $this->log("The #$cid client connection has been closed! Count: " . $this->count());
 
         return true;
+    }
+
+    ////////////////////// Task Event //////////////////////
+
+    /**
+     * 处理异步任务( onTask )
+     * @param  Server $server
+     * @param  int           $taskId
+     * @param  int           $fromId
+     * @param  mixed         $data
+     */
+    public function onTask(Server $server, $taskId, $fromId, $data)
+    {
+        // $this->addLog("Handle New AsyncTask[id:$taskId]");
+        // 返回任务执行的结果(finish操作是可选的，也可以不返回任何结果)
+        // $server->finish("$data -> OK");
+    }
+
+    /**
+     * 处理异步任务的结果
+     * @param  Server $server
+     * @param  int           $taskId
+     * @param  mixed         $data
+     */
+    public function onFinish(Server $server, $taskId, $data)
+    {
+        //$this->addLog("AsyncTask[$taskId] Finish. Data: $data");
+    }
+
+    /**
+     * @param int $fd
+     */
+    protected function connect($fd)
+    {
+        $cid = $fd;
+        // @link https://wiki.swoole.com/wiki/page/p-connection_info.html
+        $data = $this->server->getClientInfo($fd);
+
+        // 初始化客户端信息
+        $this->metas[$cid] = $meta = [
+            'host' => $data['remote_ip'],
+            'port' => $data['remote_port'],
+            'handshake' => false,
+            'path' => '/',
+        ];
+
+        // 客户端连接单独保存。 这里为了兼容其他驱动，保存了cid
+        $this->clients[$cid] = $cid;
+
+        $this->log("A new client connected, ID: $cid, From {$meta['host']}:{$meta['port']}. Count: " . $this->count());
+
+        // 触发 connect 事件回调
+        $this->trigger(self::ON_CONNECT, [$this, $cid]);
+    }
+
+    /**
+     * handle client message
+     * @param int $cid
+     * @param string $data
+     * @param int $bytes
+     * @param array $meta The client info [@see $defaultInfo]
+     */
+    protected function message(int $cid, string $data, int $bytes, array $meta = [])
+    {
+        $meta = $meta ?: $this->getMeta($cid);
+        // $data = $this->decode($data);
+
+        $this->log("Received $bytes bytes message from #$cid, Data: $data");
+
+        // call on message handler
+        $this->trigger(self::ON_MESSAGE, [$this, $data, $cid, $meta]);
     }
 
     /**
@@ -258,30 +318,33 @@ class SwooleServer extends ServerAbstracter
         return $this->server->close($cid);
     }
 
-    /**
-     * @param int $fd
-     */
-    protected function connect($fd)
+
+    public function sendToAll(string $data, int $sender = 0): int
     {
-        $cid = $fd;
-        // @link https://wiki.swoole.com/wiki/page/p-connection_info.html
-        $data = $this->server->getClientInfo($fd);
+        $startFd = 0;
+        $count = 0;
 
-        // 初始化客户端信息
-        $this->metas[$cid] = $meta = [
-            'host' => $data['remote_ip'],
-            'port' => $data['remote_port'],
-            'handshake' => false,
-            'path' => '/',
-        ];
+        while(true) {
+            $connList = $this->server->connection_list($startFd, 50);
 
-        // 客户端连接单独保存。 这里为了兼容其他驱动，保存了cid
-        $this->clients[$cid] = $cid;
+            if($connList===false || ($num = count($connList)) === 0) {
+                break;
+            }
 
-        $this->log("A new client connected, ID: $cid, From {$meta['host']}:{$meta['port']}. Count: " . $this->count());
+            $count += $num;
+            $startFd = end($connList);
 
-        // 触发 connect 事件回调
-        $this->trigger(self::ON_CONNECT, [$this, $cid]);
+            foreach($connList as $fd) {
+                $this->server->send($fd, $data);
+            }
+        }
+
+        return $count;
+    }
+
+    public function sendToSome(string $data, array $receivers = [], array $expected = [], int $sender = 0): int
+    {
+
     }
 
     /**
@@ -311,6 +374,15 @@ class SwooleServer extends ServerAbstracter
         $opcode = 1;
 
         return $this->server->push($fd, $data, $opcode, $finish) ? 0 : 1;
+    }
+
+    /**
+     * @param int $cid
+     * @return bool
+     */
+    public function exist(int $cid)
+    {
+        return $this->server->exist($cid);
     }
 
     /**

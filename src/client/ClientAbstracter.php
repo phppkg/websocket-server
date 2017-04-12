@@ -436,6 +436,8 @@ abstract class ClientAbstracter extends WSAbstracter implements ClientInterface
         if ( $this->socket ) {
             $this->socket = null;
         }
+
+        $this->connected = false;
     }
 
     /**
