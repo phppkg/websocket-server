@@ -19,10 +19,7 @@ interface ClientInterface
      */
     public static function isSupported();
 
-    /**
-     * @return string
-     */
-    //public static function name();
+    public function start();
 
     /**
      * @param array $options

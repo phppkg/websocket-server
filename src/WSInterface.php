@@ -19,6 +19,8 @@ interface WSInterface
      */
     const VERSION = '0.5.1';
 
+    const UPDATE_TIME = '2017-04-14';
+
     /**
      * Websocket version
      */

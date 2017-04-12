@@ -8,6 +8,8 @@
 
 namespace inhere\webSocket\server;
 
+use inhere\console\io\Input;
+use inhere\console\io\Output;
 use inhere\library\traits\TraitSimpleOption;
 use inhere\webSocket\server\handlers\IRouteHandler;
 use inhere\webSocket\server\handlers\RootHandler;
@@ -78,6 +80,16 @@ class Application
     private $port;
 
     /**
+     * @var Output
+     */
+    protected $cliOut;
+
+    /**
+     * @var Input
+     */
+    protected $cliIn;
+
+    /**
      * @var ServerInterface
      */
     private $ws;
@@ -92,6 +104,7 @@ class Application
      * @var array
      */
     protected $options = [
+        'debug' => false,
         'driver' => '', // allow: sockets, swoole, streams
 
         // request and response data type: json text
@@ -99,6 +112,11 @@ class Application
 
         // allowed accessed Origins. e.g: [ 'localhost', 'site.com' ]
         'allowedOrigins' => '*',
+
+        // server options
+        'server' => [
+
+        ]
     ];
 
     /**
@@ -123,7 +141,20 @@ class Application
         $this->port = $port ?: 8080;
         $this->wsHandlers = new \SplFixedArray(5);
 
+        $this->cliIn = new Input();
+        $this->cliOut = new Output();
+
         $this->setOptions($options, true);
+
+        $opts = $this->getOption('server', []);
+        $opts['debug'] = $this->getOption('debug', false);
+        $opts['driver'] = $this->getOption('driver'); // allow: sockets, swoole, streams
+
+        $this->ws = ServerFactory::make($this->host, $this->port, $opts);
+
+        // override ws's `cliIn` `cliOut`
+        $this->ws->setCliIn($this->cliIn);
+        $this->ws->setCliOut($this->cliOut);
     }
 
     /**
@@ -131,13 +162,6 @@ class Application
      */
     public function run()
     {
-        if (!$this->ws) {
-            $opts = [
-                'driver' => $this->getOption('driver'), // allow: sockets, swoole, streams
-            ];
-            $this->ws = ServerFactory::make($this->host, $this->port, $opts);
-        }
-
         // register server events
         $this->ws->on(WSInterface::ON_HANDSHAKE, [$this, 'handleHandshake']);
         $this->ws->on(WSInterface::ON_OPEN, [$this, 'handleOpen']);
@@ -611,14 +635,6 @@ EOF;
     public function getWs(): ServerInterface
     {
         return $this->ws;
-    }
-
-    /**
-     * @param ServerInterface $ws
-     */
-    public function setWs(ServerInterface $ws)
-    {
-        $this->ws = $ws;
     }
 
     /**

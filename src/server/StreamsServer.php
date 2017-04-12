@@ -54,15 +54,11 @@ class StreamsServer extends ServerAbstracter
         );
 
         if ( !is_resource($this->socket) ) {
-            $this->print('[ERROR] Could not listen on socket: '. $errStr, true, $errNo);
+            $this->cliOut->error('Could not listen on socket: '. $errStr, $errNo);
         }
 
         $this->setTimeout($this->getOption('timeout', 2.2));
         // $this->listening = true;
-
-        $max = $this->getOption('max_conn', 20);
-
-        $this->log("Started WebSocket server on {$this->host}:{$this->port} (max allow connection: $max)");
     }
 
     protected function doStart()

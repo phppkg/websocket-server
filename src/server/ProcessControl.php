@@ -69,11 +69,6 @@ trait ProcessControl
         }
     }
 
-    public function getMasterPID()
-    {
-        return posix_getpid();
-    }
-
     /**
      * Change the identity to a non-priv user
      * @param int $uid

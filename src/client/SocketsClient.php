@@ -47,19 +47,6 @@ class SocketsClient extends ClientAbstracter
     }
 
     /**
-     * SocketsDriver constructor.
-     * @param string $url
-     * @param array $options
-     */
-    public function __construct(string $url, array $options = [])
-    {
-        $this->options['timeout_send'] = 2.2;
-        $this->options['timeout_recv'] = 2.2;
-
-        parent::__construct($url, $options);
-    }
-
-    /**
      * @inheritdoc
      */
     protected function doConnect($timeout = 2.1, $flag = 0)
@@ -68,7 +55,7 @@ class SocketsClient extends ClientAbstracter
 
         if ( !is_resource($this->socket) ) {
             $this->fetchError();
-            $this->print('[ERROR] Unable to create socket: '. $this->errMsg, true, $this->errNo);
+            $this->cliOut->error('Unable to create socket: '. $this->errMsg, $this->errNo);
         }
 
         $timeout = $timeout ?: $this->getOption('timeout', 2.1);
@@ -79,7 +66,7 @@ class SocketsClient extends ClientAbstracter
 
         if (!PhpHelper::isWin() && !socket_set_nonblock($this->socket)) {
             $this->fetchError();
-            $this->print('[ERROR] Unable to set non-block on socket: '. $this->errMsg, true, $this->errNo);
+            $this->cliOut->error('Unable to set non-block on socket: '. $this->errMsg, $this->errNo);
         }
 
         $host = $this->getHost();
@@ -100,12 +87,12 @@ class SocketsClient extends ClientAbstracter
                 continue;
             }
 
-            $this->print('[ERROR] Unable to set block on socket: ' . $this->errMsg, true, $errNo);
+            $this->cliOut->error('Unable to set block on socket: ' . $this->errMsg, $errNo);
         }
 
         if (!PhpHelper::isWin() && !socket_set_block($this->socket)) {
             $this->fetchError();
-            $this->print('[ERROR] Unable to set block on socket: ' . $this->errMsg, true, $this->errNo);
+            $this->cliOut->error('Unable to set block on socket: ' . $this->errMsg, $this->errNo);
         }
     }
 

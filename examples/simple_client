@@ -5,7 +5,10 @@ require __DIR__ . '/../../../autoload.php';
 
 use inhere\webSocket\client\ClientFactory;
 
+define('PROJECT_PATH', __DIR__);
+
 $options = [
+    'debug' => true,
     'driver' => '',
     'headers' => [
         'test-name' => 'value'

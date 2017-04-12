@@ -45,7 +45,7 @@ class SocketsServer extends ServerAbstracter
     {
         if ( count($this->callbacks) < 1 ) {
             $sup = implode(',', $this->getSupportedEvents());
-            $this->print('[ERROR] Please register event handle callback before start. supported events: ' . $sup, true, -500);
+            $this->cliOut->error('Please register event handle callback before start. supported events: ' . $sup, -500);
         }
 
         // reset
@@ -60,7 +60,7 @@ class SocketsServer extends ServerAbstracter
 
         if ( !is_resource($this->socket) ) {
             $this->fetchError();
-            $this->print('[ERROR] Unable to create socket: '. $this->errMsg, true, $this->errNo);
+            $this->cliOut->error('Unable to create socket: '. $this->errMsg, $this->errNo);
         }
 
         // 设置IP和端口重用,在重启服务器后能重新使用此端口;
@@ -74,8 +74,6 @@ class SocketsServer extends ServerAbstracter
 
         // 监听套接字上的连接. 最多允许 $max 个连接，超过的客户端连接会返回 WSAECONNREFUSED 错误
         socket_listen($this->socket, $max);
-
-        $this->log("Started WebSocket server on {$this->host}:{$this->port} (max allow connection: $max)");
     }
 
     protected function doStart()
@@ -84,7 +82,7 @@ class SocketsServer extends ServerAbstracter
 
         // interval time
         $setTime = (int)$this->getOption('sleep_ms', 800);
-        $sleepTime = $setTime > 50 ? $setTime : 800;
+        $sleepTime = $setTime > 50 ? $setTime : 500;
         $sleepTime *= 1000; // ms -> us
 
         while(true) {

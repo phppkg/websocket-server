@@ -7,6 +7,8 @@
  */
 
 namespace inhere\webSocket\server;
+use inhere\console\io\Input;
+use inhere\console\io\Output;
 
 
 /**
@@ -45,4 +47,8 @@ interface ServerInterface
      * @return int
      */
     public function count();
+
+    public function setCliOut(Output $output);
+
+    public function setCliIn(Input $input);
 }

@@ -71,43 +71,57 @@ abstract class ClientAbstracter extends WSAbstracter implements ClientInterface
     private $connected = false;
 
     /**
-     * @var array
-     */
-    protected $options = [
-        'debug' => false,
-
-        'open_log' => true,
-        'log_file' => '',
-
-        'timeout' => 2.2,
-
-        // 数据块大小 发送数据时将会按这个大小拆分发送
-        'fragment_size' => 1024,
-
-        // stream context
-        'context' => null,
-
-        'auth' => [
-            // 'username'=>"",
-            // 'password'=>"",
-            // 'type'=>"" // basic | digest
-        ],
-
-        // append headers
-        'headers' => [
-            'origin' => '',
-        ],
-
-        // append headers
-        'cookies' => [],
-    ];
-
-    /**
      * @return array
      */
     public function getSupportedEvents(): array
     {
         return [self::ON_OPEN, self::ON_MESSAGE, self::ON_TICK, self::ON_CLOSE, self::ON_ERROR];
+    }
+
+    /**
+     * @return array
+     */
+    public function getDefaultOptions()
+    {
+        return array_merge(parent::getDefaultOptions(),[
+            // enable ssl
+            'enable_ssl' => false,
+
+            // while 循环时间间隔 毫秒 millisecond. 1s = 1000ms = 1000 000us
+            'sleep_ms' => 500,
+
+            // 连接超时时间
+            'timeout' => 2.2,
+
+            // 最大允许连接数量
+            'max_conn' => 25,
+
+            // 最大数据接收长度 1024 2048
+            'max_data_len' => 2048,
+
+            // 数据块大小 发送数据时将会按这个大小拆分发送
+            'fragment_size' => 1024,
+
+            // stream context
+            'context' => null,
+
+            // swoole config
+            'swoole' => [],
+
+            'http_auth' => [
+                // 'username'=>"",
+                // 'password'=>"",
+                // 'type'=>"" // basic | digest
+            ],
+
+            // append headers
+            'headers' => [
+                'origin' => '',
+            ],
+
+            // append headers
+            'cookies' => [],
+        ]);
     }
 
     /**
@@ -117,15 +131,15 @@ abstract class ClientAbstracter extends WSAbstracter implements ClientInterface
      */
     public function __construct(string $url, array $options = [])
     {
+        $this->url = $url;
+
+        parent::__construct($options);
+
         if (!static::isSupported()) {
-            $this->print("[ERROR] Your system is not supported the driver: {$this->name}, by " . static::class, true, -200);
+            $this->cliOut->error("Your system is not supported the driver: {$this->name}, by " . static::class, -200);
         }
 
-        $this->url = $url;
-        $this->setOptions($options, true);
-        $this->init();
-
-        $this->log("The webSocket client power by [{$this->name}], remote server is {$url}");
+        $this->log("The webSocket client power by [<info>{$this->name}</info>], remote server is <info>{$url}</info>");
     }
 
     /**
@@ -140,6 +154,8 @@ abstract class ClientAbstracter extends WSAbstracter implements ClientInterface
 
     protected function init()
     {
+        parent::init();
+
         $uri = Uri::createFromString($this->url); // todo ...
         $this->request = new Request('GET', $uri);
 
@@ -174,8 +190,13 @@ abstract class ClientAbstracter extends WSAbstracter implements ClientInterface
         $tickHandler = $this->getCallback(self::ON_TICK);
         $msgHandler = $this->getCallback(self::ON_MESSAGE);
 
+        // interval time
+        $setTime = (int)$this->getOption('sleep_ms', 500);
+        $sleepTime = ($setTime > 50 ? $setTime : 500) * 1000; // ms -> us
+
         while (true) {
             if ($tickHandler && (call_user_func($tickHandler, $this) === false)) {
+                $this->close();
                 break;
             }
 
@@ -183,16 +204,16 @@ abstract class ClientAbstracter extends WSAbstracter implements ClientInterface
             $changed = [$this->socket];
 
             if (stream_select($changed, $write, $except, null) > 0) {
-                foreach ($changed as $socket) {
+                //foreach ($changed as $socket) {
                     $message = $this->receive();
 
                     if ($message !== false && $msgHandler) {
                         call_user_func($msgHandler, $message, $this);
                     }
-                }
+                //}
             }
 
-            usleep(5000);
+            usleep($sleepTime);
         }
     }
 

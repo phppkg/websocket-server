@@ -27,7 +27,7 @@ class SwooleClient extends ClientAbstracter
     /**
      * @var Client
      */
-    private $client;
+    private $swClient;
 
     /**
      * @return bool
@@ -38,29 +38,27 @@ class SwooleClient extends ClientAbstracter
     }
 
     /**
-     * SwooleDriver constructor.
-     * @param string $url
-     * @param array $options
+     * @return array
      */
-    public function __construct(string $url, array $options = [])
+    public function getDefaultOptions()
     {
-        $this->options['client'] = [
-            // 结束符检测
-            'open_eof_check' => true,
-            'package_eof' => self::HEADER_END,
-            'package_max_length' => 1024 * 1024 * 2, //协议最大长度
+        return array_merge(parent::getDefaultOptions(), [
+            'swoole' => [
+                // 结束符检测
+                'open_eof_check' => true,
+                'package_eof'    => self::HEADER_END,
+                'package_max_length' => 1024 * 1024 * 2, //协议最大长度
 
-            // 长度检测
+                // 长度检测
 //            'open_length_check'     => 1,
 //            'package_length_type'   => 'N',
 //            'package_length_offset' => 0,       //第N个字节是包长度的值
 //            'package_body_offset'   => 4,       //第几个字节开始计算长度
 
-            // Socket缓存区尺寸
-            'socket_buffer_size'     => 1024*1024*2, //2M缓存区
-        ];
-
-        parent::__construct($url, $options);
+                // Socket缓存区尺寸
+                'socket_buffer_size'     => 1024*1024*2, //2M缓存区
+            ]
+        ]);
     }
 
     /**
@@ -74,17 +72,17 @@ class SwooleClient extends ClientAbstracter
             $type |= SWOOLE_SSL;
         }
 
-        $this->client = new Client($type);
+        $this->swClient = new Client($type);
 
         if ($keyFile = $this->getOption('ssl_key_file')) {
-            $this->client->set([
+            $this->swClient->set([
                 'ssl_key_file' => $keyFile,
                 'ssl_cert_file' => $this->getOption('ssl_cert_file')
             ]);
         }
 
-        if ( !$this->client->connect($this->getHost(), $this->getPort(), $timeout) ) {
-            $this->print("[ERROR] connect failed. Error: {$this->client->errCode}", true, -404);
+        if ( !$this->swClient->connect($this->getHost(), $this->getPort(), $timeout) ) {
+            $this->cliOut->error("connect failed. Error: {$this->swClient->errCode}", -404);
         }
     }
 
@@ -96,7 +94,7 @@ class SwooleClient extends ClientAbstracter
         $headerBuffer = '';
 
         while(true) {
-            $_tmp = $this->client->recv();
+            $_tmp = $this->swClient->recv();
 
             if (!$_tmp) {
                 return '';
@@ -119,7 +117,7 @@ class SwooleClient extends ClientAbstracter
      */
     protected function write($data)
     {
-        $written = $this->client->send($data);
+        $written = $this->swClient->send($data);
 
         if ($written < ($dataLen = strlen($data))) {
             throw new ConnectException("Could only write $written out of $dataLen bytes.");
@@ -135,12 +133,12 @@ class SwooleClient extends ClientAbstracter
      */
     public function send($message, $flag = null)
     {
-        return $this->client->send($message, $flag);
+        return $this->swClient->send($message, $flag);
     }
 
     public function sendFile(string $filename)
     {
-        return $this->client->sendfile($filename);
+        return $this->swClient->sendfile($filename);
     }
 
     /**
@@ -150,7 +148,7 @@ class SwooleClient extends ClientAbstracter
      */
     public function receive($size = null, $flag = null)
     {
-        return $this->client->recv($size, $flag);
+        return $this->swClient->recv($size, $flag);
     }
 
     /**
@@ -158,7 +156,7 @@ class SwooleClient extends ClientAbstracter
      */
     public function close(bool $force = false)
     {
-        $this->client->close($force);
+        $this->swClient->close($force);
 
         $this->setConnected(false);
     }
@@ -168,7 +166,7 @@ class SwooleClient extends ClientAbstracter
      */
     public function getSocket(): resource
     {
-        return $this->client->sock;
+        return $this->swClient->sock;
     }
 
     /**
@@ -176,7 +174,7 @@ class SwooleClient extends ClientAbstracter
      */
     public function getSockName()
     {
-        return $this->client->getsockname();
+        return $this->swClient->getsockname();
     }
 
     /**
@@ -184,7 +182,15 @@ class SwooleClient extends ClientAbstracter
      */
     public function getPeerName()
     {
-        return $this->client->getpeername();
+        return $this->swClient->getpeername();
+    }
+
+    /**
+     * @return Client
+     */
+    public function getSwClient(): Client
+    {
+        return $this->swClient;
     }
 
     /**
@@ -201,7 +207,7 @@ class SwooleClient extends ClientAbstracter
      */
     public function setClientOptions(array $options)
     {
-        $this->client->set($options);
+        $this->swClient->set($options);
     }
 
     /**
@@ -209,7 +215,7 @@ class SwooleClient extends ClientAbstracter
      */
     public function getErrorNo()
     {
-        return $this->client->errCode;
+        return $this->swClient->errCode;
     }
 
     /**
@@ -217,13 +223,19 @@ class SwooleClient extends ClientAbstracter
      */
     public function getErrorMsg()
     {
-        return socket_strerror($this->client->errCode);
+        return socket_strerror($this->swClient->errCode);
     }
 
+    /**
+     * @param $method
+     * @param array $args
+     * @return mixed
+     * @throws UnknownCalledException
+     */
     public function __call($method, array $args = [])
     {
-        if (method_exists($this->client, $method)) {
-            return call_user_func_array([$this->client, $method], $args);
+        if (method_exists($this->swClient, $method)) {
+            return call_user_func_array([$this->swClient, $method], $args);
         }
 
         throw new UnknownCalledException("Call the method [$method] not exists!");

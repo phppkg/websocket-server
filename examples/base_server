@@ -7,7 +7,10 @@ use inhere\webSocket\WSInterface;
 use inhere\webSocket\server\ServerFactory;
 use inhere\webSocket\server\ServerInterface;
 
+define('PROJECT_PATH', __DIR__);
+
 $options = [
+    'debug' => true,
     'driver' => '',
 ];
 

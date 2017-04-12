@@ -47,26 +47,29 @@ class SwooleServer extends ServerAbstracter
         return extension_loaded('swoole');
     }
 
-    public function __construct($host = '0.0.0.0', $port = 8080, array $options = [])
+    /**
+     * @return array
+     */
+    public function getDefaultOptions()
     {
-        $this->options['mode'] = self::MODE_PROCESS;
-        $this->options['swoole'] = [
-            // 'user'    => '',
-            'worker_num'    => 4,
-            'task_worker_num' => 2, // 启用 task worker,必须为Server设置onTask和onFinish回调
-            'daemonize'     => 0,
-            'max_request'   => 1000,
-            // 在1.7.15以上版本中，当设置dispatch_mode = 1/3时会自动去掉onConnect/onClose事件回调。
-            // see @link https://wiki.swoole.com/wiki/page/49.html
-            'dispatch_mode' => 1,
-            // 'log_file' , // '/tmp/swoole.log', // 不设置log_file会打印到屏幕
+        return array_merge(parent::getDefaultOptions(), [
+            'mode' => self::MODE_PROCESS,
+            'swoole' => [
+                // 'user'    => '',
+                'worker_num'    => 4,
+                'task_worker_num' => 2, // 启用 task worker,必须为Server设置onTask和onFinish回调
+                'daemonize'     => 0,
+                'max_request'   => 1000,
+                // 在1.7.15以上版本中，当设置dispatch_mode = 1/3时会自动去掉onConnect/onClose事件回调。
+                // see @link https://wiki.swoole.com/wiki/page/49.html
+                'dispatch_mode' => 1,
+                // 'log_file' , // '/tmp/swoole.log', // 不设置log_file会打印到屏幕
 
-            // 使用SSL必须在编译swoole时加入--enable-openssl选项 并且配置下面两项
-            // 'ssl_cert_file' => __DIR__.'/config/ssl.crt',
-            // 'ssl_key_file' => __DIR__.'/config/ssl.key',
-        ];
-
-        parent::__construct($host, $port, $options);
+                // 使用SSL必须在编译swoole时加入--enable-openssl选项 并且配置下面两项
+                // 'ssl_cert_file' => __DIR__.'/config/ssl.crt',
+                // 'ssl_key_file' => __DIR__.'/config/ssl.key',
+            ]
+        ]);
     }
 
     /**
@@ -88,11 +91,9 @@ class SwooleServer extends ServerAbstracter
 
         // setting swoole config
         // 对于Server的配置即 $server->set() 中传入的参数设置，必须关闭/重启整个Server才可以重新加载
-        $this->server->set($this->getOption('swoole', []));
-
-        $max = $this->getOption('max_conn', 20);
-
-        $this->log("Started WebSocket server on {$this->host}:{$this->port} (max allow connection: $max)");
+        $this->server->set($this->getOption('swoole', [
+            'worker_num'  => 2
+        ]));
     }
 
     /**
@@ -117,6 +118,10 @@ class SwooleServer extends ServerAbstracter
         $this->server->start();
     }
 
+    /**
+     * @param Server $server
+     * @param int $fd
+     */
     public function onConnect(Server $server, int $fd)
     {
         $this->connect($fd);
@@ -138,7 +143,7 @@ class SwooleServer extends ServerAbstracter
         $response = new Response();
 
         // 解析请求头信息错误
-        if (!$secKey = $swRequest->header["sec-websocket-key"]) {
+        if (!$secKey = $swRequest->header['sec-websocket-key']) {
             $this->log("handle handshake failed! [Sec-WebSocket-Key] not found in header. Data: \n" . $request->toString(), 'error');
 
             $swResponse->status(404);
@@ -195,6 +200,10 @@ class SwooleServer extends ServerAbstracter
         return true;
     }
 
+    /**
+     * @param Server $server
+     * @param Frame $frame
+     */
     public function onMessage(Server $server, Frame $frame)
     {
         $this->message($frame->fd, $frame->data, strlen($frame->data));
@@ -318,7 +327,6 @@ class SwooleServer extends ServerAbstracter
         return $this->server->close($cid);
     }
 
-
     public function sendToAll(string $data, int $sender = 0): int
     {
         $startFd = 0;
@@ -334,6 +342,7 @@ class SwooleServer extends ServerAbstracter
             $count += $num;
             $startFd = end($connList);
 
+            /** @var $connList array */
             foreach($connList as $fd) {
                 $this->server->send($fd, $data);
             }
@@ -344,7 +353,54 @@ class SwooleServer extends ServerAbstracter
 
     public function sendToSome(string $data, array $receivers = [], array $expected = [], int $sender = 0): int
     {
+        $count = 0;
+        $res = $data;
+        $len = strlen($res);
+        $fromUser = $sender < 1 ? 'SYSTEM' : $sender;
 
+        // to receivers
+        if ($receivers) {
+            $this->log("(broadcast)The #{$fromUser} gave some specified user sending a message. Data: {$data}");
+
+            foreach ($receivers as $receiver) {
+                if ($this->hasClient($receiver)) {
+                    $count++;
+                    $this->writeTo($receiver, $res, $len);
+                }
+            }
+
+            return $count;
+        }
+
+        // to special users
+        $startFd = 0;
+        $this->log("(broadcast)The #{$fromUser} send the message to everyone except some people. Data: {$data}");
+
+        while(true) {
+            $connList = $this->server->connection_list($startFd, 50);
+
+            if($connList===false || ($num = count($connList)) === 0) {
+                break;
+            }
+
+            $count += $num;
+            $startFd = end($connList);
+
+            /** @var $connList array */
+            foreach($connList as $fd) {
+                if ( isset($expected[$fd]) ) {
+                    continue;
+                }
+
+                if ( $receivers && !isset($receivers[$fd]) ) {
+                    continue;
+                }
+
+                $this->server->send($fd, $data);
+            }
+        }
+
+        return $count;
     }
 
     /**
@@ -352,12 +408,12 @@ class SwooleServer extends ServerAbstracter
     protected function checkEnvWhenEnableSSL()
     {
         if ( !defined('SWOOLE_SSL')) {
-            $this->print('[ERROR] If you want use SSL(https), must add option --enable-openssl on the compile swoole.', true, -500);
+            $this->cliOut->error('If you want use SSL(https), must add option --enable-openssl on the compile swoole.', -500);
         }
 
         // check ssl config
         if ( !$this->getOption('ssl_cert_file') || !$this->getOption('ssl_key_file')) {
-            $this->print("[ERROR] If you want use SSL(https), must config the 'swoole.ssl_cert_file' and 'swoole.ssl_key_file'", true, -500);
+            $this->cliOut->error("If you want use SSL(https), must config the 'swoole.ssl_cert_file' and 'swoole.ssl_key_file'", -500);
         }
     }
 

@@ -8,8 +8,12 @@
 
 namespace inhere\webSocket;
 
+use inhere\console\io\Input;
+use inhere\console\io\Output;
+use inhere\library\helpers\PhpHelper;
 use inhere\library\traits\TraitSimpleFixedEvent;
 use inhere\library\traits\TraitSimpleOption;
+use inhere\library\utils\SFLogger;
 
 /**
  * Class WSAbstracter
@@ -39,6 +43,72 @@ abstract class WSAbstracter implements WSInterface
      * @var int
      */
     protected $port;
+
+    /**
+     * @var Output
+     */
+    protected $cliOut;
+
+    /**
+     * @var Input
+     */
+    protected $cliIn;
+
+    /**
+     * @var SFLogger
+     */
+    protected $logger;
+
+    /**
+     * @var array
+     */
+    protected $options = [];
+
+    /**
+     * @return array
+     */
+    public function getDefaultOptions()
+    {
+        return [
+            'debug' => false,
+            'as_daemon' => false,
+
+            // 日志配置
+            'log_service' => [
+                // 'name' => 'ws_server_log'
+                // 'basePath' => PROJECT_PATH . '/temp/logs/ws_server',
+                // 'logConsole' => false,
+                // 'logThreshold' => 0,
+            ],
+        ];
+    }
+
+    /**
+     * WSAbstracter constructor.
+     * @param array $options
+     */
+    public function __construct(array $options = [])
+    {
+        if ( !PhpHelper::isCli() ) {
+            throw new \RuntimeException('Server must run in the CLI mode.');
+        }
+
+        $this->cliIn = new Input();
+        $this->cliOut = new Output();
+        $this->options = $this->getDefaultOptions();
+
+        $this->setOptions($options, true);
+
+        $this->init();
+    }
+
+    protected function init()
+    {
+        // create log service instance
+        if ( $config = $this->getOption('log_service') ) {
+            $this->logger = SFLogger::make($config);
+        }
+    }
 
     /**
      * @return string
@@ -73,6 +143,38 @@ abstract class WSAbstracter implements WSInterface
     }
 
     /**
+     * @return Output
+     */
+    public function getCliOut(): Output
+    {
+        return $this->cliOut;
+    }
+
+    /**
+     * @param Output $output
+     */
+    public function setCliOut(Output $output)
+    {
+        $this->cliOut = $output;
+    }
+
+    /**
+     * @return Input
+     */
+    public function getCliIn(): Input
+    {
+        return $this->cliIn;
+    }
+
+    /**
+     * @param Input $cliIn
+     */
+    public function setCliIn(Input $cliIn)
+    {
+        $this->cliIn = $cliIn;
+    }
+
+    /**
      * Generate a random string for WebSocket key.(for client)
      * @return string Random string
      */
@@ -99,33 +201,65 @@ abstract class WSAbstracter implements WSInterface
         return base64_encode(sha1(trim($key) . self::SIGN_KEY, true));
     }
 
+    /**
+     * @return bool
+     */
+    public function isDebug(): bool
+    {
+        return (bool)$this->getOption('debug', false);
+    }
 
     /**
-     * @param string $message
+     * get Logger service
+     * @return SFLogger
+     */
+    public function getLogger()
+    {
+        return $this->logger;
+    }
+
+    /**
+     * output log message
+     * @param  string $msg
+     * @param  array $data
      * @param string $type
+     */
+    public function log(string $msg, string $type = 'debug', array $data = [])
+    {
+        // if close debug, don't output debug log.
+        if ( $this->isDebug() || $type !== 'debug') {
+
+            [$time, $micro] = explode('.', microtime(1));
+
+            $time = date('Y-m-d H:i:s', $time);
+            $json = $data ? json_encode($data) : '';
+            $type = strtoupper(trim($type));
+
+            $this->cliOut->write("[{$time}.{$micro}] [$type] $msg {$json}");
+
+            if ($logger = $this->getLogger()) {
+                $logger->$type(strip_tags($msg), $data);
+            }
+        }
+    }
+
+    /**
+     * output debug log message
+     * @param string $message
      * @param array $data
      */
-    public function log(string $message, string $type = 'info', array $data = [])
+    public function debug(string $message, array $data = [])
     {
-        $date = date('Y-m-d H:i:s');
-        $type = strtoupper(trim($type));
-
-        $this->print("[$date] [$type] $message " . ( $data ? json_encode($data) : '' ) );
+         $this->log($message, 'debug', $data);
     }
 
     /**
      * @param mixed $messages
      * @param bool $nl
-     * @param null|int $exit
+     * @param bool|int $exit
      */
-    public function print($messages, $nl = true, $exit = null)
+    public function print($messages, $nl = true, $exit = false)
     {
-        $text = is_array($messages) ? implode(($nl ? "\n" : ''), $messages) : $messages;
-
-        fwrite(\STDOUT, $text . ($nl ? "\n" : ''));
-
-        if ( $exit !== null ) {
-            exit((int)$exit);
-        }
+        $this->cliOut->write($messages, $nl, $exit);
     }
 }
