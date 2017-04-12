@@ -13,6 +13,7 @@ use inhere\webSocket\http\Response;
 use inhere\webSocket\http\Uri;
 use Swoole\Http\Request as SWRequest;
 use Swoole\Http\Response as SWResponse;
+use Swoole\Websocket\Frame;
 use Swoole\Websocket\Server;
 
 /**
@@ -103,8 +104,8 @@ class SwooleServer extends ServerAbstracter
         $this->server->on(self::ON_HANDSHAKE, [$this, 'onHandshake']);
         // $this->server->on(self::ON_OPEN, [$this, 'open']);
 
-        $this->server->on(self::ON_MESSAGE, [$this, 'message']);
-        $this->server->on(self::ON_CLOSE, [$this, 'close']);
+        $this->server->on(self::ON_MESSAGE, [$this, 'onMessage']);
+        $this->server->on(self::ON_CLOSE, [$this, 'onClose']);
 
         $this->server->start();
     }
@@ -129,12 +130,132 @@ class SwooleServer extends ServerAbstracter
 
         $response = new Response();
 
+        // 解析请求头信息错误
+        if (!$secKey = $swRequest->header["sec-websocket-key"]) {
+            $this->log("handle handshake failed! [Sec-WebSocket-Key] not found in header. Data: \n" . $request->toString(), 'error');
+
+            $swResponse->status(404);
+            $swResponse->write('<b>400 Bad Request</b><br>[Sec-WebSocket-Key] not found in request header.');
+
+            // $this->close($cid, $socket, false);
+            return false;
+        }
+
+        // 触发 handshake 事件回调，如果返回 false -- 拒绝连接，比如需要认证，限定路由，限定ip，限定domain等
+        // 就停止继续处理。并返回信息给客户端
+        if ( false === $this->trigger(self::ON_HANDSHAKE, [$request, $response, $cid]) ) {
+            $this->log("The #$cid client handshake's callback return false, will close the connection", 'notice');
+
+            $swResponse->status($response->getStatusCode());
+
+            foreach ($response->getHeaders() as $name => $value) {
+                $swResponse->header($name, $value);
+            }
+
+            $swResponse->write($response->getBody());
+
+            // $this->close($cid, $socket, false);
+            return false;
+        }
+
+        // general key
+        $sign = $this->genSign($secKey);
+        $response->setHeaders([
+            'Upgrade' => 'websocket',
+            'Connection' => 'Upgrade',
+            'Sec-WebSocket-Accept' => $sign,
+        ]);
+
+        // 响应握手成功
+        $swResponse->status(101);
+        foreach ($response->getHeaders() as $name => $value) {
+            $swResponse->header($name, $value);
+        }
+
+        // 标记已经握手 更新路由 path
+        $meta = $this->metas[$cid];
+        $meta['handshake'] = true;
+        $meta['path'] = $request->getPath();
+        $this->metas[$cid] = $meta;
+
+        $this->log("The #$cid client connection handshake successful! Info:", 'info', $meta);
+
         // $this->server->defer(function() use($request) {});
 
         // 握手成功 触发 open 事件
         $this->trigger(self::ON_OPEN, [$this, $request, $cid]);
 
         return true;
+    }
+
+    public function onMessage(Server $server, Frame $frame)
+    {
+        $this->message($frame->fd, $frame->data, strlen($frame->data));
+    }
+
+    /**
+     * handle client message
+     * @param int $cid
+     * @param string $data
+     * @param int $bytes
+     * @param array $meta The client info [@see $defaultInfo]
+     */
+    protected function message(int $cid, string $data, int $bytes, array $meta = [])
+    {
+        $meta = $meta ?: $this->getMeta($cid);
+        // $data = $this->decode($data);
+
+        $this->log("Received $bytes bytes message from #$cid, Data: $data");
+
+        // call on message handler
+        $this->trigger(self::ON_MESSAGE, [$this, $data, $cid, $meta]);
+    }
+
+    /**
+     * @param Server $server
+     * @param int $cid
+     * @return bool
+     */
+    public function onClose(Server $server, $cid)
+    {
+        $meta = $this->metas[$cid];
+        unset($this->metas[$cid], $this->clients[$cid]);
+
+        // call close handler
+        $this->trigger(self::ON_CLOSE, [$this, $cid, $meta]);
+
+        $this->log("The #$cid client connection has been closed! Count: " . $this->count());
+
+        return true;
+    }
+
+    /**
+     * @inheritdoc
+     */
+    public function close(int $cid, $socket = null, bool $triggerEvent = true)
+    {
+        // close socket connection
+        $this->doClose($cid);
+
+        $meta = $this->metas[$cid];
+        unset($this->metas[$cid], $this->clients[$cid]);
+
+        // call close handler
+        if ( $triggerEvent ) {
+            $this->trigger(self::ON_CLOSE, [$this, $cid, $meta]);
+        }
+
+        $this->log("The #$cid client connection has been closed! Count: " . $this->count());
+    }
+
+    /**
+     * Closing a connection
+     * @param int $cid
+     * @return bool
+     */
+    protected function doClose($cid)
+    {
+        return $this->server->close($cid);
     }
 
     /**
@@ -154,8 +275,8 @@ class SwooleServer extends ServerAbstracter
             'path' => '/',
         ];
 
-        // 客户端连接单独保存 todo 可以不保存
-        $this->clients[$cid] = $this->getSocket();
+        // 客户端连接单独保存。 这里为了兼容其他驱动，保存了cid
+        $this->clients[$cid] = $cid;
 
         $this->log("A new client connected, ID: $cid, From {$meta['host']}:{$meta['port']}. Count: " . $this->count());
 
@@ -163,15 +284,6 @@ class SwooleServer extends ServerAbstracter
         $this->trigger(self::ON_CONNECT, [$this, $cid]);
     }
 
-    /**
-     * Closing a connection
-     * @param resource $socket
-     * @return bool
-     */
-    protected function doClose($socket)
-    {
-        // TODO: Implement doClose() method.
-    }
     /**
      */
     protected function checkEnvWhenEnableSSL()
@@ -188,14 +300,17 @@ class SwooleServer extends ServerAbstracter
 
     /**
      * response data to client by socket connection
-     * @param resource $socket
+     * @param int    $fd
      * @param string $data
-     * @param int $length
-     * @return int      Return socket last error number code. gt 0 on failure, eq 0 on success
+     * @param int    $length
+     * @return int   Return error number code. gt 0 on failure, eq 0 on success
      */
-    public function writeTo($socket, string $data, int $length = 0)
+    public function writeTo($fd, string $data, int $length = 0)
     {
-        // TODO: Implement writeTo() method.
+        $finish = true;
+        $opcode = 1;
+
+        return $this->server->push($fd, $data, $opcode, $finish) ? 0 : 1;
     }
 
     /**
@@ -204,7 +319,7 @@ class SwooleServer extends ServerAbstracter
      */
     public function getErrorNo($socket = null)
     {
-        // TODO: Implement getErrorNo() method.
+        return $this->server->getLastError();
     }
 
     /**
@@ -213,7 +328,7 @@ class SwooleServer extends ServerAbstracter
      */
     public function getErrorMsg($socket = null)
     {
-        // TODO: Implement getErrorMsg() method.
+        return '';
     }
 
     /**

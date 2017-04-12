@@ -173,7 +173,7 @@ abstract class ServerAbstracter extends WSAbstracter implements ServerInterface
 
             $response
                 ->setStatus(404)
-                ->setBody('<b>400 Bad Request</b><br>[Sec-WebSocket-Key] not found in header.');
+                ->setBody('<b>400 Bad Request</b><br>[Sec-WebSocket-Key] not found in request header.');
 
             $this->writeTo($socket, $response->toString());
 
@@ -207,7 +207,7 @@ abstract class ServerAbstracter extends WSAbstracter implements ServerInterface
 
         // 标记已经握手 更新路由 path
         $meta['handshake'] = true;
-        $meta['path'] = $path = $request->getPath();
+        $meta['path'] = $request->getPath();
         $this->metas[$cid] = $meta;
 
         $this->log("The #$cid client connection handshake successful! Info:", 'info', $meta);
@@ -223,8 +223,9 @@ abstract class ServerAbstracter extends WSAbstracter implements ServerInterface
      * @param int $bytes
      * @param array $meta The client info [@see $defaultInfo]
      */
-    protected function message(int $cid, string $data, int $bytes, array $meta)
+    protected function message(int $cid, string $data, int $bytes, array $meta = [])
     {
+        $meta = $meta ?: $this->getMeta($cid);
         $data = $this->decode($data);
 
         $this->log("Received $bytes bytes message from #$cid, Data: $data");
@@ -272,7 +273,7 @@ abstract class ServerAbstracter extends WSAbstracter implements ServerInterface
             $this->doClose($socket);
         }
 
-        $meta = $this->clients[$cid];
+        $meta = $this->metas[$cid];
         unset($this->metas[$cid], $this->clients[$cid]);
 
         // call close handler
