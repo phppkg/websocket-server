@@ -72,4 +72,4 @@ $rootHandler->add('logout', function ($data, $id, Application $app) {
 });
 
 // start
-$app->parseOptRun();
+$app->run();

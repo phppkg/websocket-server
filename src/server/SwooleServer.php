@@ -73,9 +73,9 @@ class SwooleServer extends ServerAbstracter
     }
 
     /**
-     * create and prepare socket resource
+     * @inheritdoc
      */
-    protected function prepareWork()
+    protected function prepareWork(int $maxConnect)
     {
         $host = $this->getHost();
         $port = $this->getPort();
@@ -216,13 +216,7 @@ class SwooleServer extends ServerAbstracter
      */
     public function onClose(Server $server, $cid)
     {
-        $meta = $this->metas[$cid];
-        unset($this->metas[$cid], $this->clients[$cid]);
-
-        // call close handler
-        $this->trigger(self::ON_CLOSE, [$this, $cid, $meta]);
-
-        $this->log("The #$cid client connection has been closed! Count: " . $this->count());
+        $this->close($cid);
 
         return true;
     }
@@ -255,32 +249,6 @@ class SwooleServer extends ServerAbstracter
     }
 
     /**
-     * @param int $fd
-     */
-    protected function connect($fd)
-    {
-        $cid = $fd;
-        // @link https://wiki.swoole.com/wiki/page/p-connection_info.html
-        $data = $this->server->getClientInfo($fd);
-
-        // 初始化客户端信息
-        $this->metas[$cid] = $meta = [
-            'host' => $data['remote_ip'],
-            'port' => $data['remote_port'],
-            'handshake' => false,
-            'path' => '/',
-        ];
-
-        // 客户端连接单独保存。 这里为了兼容其他驱动，保存了cid
-        $this->clients[$cid] = $cid;
-
-        $this->log("A new client connected, ID: $cid, From {$meta['host']}:{$meta['port']}. Count: " . $this->count());
-
-        // 触发 connect 事件回调
-        $this->trigger(self::ON_CONNECT, [$this, $cid]);
-    }
-
-    /**
      * handle client message
      * @param int $cid
      * @param string $data
@@ -299,38 +267,28 @@ class SwooleServer extends ServerAbstracter
     }
 
     /**
-     * @inheritdoc
-     */
-    public function close(int $cid, $socket = null, bool $triggerEvent = true)
-    {
-        // close socket connection
-        $this->doClose($cid);
-
-        $meta = $this->metas[$cid];
-        unset($this->metas[$cid], $this->clients[$cid]);
-
-        // call close handler
-        if ( $triggerEvent ) {
-            $this->trigger(self::ON_CLOSE, [$this, $cid, $meta]);
-        }
-
-        $this->log("The #$cid client connection has been closed! Count: " . $this->count());
-    }
-
-    /**
      * Closing a connection
      * @param int $cid
+     * @param null|resource $socket
      * @return bool
      */
-    protected function doClose($cid)
+    protected function doClose(int $cid, $socket = null)
     {
         return $this->server->close($cid);
     }
 
+    /**
+     * @param string $data
+     * @param int $sender
+     * @return int
+     */
     public function sendToAll(string $data, int $sender = 0): int
     {
         $startFd = 0;
         $count = 0;
+        $fromUser = $sender < 1 ? 'SYSTEM' : $sender;
+
+        $this->log("(broadcast)The #{$fromUser} send a message to all users. Data: {$data}");
 
         while(true) {
             $connList = $this->server->connection_list($startFd, 50);
@@ -351,6 +309,13 @@ class SwooleServer extends ServerAbstracter
         return $count;
     }
 
+    /**
+     * @param string $data
+     * @param array $receivers
+     * @param array $expected
+     * @param int $sender
+     * @return int
+     */
     public function sendToSome(string $data, array $receivers = [], array $expected = [], int $sender = 0): int
     {
         $count = 0;
@@ -442,6 +407,40 @@ class SwooleServer extends ServerAbstracter
     }
 
     /**
+     * 获取对端socket的IP地址和端口
+     * @param int $cid
+     * @return array
+     */
+    public function getPeerName($cid)
+    {
+        $data = $this->getClientInfo($cid);
+
+        return [
+            'host' => $data['remote_ip'] ?? '',
+            'port' => $data['remote_port'] ?? 0,
+        ];
+    }
+
+    /**
+     * @param int $cid
+     * @return array
+     * [
+     *  from_id => int
+     *  server_fd => int
+     *  server_port => int
+     *  remote_port => int
+     *  remote_ip => string
+     *  connect_time => int
+     *  last_time => int
+     * ]
+     */
+    public function getClientInfo(int $cid)
+    {
+        // @link https://wiki.swoole.com/wiki/page/p-connection_info.html
+        return $this->server->getClientInfo($cid);
+    }
+
+    /**
      * @param null|resource $socket
      * @return int
      */
@@ -456,7 +455,9 @@ class SwooleServer extends ServerAbstracter
      */
     public function getErrorMsg($socket = null)
     {
-        return '';
+        $err = error_get_last();
+
+        return $err['message'] ?? '';
     }
 
     /**

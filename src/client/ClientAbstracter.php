@@ -84,17 +84,12 @@ abstract class ClientAbstracter extends WSAbstracter implements ClientInterface
     public function getDefaultOptions()
     {
         return array_merge(parent::getDefaultOptions(),[
-            // enable ssl
-            'enable_ssl' => false,
 
             // while 循环时间间隔 毫秒 millisecond. 1s = 1000ms = 1000 000us
             'sleep_ms' => 500,
 
             // 连接超时时间
             'timeout' => 2.2,
-
-            // 最大允许连接数量
-            'max_conn' => 25,
 
             // 最大数据接收长度 1024 2048
             'max_data_len' => 2048,

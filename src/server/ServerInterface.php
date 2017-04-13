@@ -17,6 +17,8 @@ use inhere\console\io\Output;
  */
 interface ServerInterface
 {
+    const MAX_CONNECT = 200;
+
     /**
      * @return bool
      */

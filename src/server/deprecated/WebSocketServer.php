@@ -62,7 +62,7 @@ class WebSocketServer extends BaseWebSocket
         // while 循环时间间隔 毫秒 millisecond. 1s = 1000ms = 1000 000us
         'sleep_ms' => 500,
         // 最大允许连接数量
-        'max_conn' => 25,
+        'max_connect' => 25,
         // 最大数据接收长度 1024 2048
         'max_data_len' => 2048,
     ];
@@ -128,7 +128,7 @@ class WebSocketServer extends BaseWebSocket
         // 给套接字绑定名字
         socket_bind($this->master, $this->getHost(), $this->getPort());
 
-        $max = $this->getOption('max_conn', 20);
+        $max = $this->getOption('max_connect', 20);
 
         // 监听套接字上的连接. 最多允许 $max 个连接，超过的客户端连接会返回 WSAECONNREFUSED 错误
         socket_listen($this->master, $max);

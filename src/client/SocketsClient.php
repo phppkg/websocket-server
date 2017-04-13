@@ -58,11 +58,17 @@ class SocketsClient extends ClientAbstracter
             $this->cliOut->error('Unable to create socket: '. $this->errMsg, $this->errNo);
         }
 
-        $timeout = $timeout ?: $this->getOption('timeout', 2.1);
+        $timeout = $timeout ?: $this->getOption('timeout', self::TIMEOUT_FLOAT);
 
         // 设置connect超时
-        $this->setTimeout($timeout, $timeout);
-        $this->setSocketOption(SO_REUSEADDR, 1);
+        $this->setTimeout($this->socket, $timeout);
+        $this->setSocketOption($this->socket, SO_REUSEADDR, 1);
+        // 设置缓冲区大小
+        $this->setBufferSize(
+            $this->socket,
+            (int)$this->getOption('write_buffer_size'),
+            (int)$this->getOption('read_buffer_size')
+        );
 
         if (!PhpHelper::isWin() && !socket_set_nonblock($this->socket)) {
             $this->fetchError();
@@ -249,39 +255,44 @@ class SocketsClient extends ClientAbstracter
 
     /**
      * 设置buffer区
-     * @param int $sendBufferSize
-     * @param int $rcvBufferSize
+     * @param resource $socket
+     * @param int $writeBufferSize
+     * @param int $readBufferSize
      */
-    public function setBufferSize($sendBufferSize, $rcvBufferSize)
+    public function setBufferSize($socket, int $writeBufferSize, int $readBufferSize)
     {
-        $this->setSocketOption(SO_SNDBUF, $sendBufferSize);
-        $this->setSocketOption(SO_RCVBUF, $rcvBufferSize);
+        if ($writeBufferSize > 0) {
+            $this->setSocketOption($socket, SO_SNDBUF, $writeBufferSize);
+        }
+
+        if ($readBufferSize > 0) {
+            $this->setSocketOption($socket, SO_RCVBUF, $readBufferSize);
+        }
     }
 
     /**
      * 设置超时
-     * @param float|int $timeout_recv 接收超时
-     * @param float|int $timeout_send 发送超时
+     * @param $socket
+     * @param float $timeout
      */
-    public function setTimeout($timeout_recv = 0, $timeout_send = 0)
+    public function setTimeout($socket, $timeout = 2.2)
     {
-        if ($_timeout_recv_sec = (int)$timeout_recv) {
-            $_timeout_recv = [
-                'sec' => $_timeout_recv_sec,
-                'usec' => (int)(($timeout_recv - $_timeout_recv_sec) * 1000 * 1000)
-            ];
-
-            $this->setSocketOption(SO_RCVTIMEO, $_timeout_recv);
+        if (strpos($timeout, '.')) {
+            [$s, $us] = explode('.', $timeout);
+            $s = $s < 1 ? 3 : (int)$s;
+            $us = (int)($us * 1000 * 1000);
+        } else {
+            $s = (int)$timeout;
+            $us = null;
         }
 
-        if ($_timeout_send_sec = (int)$timeout_send) {
-            $_timeout_send = [
-                'sec' => $_timeout_send_sec,
-                'usec' => (int)(($timeout_send - $_timeout_send_sec) * 1000 * 1000)
-            ];
+        $timeoutAry = [
+            'sec' => $s,
+            'usec' => $us
+        ];
 
-            $this->setSocketOption(SO_SNDTIMEO, $_timeout_send);
-        }
+        $this->setSocketOption($socket, SO_RCVTIMEO, $timeoutAry);
+        $this->setSocketOption($socket, SO_SNDTIMEO, $timeoutAry);
     }
 
     /**
@@ -342,21 +353,23 @@ class SocketsClient extends ClientAbstracter
 
     /**
      * 设置socket参数
+     * @param resource $socket
      * @param string $opt
      * @param string $set
      */
-    public function setSocketOption($opt, $set)
+    public function setSocketOption($socket, string $opt, $set)
     {
-        socket_set_option($this->socket, SOL_SOCKET, $opt, $set);
+        socket_set_option($socket, SOL_SOCKET, $opt, $set);
     }
 
     /**
      * 获取socket参数
+     * @param resource $socket
      * @param string $opt
      * @return mixed
      */
-    public function getSocketOption($opt)
+    public function getSocketOption($socket, string $opt)
     {
-        return socket_get_option($this->socket, SOL_SOCKET, $opt);
+        return socket_get_option($socket, SOL_SOCKET, $opt);
     }
 }

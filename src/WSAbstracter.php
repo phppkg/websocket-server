@@ -57,7 +57,7 @@ abstract class WSAbstracter implements WSInterface
     /**
      * @var SFLogger
      */
-    protected $logger;
+    private $logger;
 
     /**
      * @var array
@@ -72,6 +72,15 @@ abstract class WSAbstracter implements WSInterface
         return [
             'debug' => false,
             'as_daemon' => false,
+
+            // enable ssl
+            'enable_ssl' => false,
+
+            // 设置写(发送)缓冲区 最大2m @see `StreamsServer::setBufferSize()`
+            'write_buffer_size' => 2097152,
+
+            // 设置读(接收)缓冲区 最大2m
+            'read_buffer_size' => 2097152,
 
             // 日志配置
             'log_service' => [
@@ -219,7 +228,7 @@ abstract class WSAbstracter implements WSInterface
     }
 
     /**
-     * output log message
+     * output and record websocket log message
      * @param  string $msg
      * @param  array $data
      * @param string $type

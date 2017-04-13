@@ -8,8 +8,6 @@
 
 namespace inhere\webSocket\server;
 
-use inhere\library\helpers\PhpHelper;
-use inhere\library\helpers\ProcessHelper;
 use inhere\webSocket\WSAbstracter;
 use inhere\webSocket\http\Request;
 use inhere\webSocket\http\Response;
@@ -33,6 +31,12 @@ abstract class ServerAbstracter extends WSAbstracter implements ServerInterface
     protected $socket;
 
     /**
+     * client total number
+     * @var int
+     */
+    private $clientNumber = 0;
+
+    /**
      * 连接的客户端列表
      * @var resource[]
      * [
@@ -54,11 +58,12 @@ abstract class ServerAbstracter extends WSAbstracter implements ServerInterface
      * default client meta info
      * @var array
      */
-    protected $defaultInfo = [
+    protected $defaultMeta = [
         'host' => '',
         'port' => 0,
         'handshake' => false,
         'path' => '/',
+        'connect_time' => 0,
     ];
 
     /**
@@ -72,20 +77,17 @@ abstract class ServerAbstracter extends WSAbstracter implements ServerInterface
     public function getDefaultOptions()
     {
         return array_merge(parent::getDefaultOptions(),[
-            // enable ssl
-            'enable_ssl' => false,
 
             // while 循环时间间隔 毫秒 millisecond. 1s = 1000ms = 1000 000us
             'sleep_ms' => 500,
 
             // 最大允许连接数量
-            'max_conn' => 25,
+            'max_connect' => 25,
 
             // 最大数据接收长度 1024 2048
             'max_data_len' => 2048,
 
-            // pid file
-            'pid_file' => './tmp/ws_server.pid',
+            'buffer_size' => 8192, // 8kb
 
             // 日志配置
             'log_service' => [
@@ -123,14 +125,11 @@ abstract class ServerAbstracter extends WSAbstracter implements ServerInterface
      */
     public function start()
     {
-        // handle input command
-        $this->handleCliCommand();
+        $max = (int)$this->getOption('max_connect', self::MAX_CONNECT);
+        $this->log("Started WebSocket server on <info>{$this->getHost()}:{$this->getPort()}</info> (max allow connection: $max)", 'info');
 
         // create and prepare
-        $this->prepareWork();
-
-        $max = $this->getOption('max_conn', 20);
-        $this->log("Started WebSocket server on <info>{$this->getHost()}:{$this->getPort()}</info> (max allow connection: $max)", 'info');
+        $this->prepareWork($max);
 
         // if `$this->beforeStartCb` exists.
         if ($cb = $this->beforeStartCb) {
@@ -150,148 +149,45 @@ abstract class ServerAbstracter extends WSAbstracter implements ServerInterface
 
     /**
      * create and prepare socket resource
+     * @param int $maxConnect
      */
-    abstract protected function prepareWork();
+    abstract protected function prepareWork(int $maxConnect);
 
     /**
      * do start server
      */
     abstract protected function doStart();
 
-    /**
-     * Handle Command
-     * e.g
-     *     php bin/test_server.php start -d
-     * @return bool
-     */
-    protected function handleCliCommand()
-    {
-        $command = $this->cliIn->getCommand(); // e.g 'start'
-        $this->checkInputCommand($command);
-
-        $masterPid = 0;
-        $masterIsStarted = true;
-
-        if (!PhpHelper::isWin()) {
-            $masterPid = ProcessHelper::getPidByPidFile($this->getPidFIle());
-            $masterIsStarted = ($masterPid > 0) && @posix_kill($masterPid, 0);
-        }
-
-        // start: do Start Server
-        if ( $command === 'start' ) {
-            // check master process is running
-            if ( $masterIsStarted ) {
-                $this->cliOut->error("The swoole server({$this->name}) have been started. (PID:{$masterPid})", true);
-            }
-
-            // run as daemon
-            $asDaemon = (bool)$this->cliIn->getBool('d', $this->isDaemon());
-            $this->setOption('as_daemon', $asDaemon);
-
-            return true;
-        }
-
-        // check master process
-        if ( !$masterIsStarted ) {
-            $this->cliOut->error('The websocket server is not running.', true);
-        }
-
-        // switch command
-        switch ($command) {
-            case 'stop':
-            case 'restart':
-                // stop: stop and exit. restart: stop and start
-                //$this->doStopServer($masterPid, $command === 'stop');
-                break;
-            case 'reload':
-                //$this->doReloadWorkers($masterPid, $this->cliIn->getBool('task'));
-                break;
-            case 'info':
-                //$this->showInformation();
-                exit(0);
-                break;
-            case 'status':
-                //$this->showRuntimeStatus();
-                break;
-            default:
-                $this->cliOut->error("The command [{$command}] is don't supported!");
-                $this->showHelpPanel();
-                break;
-        }
-
-        return true;
-    }
-
-    protected function checkInputCommand($command)
-    {
-        $supportCommands = ['start', 'reload', 'restart', 'stop', 'info', 'status'];
-
-        // show help info
-        if (
-            // no input
-            !$command ||
-            // command equal to 'help'
-            $command === 'help' ||
-            // is an not supported command
-            !in_array($command, $supportCommands, true) ||
-            // has option -h|--help
-            $this->cliIn->getBool('h', false) ||
-            $this->cliIn->getBool('help', false)
-        ) {
-            $this->showHelpPanel();
-        }
-    }
-
-    /**
-     * Show help
-     * @param  boolean $showHelpAfterQuit
-     */
-    public function showHelpPanel($showHelpAfterQuit = true)
-    {
-        $scriptName = $this->cliIn->getScriptName(); // 'bin/test_server.php'
-        if ( strpos($scriptName, '.') && 'php' === pathinfo($scriptName,PATHINFO_EXTENSION) ) {
-            $scriptName = 'php ' . $scriptName;
-        }
-        $this->cliOut->helpPanel(
-        // Usage
-            "$scriptName {start|reload|restart|stop|status} [-d]",
-            // Commands
-            [
-                'start'   => 'Start the server',
-                'reload'  => 'Reload all workers of the started server',
-                'restart' => 'Stop the server, After start the server.',
-                'stop'    => 'Stop the server',
-                'info'    => 'Show the server information for current project',
-                'status'  => 'Show the started server status information',
-                'help'    => 'Display this help message',
-            ],
-            // Options
-            [
-                '-d'         => 'Run the server on daemonize.(<comment>not supported on windows</comment>)',
-                '--task'     => 'Only reload task worker, when reload server',
-                '--driver'   => 'You can custom webSocket driver, allow: sockets, swoole, streams',
-                '-h, --help' => 'Display this help message',
-            ],
-            // Examples
-            [
-                "<info>$scriptName start -d</info> Start server on daemonize mode.",
-                "<info>$scriptName start --driver={name}</info> custom webSocket driver, allow: sockets, swoole, streams"
-            ],
-            // Description
-            'webSocket server tool, Version <comment>' . ServerAbstracter::VERSION .
-            '</comment>. Update time ' . ServerAbstracter::UPDATE_TIME,
-            $showHelpAfterQuit
-        );
-    }
     /////////////////////////////////////////////////////////////////////////////////////////
     /// event method
     /////////////////////////////////////////////////////////////////////////////////////////
 
     /**
      * 增加一个初次连接的客户端 同时记录到握手列表，标记为未握手
-     * @param resource $socket
+     * @param resource|int $socket
      */
-    abstract protected function connect($socket);
+    protected function connect($socket)
+    {
+        $cid = (int)$socket;
+        $data = $this->getPeerName($socket);
+
+        // 初始化客户端信息
+        $this->metas[$cid] = $meta = [
+            'host' => $data['host'],
+            'port' => $data['port'],
+            'handshake' => false,
+            'path' => '/',
+            'connect_time' => time(),
+        ];
+        // 客户端连接单独保存
+        $this->clients[$cid] = $socket;
+        $this->clientNumber++;
+
+        $this->log("A new client connected, ID: $cid, From {$meta['host']}:{$meta['port']}. Count: ($this->clientNumber)");
+
+        // 触发 connect 事件回调
+        $this->trigger(self::ON_CONNECT, [$this, $cid]);
+    }
 
     /**
      * 响应升级协议(握手)
@@ -361,7 +257,7 @@ abstract class ServerAbstracter extends WSAbstracter implements ServerInterface
      * @param int $cid
      * @param string $data
      * @param int $bytes
-     * @param array $meta The client info [@see $defaultInfo]
+     * @param array $meta The client info [@see $defaultMeta]
      */
     protected function message(int $cid, string $data, int $bytes, array $meta = [])
     {
@@ -375,6 +271,45 @@ abstract class ServerAbstracter extends WSAbstracter implements ServerInterface
     }
 
     /**
+     * Closing a connection
+     * `disconnect()` is alias method of the `close()`
+     * @param int $cid
+     * @param null|resource $socket
+     * @param bool $triggerEvent
+     * @return bool
+     */
+    public function disconnect(int $cid, $socket = null, bool $triggerEvent = true)
+    {
+        return $this->close($cid, $socket, $triggerEvent);
+    }
+    public function close(int $cid, $socket = null, bool $triggerEvent = true)
+    {
+        $this->doClose($cid, $socket);
+
+        $meta = $this->metas[$cid];
+        $this->clientNumber--;
+
+        unset($this->metas[$cid], $this->clients[$cid]);
+
+        // call close handler
+        if ( $triggerEvent ) {
+            $this->trigger(self::ON_CLOSE, [$this, $cid, $meta]);
+        }
+
+        $this->log("The #$cid client connection has been closed! From {$meta['host']}:{$meta['port']}. Count: {$this->clientNumber}");
+
+        return true;
+    }
+
+    /**
+     * Closing a connection
+     * @param int $cid
+     * @param resource|null $socket
+     * @return bool
+     */
+    abstract protected function doClose(int $cid, $socket = null);
+
+    /**
      * @param $msg
      */
     protected function error($msg)
@@ -383,50 +318,6 @@ abstract class ServerAbstracter extends WSAbstracter implements ServerInterface
 
         $this->trigger(self::ON_ERROR, [$msg, $this]);
     }
-
-    /**
-     * alias method of the `close()`
-     * @param int $cid
-     * @param null|resource $socket
-     * @return mixed
-     */
-    public function disconnect(int $cid, $socket = null)
-    {
-        return $this->close($cid, $socket);
-    }
-
-    /**
-     * Closing a connection
-     * @param int $cid
-     * @param null|resource $socket
-     * @param bool $triggerEvent
-     * @return bool
-     */
-    public function close(int $cid, $socket = null, bool $triggerEvent = true)
-    {
-        if ( !is_resource($socket) && !($socket = $this->clients[$cid] ?? null) ) {
-            $this->log("Close the client socket connection failed! #$cid client socket not exists", 'error');
-        }
-
-        // close socket connection
-        if ( is_resource($socket)  ) {
-            $this->doClose($socket);
-        }
-
-        $meta = $this->metas[$cid];
-        unset($this->metas[$cid], $this->clients[$cid]);
-
-        // call close handler
-        if ( $triggerEvent ) {
-            $this->trigger(self::ON_CLOSE, [$this, $cid, $meta]);
-        }
-
-        $this->log("The #$cid client connection has been closed! Count: " . $this->count());
-
-        return true;
-    }
-
-    abstract protected function doClose($socket);
 
     /////////////////////////////////////////////////////////////////////////////////////////
     /// send message to client
@@ -559,6 +450,13 @@ abstract class ServerAbstracter extends WSAbstracter implements ServerInterface
      */
     abstract public function getErrorMsg($socket = null);
 
+    /**
+     * 获取对端socket的IP地址和端口
+     * @param resource|int $socket driver is sockets or streams, type is resource. driver is swoole type is int.
+     * @return array
+     */
+    abstract public function getPeerName($socket);
+
     /////////////////////////////////////////////////////////////////////////////////////////
     /// helper method
     /////////////////////////////////////////////////////////////////////////////////////////
@@ -636,14 +534,6 @@ abstract class ServerAbstracter extends WSAbstracter implements ServerInterface
     }
 
     /**
-     * @return string
-     */
-    public function getPidFIle(): string
-    {
-        return $this->getOption('pid_file', '');
-    }
-
-    /**
      * @return bool
      */
     public function isDaemon(): bool
@@ -665,11 +555,21 @@ abstract class ServerAbstracter extends WSAbstracter implements ServerInterface
     /**
      * get client info data
      * @param int $cid
-     * @return mixed
+     * @return array
      */
     public function getMeta(int $cid)
     {
-        return $this->metas[$cid] ?? $this->defaultInfo;
+        return $this->metas[$cid] ?? null;
+    }
+
+    /**
+     * get client info data
+     * @param int $cid
+     * @return array
+     */
+    public function getClientInfo(int $cid)
+    {
+        return $this->getMeta($cid);
     }
 
     /**
@@ -685,7 +585,7 @@ abstract class ServerAbstracter extends WSAbstracter implements ServerInterface
      */
     public function count(): int
     {
-        return count($this->metas);
+        return $this->clientNumber;
     }
 
     /**
@@ -693,7 +593,7 @@ abstract class ServerAbstracter extends WSAbstracter implements ServerInterface
      * @param int $cid
      * @return bool
      */
-    public function hasHandshake(int $cid): bool
+    public function isHandshake(int $cid): bool
     {
         if ( $this->hasMeta($cid) ) {
             return $this->getMeta($cid)['handshake'];

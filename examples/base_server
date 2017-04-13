@@ -18,7 +18,8 @@ $options = [
 $opts = getopt('', ['driver:']);
 $options['driver'] = $opts['driver'] ?? '';
 
-$svr = ServerFactory::make('', 9501, $options);
+//$svr = ServerFactory::make('', 9501, $options);
+$svr = ServerFactory::parseOptMake($options);
 
 $svr->on('open', function (ServerInterface $svr) {
     $svr->send('welcome!');

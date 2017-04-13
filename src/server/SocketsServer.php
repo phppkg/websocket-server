@@ -40,8 +40,9 @@ class SocketsServer extends ServerAbstracter
 
     /**
      * create and prepare socket resource
+     * @param int $maxConnect
      */
-    protected function prepareWork()
+    protected function prepareWork(int $maxConnect)
     {
         if ( count($this->callbacks) < 1 ) {
             $sup = implode(',', $this->getSupportedEvents());
@@ -70,10 +71,8 @@ class SocketsServer extends ServerAbstracter
         // 给套接字绑定名字
         socket_bind($this->socket, $this->getHost(), $this->getPort());
 
-        $max = $this->getOption('max_conn', 20);
-
         // 监听套接字上的连接. 最多允许 $max 个连接，超过的客户端连接会返回 WSAECONNREFUSED 错误
-        socket_listen($this->socket, $max);
+        socket_listen($this->socket, $maxConnect);
     }
 
     protected function doStart()
@@ -158,49 +157,30 @@ class SocketsServer extends ServerAbstracter
         return true;
     }
 
-    /**
-     * 增加一个初次连接的客户端 同时记录到握手列表，标记为未握手
-     * @param resource $socket
-     */
-    protected function connect($socket)
-    {
-        $cid = (int)$socket;
-        $data = $this->getPeerName($socket);
-
-        // 初始化客户端信息
-        $this->metas[$cid] = $meta = [
-            'host' => $data['host'],
-            'port' => $data['port'],
-            'handshake' => false,
-            'path' => '/',
-        ];
-        // 客户端连接单独保存
-        $this->clients[$cid] = $socket;
-
-        $this->log("A new client connected, ID: $cid, From {$meta['host']}:{$meta['port']}. Count: " . $this->count());
-
-        // 触发 connect 事件回调
-        $this->trigger(self::ON_CONNECT, [$this, $cid]);
-    }
-
     // protected function handshake($socket, string $data, int $cid)
     // protected function message(int $cid, string $data, int $bytes, array $client)
     // public function close(int $cid, $socket = null, bool $triggerEvent = true)
 
     /**
-     * Closing a connection
+     * @param int $cid
      * @param resource $socket
      * @return bool
      */
-    protected function doClose($socket)
+    protected function doClose(int $cid, $socket = null)
     {
-        // close socket connection
-        if ( is_resource($socket)  ) {
-            socket_shutdown($socket, 2);
-            socket_close($socket);
+        if (!is_resource($socket) && !($socket = $this->clients[$cid] ?? null)) {
+            $this->log("Close the client socket connection failed! #$cid client socket not exists", 'error');
         }
 
-        return true;
+        // close socket connection
+        if ($socket && is_resource($socket)) {
+            $result = socket_shutdown($socket, 2);
+            socket_close($socket);
+
+            return $result;
+        }
+
+        return false;
     }
 
     /**
@@ -219,6 +199,23 @@ class SocketsServer extends ServerAbstracter
     }
 
     /**
+     * 设置buffer区
+     * @param resource $socket
+     * @param int $writeBufferSize
+     * @param int $readBufferSize
+     */
+    public function setBufferSize($socket, int $writeBufferSize, int $readBufferSize)
+    {
+        if ($writeBufferSize > 0) {
+            $this->setSocketOption($socket, SO_SNDBUF, $writeBufferSize);
+        }
+
+        if ($readBufferSize > 0) {
+            $this->setSocketOption($socket, SO_RCVBUF, $readBufferSize);
+        }
+    }
+
+    /**
      * fetch socket Error
      */
     private function fetchError()
@@ -228,6 +225,28 @@ class SocketsServer extends ServerAbstracter
 
         // clear error
         socket_clear_error($this->socket);
+    }
+
+    /**
+     * 设置socket参数
+     * @param resource $socket
+     * @param string $opt
+     * @param string $set
+     */
+    public function setSocketOption($socket, string $opt, $set)
+    {
+        socket_set_option($socket, SOL_SOCKET, $opt, $set);
+    }
+
+    /**
+     * 获取socket参数
+     * @param resource $socket
+     * @param string $opt
+     * @return mixed
+     */
+    public function getSocketOption($socket, string $opt)
+    {
+        return socket_get_option($socket, SOL_SOCKET, $opt);
     }
 
     /**

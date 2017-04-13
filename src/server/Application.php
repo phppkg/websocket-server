@@ -10,7 +10,10 @@ namespace inhere\webSocket\server;
 
 use inhere\console\io\Input;
 use inhere\console\io\Output;
+use inhere\library\helpers\PhpHelper;
+use inhere\library\helpers\ProcessHelper;
 use inhere\library\traits\TraitSimpleOption;
+use inhere\library\utils\SFLogger;
 use inhere\webSocket\server\handlers\IRouteHandler;
 use inhere\webSocket\server\handlers\RootHandler;
 use inhere\webSocket\parts\MessageBag;
@@ -90,6 +93,11 @@ class Application
     protected $cliIn;
 
     /**
+     * @var SFLogger
+     */
+    private $logger;
+
+    /**
      * @var ServerInterface
      */
     private $ws;
@@ -105,13 +113,25 @@ class Application
      */
     protected $options = [
         'debug' => false,
-        'driver' => '', // allow: sockets, swoole, streams
+        'as_daemon' => false,
+        'driver' => '', // allow: sockets, swoole, streams. if not set, will auto select.
+
+        // pid file
+        'pid_file' => './tmp/ws_server.pid',
 
         // request and response data type: json text
-        'dataType' => 'json',
+        'data_type' => 'json',
 
         // allowed accessed Origins. e.g: [ 'localhost', 'site.com' ]
         'allowedOrigins' => '*',
+
+        // 日志配置
+        'log_service' => [
+            'name'         => 'ws_app_log',
+            'basePath'     => './tmp/logs/app',
+            'logConsole'   => false,
+            'logThreshold' => 0,
+        ],
 
         // server options
         'server' => [
@@ -137,8 +157,8 @@ class Application
      */
     public function __construct(string $host = '0.0.0.0', $port = 8080, array $options = [])
     {
-        $this->host = $host ?: '0.0.0.0';
-        $this->port = $port ?: 8080;
+        $this->host = $host;
+        $this->port = $port;
         $this->wsHandlers = new \SplFixedArray(5);
 
         $this->cliIn = new Input();
@@ -146,15 +166,15 @@ class Application
 
         $this->setOptions($options, true);
 
-        $opts = $this->getOption('server', []);
-        $opts['debug'] = $this->getOption('debug', false);
-        $opts['driver'] = $this->getOption('driver'); // allow: sockets, swoole, streams
+        $this->init();
+    }
 
-        $this->ws = ServerFactory::make($this->host, $this->port, $opts);
-
-        // override ws's `cliIn` `cliOut`
-        $this->ws->setCliIn($this->cliIn);
-        $this->ws->setCliOut($this->cliOut);
+    protected function init()
+    {
+        // create log service instance
+        if ( $config = $this->getOption('log_service') ) {
+            $this->logger = SFLogger::make($config);
+        }
     }
 
     /**
@@ -162,6 +182,12 @@ class Application
      */
     public function run()
     {
+        // handle input command
+        $this->handleCliCommand();
+
+        // prepare server instance
+        $this->prepareServer();
+
         // register server events
         $this->ws->on(WSInterface::ON_HANDSHAKE, [$this, 'handleHandshake']);
         $this->ws->on(WSInterface::ON_OPEN, [$this, 'handleOpen']);
@@ -174,59 +200,160 @@ class Application
             $this->route('/', new RootHandler);
         }
 
+        // start server
         $this->ws->start();
     }
 
-    /*
-    getopt($options, $longOpts)
-
-    options 可能包含了以下元素：
-    - 单独的字符（不接受值）
-    - 后面跟随冒号的字符（此选项需要值）
-    - 后面跟随两个冒号的字符（此选项的值可选）
-
-    ```
-    $shortOpts = "f:";  // Required value
-    $shortOpts .= "v::"; // Optional value
-    $shortOpts .= "abc"; // These options do not accept values
-
-    $longOpts  = array(
-        "required:",     // Required value
-        "optional::",    // Optional value
-        "option",        // No value
-        "opt",           // No value
-    );
-    $options = getopt($shortOpts, $longOpts);
-    ```
-    */
     /**
-     * parse cli Opt and Run
+     * Handle Command
+     * e.g
+     *     `php bin/test_server.php start -d`
+     * @return bool
      */
-    public function parseOptRun()
+    protected function handleCliCommand()
     {
-        $opts = getopt('p::H::h', ['port::', 'host::', 'driver:', 'help']);
+        $command = $this->cliIn->getCommand(); // e.g 'start'
+        $this->checkInputCommand($command);
 
-        if ( isset($opts['h']) || isset($opts['help']) ) {
-            $help = <<<EOF
-Start a webSocket Application Server.  
+        $masterPid = 0;
+        $masterIsStarted = false;
 
-Options:
-  -H,--host  Setting the webSocket server host.(default:9501)
-  -p,--port  Setting the webSocket server port.(default:127.0.0.1)
-  --driver   You can custom server driver. allow: swoole, sockets, streams.
-  -h,--help  Show help information
-  
-EOF;
-
-            fwrite(\STDOUT, $help);
-            exit(0);
+        if (!PhpHelper::isWin()) {
+            $masterPid = ProcessHelper::getPidByPidFile($this->getPidFIle());
+            $masterIsStarted = ($masterPid > 0) && @posix_kill($masterPid, 0);
         }
 
-        $this->host = $opts['H'] ?? $opts['host'] ?? $this->host;
-        $this->port = $opts['p'] ?? $opts['port'] ?? $this->port;
-        $this->options['driver'] = $opts['driver'] ?? '';
+        // start: do Start Server
+        if ( $command === 'start' ) {
+            // check master process is running
+            if ( $masterIsStarted ) {
+                $this->cliOut->error("The ws application server have been started. (PID:{$masterPid})", true);
+            }
 
-        $this->run();
+            // run as daemon
+            $asDaemon = (bool)$this->cliIn->boolOpt('d', $this->isDaemon());
+            $this->setOption('as_daemon', $asDaemon);
+
+            return true;
+        }
+
+        // check master process
+        if ( !$masterIsStarted ) {
+            $this->cliOut->error('The websocket server is not running.', true);
+        }
+
+        // switch command
+        switch ($command) {
+            case 'stop':
+            case 'restart':
+                // stop: stop and exit. restart: stop and start
+                //$this->doStopServer($masterPid, $command === 'stop');
+                break;
+            case 'reload':
+                //$this->doReloadWorkers($masterPid, $this->cliIn->boolOpt('task'));
+                break;
+            case 'info':
+                //$this->showInformation();
+                exit(0);
+                break;
+            case 'status':
+                //$this->showRuntimeStatus();
+                break;
+            default:
+                $this->cliOut->error("The command [{$command}] is don't supported!");
+                $this->showHelpInfo();
+                break;
+        }
+
+        return true;
+    }
+
+    /**
+     * prepare server instance
+     */
+    protected function prepareServer()
+    {
+        $opts = $this->getOption('server', []);
+
+        // append some options
+        $opts['debug'] = $this->cliIn->boolOpt('debug', $this->getOption('debug', false));
+        $opts['driver'] = $this->cliIn->getOpt('driver') ?: $this->getOption('driver');
+
+        $this->ws = ServerFactory::make($this->host, $this->port, $opts);
+
+        // override ws's `cliIn` `cliOut`
+        $this->ws->setCliIn($this->cliIn);
+        $this->ws->setCliOut($this->cliOut);
+    }
+
+    protected function checkInputCommand($command)
+    {
+        $supportCommands = ['start', 'reload', 'restart', 'stop', 'info', 'status'];
+
+        // show help info
+        if (
+            // no input
+            !$command ||
+            // command equal to 'help'
+            $command === 'help' ||
+            // has option -h|--help
+            $this->cliIn->boolOpt('h', false) ||
+            $this->cliIn->boolOpt('help', false)
+        ) {
+            $this->showHelpInfo();
+        }
+
+        // is an not supported command
+        if (!in_array($command, $supportCommands, true)) {
+            $this->cliOut->error("the command [$command] is not supported. please see the help information.");
+            $this->showHelpInfo();
+        }
+    }
+
+    /**
+     * Show help
+     * @param  boolean $showHelpAfterQuit
+     */
+    public function showHelpInfo($showHelpAfterQuit = true)
+    {
+        $scriptName = $this->cliIn->getScriptName();
+
+        // 'bin/test_server.php'
+        if (strpos($scriptName, '.') && 'php' === pathinfo($scriptName,PATHINFO_EXTENSION)) {
+            $scriptName = 'php ' . $scriptName;
+        }
+
+        $this->cliOut->helpPanel(
+            // Usage
+            "$scriptName {start|reload|restart|stop|status} [-d]",
+            // Commands
+            [
+                'start'   => 'Start the websocket application server',
+                'reload'  => 'Reload all workers of the started application server',
+                'restart' => 'Stop the application server, After start the server.',
+                'stop'    => 'Stop the application server',
+                'info'    => 'Show the application server information for current project',
+                'status'  => 'Show the started application server status information',
+                'help'    => 'Display this help message',
+            ],
+            // Options
+            [
+                '-d'         => 'Run the application server on the background.(<comment>not supported on windows</comment>)',
+                '--task'     => 'Only reload task worker, when reload server',
+                '--debug'    => 'Run the application server on the debug mode',
+                '--driver'   => 'You can custom webSocket driver, allow: <comment>sockets, swoole, streams</comment>',
+                '-h, --help' => 'Display this help message',
+            ],
+            // Examples
+            [
+                "<info>$scriptName start -d</info> Start server on daemonize mode.",
+                "<info>$scriptName start --driver={name}</info> custom webSocket driver, allow: sockets, swoole, streams"
+            ],
+            // Description
+            'webSocket server tool, Version <comment>' . ServerAbstracter::VERSION .
+            '</comment> Update time ' . ServerAbstracter::UPDATE_TIME,
+            $showHelpAfterQuit
+        );
     }
 
     /**
@@ -512,7 +639,7 @@ EOF;
     }
 
     /**
-     * response data to client, will auto build formatted message by 'dataType'
+     * response data to client, will auto build formatted message by 'data_type'
      * @param mixed $data
      * @param string $msg
      * @param int $code
@@ -613,12 +740,16 @@ EOF;
 
     }
 
+    /////////////////////////////////////////////////////////////////////////////////////////
+    /// helper method
+    /////////////////////////////////////////////////////////////////////////////////////////
+
     /**
      * @return bool
      */
     public function isJsonType(): bool
     {
-        return $this->getOption('dataType') === self::DATA_JSON;
+        return $this->getOption('data_type') === self::DATA_JSON;
     }
 
     /**
@@ -626,7 +757,87 @@ EOF;
      */
     public function getDataType(): string
     {
-        return $this->getOption('dataType');
+        return $this->getOption('data_type');
+    }
+
+    /**
+     * @return string
+     */
+    public function getPidFIle(): string
+    {
+        return $this->getOption('pid_file', '');
+    }
+
+    /**
+     * @return bool
+     */
+    public function isDaemon(): bool
+    {
+        return (bool)$this->getOption('as_daemon', false);
+    }
+
+    /**
+     * @return bool
+     */
+    public function isDebug(): bool
+    {
+        return (bool)$this->getOption('debug', false);
+    }
+
+    /**
+     * output and record application log message
+     * @param  string $msg
+     * @param  array $data
+     * @param string $type
+     */
+    public function log(string $msg, string $type = 'debug', array $data = [])
+    {
+        // if close debug, don't output debug log.
+        if ( $this->isDebug() || $type !== 'debug') {
+            if (!$this->isDaemon()) {
+                [$time, $micro] = explode('.', microtime(1));
+                $time = date('Y-m-d H:i:s', $time);
+                $json = $data ? json_encode($data) : '';
+                $type = strtoupper($type);
+
+                $this->cliOut->write("[{$time}.{$micro}] [$type] $msg {$json}");
+            } else if ($logger = $this->getLogger()) {
+                $logger->$type(strip_tags($msg), $data);
+            }
+        }
+    }
+
+    /**
+     * output debug log message
+     * @param string $message
+     * @param array $data
+     */
+    public function debug(string $message, array $data = [])
+    {
+        $this->log($message, 'debug', $data);
+    }
+
+    /**
+     * @param mixed $messages
+     * @param bool $nl
+     * @param bool|int $exit
+     */
+    public function print($messages, $nl = true, $exit = false)
+    {
+        $this->cliOut->write($messages, $nl, $exit);
+    }
+
+    /////////////////////////////////////////////////////////////////////////////////////////
+    /// getter/setter
+    /////////////////////////////////////////////////////////////////////////////////////////
+
+    /**
+     * get Logger service
+     * @return SFLogger
+     */
+    public function getLogger()
+    {
+        return $this->logger;
     }
 
     /**
@@ -635,6 +846,14 @@ EOF;
     public function getWs(): ServerInterface
     {
         return $this->ws;
+    }
+
+    /**
+     * @param string $host
+     */
+    public function setHost(string $host)
+    {
+        $this->host = $host;
     }
 
     /**
@@ -654,31 +873,12 @@ EOF;
     }
 
     /**
-     * @param string $message
-     * @param string $type
-     * @param array $data
+     * @param int $port
      */
-    public function log(string $message, string $type = 'info', array $data = [])
+    public function setPort(int $port)
     {
-        $date = date('Y-m-d H:i:s');
-        $type = strtoupper(trim($type));
-
-        $this->print("[$date] [$type] $message " . ( $data ? json_encode($data) : '' ) );
+        $this->port = $port;
     }
 
-    /**
-     * @param mixed $messages
-     * @param bool $nl
-     * @param null|int $exit
-     */
-    public function print($messages, $nl = true, $exit = null)
-    {
-        $text = is_array($messages) ? implode(($nl ? "\n" : ''), $messages) : $messages;
 
-        fwrite(\STDOUT, $text . ($nl ? "\n" : ''));
-
-        if ( $exit !== null ) {
-            exit((int)$exit);
-        }
-    }
 }

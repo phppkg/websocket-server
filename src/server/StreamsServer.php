@@ -29,9 +29,9 @@ class StreamsServer extends ServerAbstracter
     }
 
     /**
-     * create and prepare socket resource
+     * @inheritdoc
      */
-    protected function prepareWork()
+    protected function prepareWork(int $maxConnect)
     {
         // Set the stream context options if they're already set in the config
         if ($context = $this->getOption('context')) {
@@ -39,9 +39,19 @@ class StreamsServer extends ServerAbstracter
             if ( is_resource($context) && get_resource_type($context) !== 'stream-context') {
                 throw new \InvalidArgumentException("Stream context in options[context] isn't a valid context resource");
             }
+        } else if ($this->getOption('enable_ssl')) {
+            $context = $this->enableSSL();
         } else {
             $context = stream_context_create();
         }
+
+        $opts = [
+            'socket' => [
+                'backlog' => $maxConnect
+            ]
+        ];
+
+        stream_context_set_option($context, $opts);
 
         $host = $this->getHost();
         $port = $this->getPort();
@@ -57,7 +67,14 @@ class StreamsServer extends ServerAbstracter
             $this->cliOut->error('Could not listen on socket: '. $errStr, $errNo);
         }
 
-        $this->setTimeout($this->getOption('timeout', 2.2));
+        $this->setTimeout($this->socket, $this->getOption('timeout', self::TIMEOUT_FLOAT));
+
+        // 设置缓冲区大小
+        $this->setBufferSize(
+            $this->socket,
+            (int)$this->getOption('write_buffer_size'),
+            (int)$this->getOption('read_buffer_size')
+        );
         // $this->listening = true;
     }
 
@@ -110,6 +127,13 @@ class StreamsServer extends ServerAbstracter
                 return false;
             }
 
+            // 设置缓冲区大小
+            $this->setBufferSize(
+                $newSock,
+                (int)$this->getOption('write_buffer_size'),
+                (int)$this->getOption('read_buffer_size')
+            );
+
             $name = stream_socket_get_name($this->socket, false);
             $name1 = stream_socket_get_name($newSock, true);
 
@@ -147,43 +171,22 @@ class StreamsServer extends ServerAbstracter
     }
 
     /**
-     * 增加一个初次连接的客户端 同时记录到握手列表，标记为未握手
-     * @param resource $socket
-     */
-    protected function connect($socket)
-    {
-        $cid = (int)$socket;
-        $data = $this->getPeerName($socket);
-
-        // 初始化客户端信息
-        $this->metas[$cid] = $meta = [
-            'host' => $data['host'],
-            'port' => $data['port'],
-            'handshake' => false,
-            'path' => '/',
-        ];
-        // 客户端连接单独保存
-        $this->clients[$cid] = $socket;
-
-        $this->log("A new client connected, ID: $cid, From {$meta['host']}:{$meta['port']}. Count: " . $this->count());
-
-        // 触发 connect 事件回调
-        $this->trigger(self::ON_CONNECT, [$this, $cid]);
-    }
-
-    /**
-     * Closing a connection
-     * @param resource $socket
+     * @param int $cid
+     * @param resource|null $socket
      * @return bool
      */
-    protected function doClose($socket)
+    protected function doClose(int $cid, $socket = null)
     {
-        // close socket connection
-        if ( is_resource($socket)  ) {
-            fclose($socket);
+        if (!is_resource($socket) && !($socket = $this->clients[$cid] ?? null)) {
+            $this->log("Close the client socket connection failed! #$cid client socket not exists", 'error');
         }
 
-        return true;
+        // close socket connection
+        if ($socket && is_resource($socket)) {
+            return fclose($socket);
+        }
+
+        return false;
     }
 
     /**
@@ -204,7 +207,7 @@ class StreamsServer extends ServerAbstracter
         $pemfile = './server.pem';
         $ca = './server.crt';
 
-        $context = stream_context_create ();
+        $context = stream_context_create();
 
         // local_cert must be in PEM format
         stream_context_set_option ( $context, 'ssl', 'local_cert', $pemfile );
@@ -216,13 +219,20 @@ class StreamsServer extends ServerAbstracter
 
         stream_context_set_option ( $context, 'ssl', 'allow_self_signed', true );
         stream_context_set_option ( $context, 'ssl', 'verify_peer', true );
+
+        return $context;
     }
 
-    public function setTimeout($timeout = 2.2)
+    /**
+     * 设置超时
+     * @param resource $stream
+     * @param float $timeout
+     */
+    public function setTimeout($stream, $timeout = self::TIMEOUT_FLOAT)
     {
         if (strpos($timeout, '.')) {
             [$s, $us] = explode('.', $timeout);
-            $s = $s < 1 ? 1 : (int)$s;
+            $s = $s < 1 ? self::TIMEOUT_INT : (int)$s;
             $us = (int)($us * 1000 * 1000);
         } else {
             $s = (int)$timeout;
@@ -230,18 +240,24 @@ class StreamsServer extends ServerAbstracter
         }
 
         // Set timeout on the stream as well.
-        stream_set_timeout($this->socket, $s, $us);
+        stream_set_timeout($stream, $s, $us);
     }
 
     /**
      * 设置buffer区
-     * @param int $sendBufferSize
-     * @param int $rcvBufferSize
+     * @param resource $stream
+     * @param int $writeBufferSize
+     * @param int $readBufferSize
      */
-    public function setBufferSize($sendBufferSize, $rcvBufferSize)
+    protected function setBufferSize($stream, int $writeBufferSize, int $readBufferSize)
     {
-        stream_set_write_buffer($this->socket, $sendBufferSize);
-        stream_set_read_buffer($this->socket, $rcvBufferSize);
+        if ($writeBufferSize > 0) {
+            stream_set_write_buffer($stream, $writeBufferSize);
+        }
+
+        if ($readBufferSize > 0) {
+            stream_set_read_buffer($stream, $readBufferSize);
+        }
     }
 
     /**
@@ -277,6 +293,8 @@ class StreamsServer extends ServerAbstracter
      */
     public function getErrorMsg($socket = null)
     {
-        return 'unknown';
+        $err = error_get_last();
+
+        return $err['message'] ?? '';
     }
 }

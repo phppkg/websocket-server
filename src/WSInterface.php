@@ -51,4 +51,8 @@ interface WSInterface
      * Websocket array buffer type.
      */
     const BINARY_TYPE_ARRAY_BUFFER = "\x82";
+
+    const TIMEOUT_FLOAT = 2.2;
+
+    const TIMEOUT_INT = 3;
 }

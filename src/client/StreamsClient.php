@@ -35,7 +35,7 @@ class StreamsClient extends ClientAbstracter
      * @param int $flag
      * @throws ConnectException
      */
-    protected function doConnect($timeout = 1.3, $flag = 0)
+    protected function doConnect($timeout = self::TIMEOUT_FLOAT, $flag = 0)
     {
         $uri = $this->getUri();
         $scheme = $uri->getScheme() ?: self::PROTOCOL_WS;
@@ -50,11 +50,13 @@ class StreamsClient extends ClientAbstracter
             if ( is_resource($context) && get_resource_type($context) !== 'stream-context') {
                 throw new \InvalidArgumentException("Stream context in options[context] isn't a valid context resource");
             }
+        } else if ($this->getOption('enable_ssl')) {
+            $context = $this->enableSSL();
         } else {
             $context = stream_context_create();
         }
 
-        $timeout = $timeout ?: $this->getOption('timeout', 2.2);
+        $timeout = $timeout ?: $this->getOption('timeout', self::TIMEOUT_FLOAT);
 
         $host = $this->getHost();
         $port = $this->getPort();
@@ -66,7 +68,7 @@ class StreamsClient extends ClientAbstracter
             $remote,
             $errNo,
             $errStr,
-            (int)$timeout < 1 ? 1: (int)$timeout,
+            (int)$timeout < 1 ? self::TIMEOUT_INT: (int)$timeout,
             STREAM_CLIENT_CONNECT,
             $context
         );
@@ -79,14 +81,26 @@ class StreamsClient extends ClientAbstracter
         }
 
         // Set timeout on the stream as well.
-        $this->setTimeout($timeout);
+        $this->setTimeout($this->socket, $timeout);
+
+        // 设置缓冲区大小
+        $this->setBufferSize(
+            $this->socket,
+            (int)$this->getOption('write_buffer_size'),
+            (int)$this->getOption('read_buffer_size')
+        );
     }
 
-    public function setTimeout($timeout = 2.2)
+    /**
+     * 设置超时
+     * @param resource $stream
+     * @param float $timeout
+     */
+    public function setTimeout($stream, $timeout = self::TIMEOUT_FLOAT)
     {
         if (strpos($timeout, '.')) {
             [$s, $us] = explode('.', $timeout);
-            $s = $s < 1 ? 1 : (int)$s;
+            $s = $s < 1 ? self::TIMEOUT_INT : (int)$s;
             $us = (int)($us * 1000 * 1000);
         } else {
             $s = (int)$timeout;
@@ -94,18 +108,24 @@ class StreamsClient extends ClientAbstracter
         }
 
         // Set timeout on the stream as well.
-        stream_set_timeout($this->socket, $s, $us);
+        stream_set_timeout($stream, $s, $us);
     }
 
     /**
      * 设置buffer区
-     * @param int $sendBufferSize
-     * @param int $rcvBufferSize
+     * @param resource $stream
+     * @param int $writeBufferSize
+     * @param int $readBufferSize
      */
-    public function setBufferSize($sendBufferSize, $rcvBufferSize)
+    protected function setBufferSize($stream, int $writeBufferSize, int $readBufferSize)
     {
-        stream_set_write_buffer($this->socket, $sendBufferSize);
-        stream_set_read_buffer($this->socket, $rcvBufferSize);
+        if ($writeBufferSize > 0) {
+            stream_set_write_buffer($stream, $writeBufferSize);
+        }
+
+        if ($readBufferSize > 0) {
+            stream_set_read_buffer($stream, $readBufferSize);
+        }
     }
 
     /**
@@ -193,6 +213,20 @@ class StreamsClient extends ClientAbstracter
         $this->setConnected(false);
     }
 
+    public function enableSSL()
+    {
+        return stream_context_create([
+            'ssl' => [
+                'local_cert'        => $this->getOption('ssl_key_file'),
+                'peer_fingerprint'  => openssl_x509_fingerprint(file_get_contents($this->getOption('ssl_cert_file'))),
+                'verify_peer'       => false,
+                'verify_peer_name'  => false,
+                'allow_self_signed' => true,
+                'verify_depth'      => 0
+            ]
+        ]);
+    }
+
     /**
      * 用于获取客户端socket的本地host:port，必须在连接之后才可以使用
      * @return array
@@ -229,7 +263,7 @@ class StreamsClient extends ClientAbstracter
 
     public function getErrorNo()
     {
-        // TODO: Implement getErrorNo() method.
+        return 0;
     }
 
     public function getErrorMsg()
