@@ -10,7 +10,7 @@
 
 require __DIR__ . '/../../../autoload.php';
 
-use inhere\webSocket\server\Application;
+use inhere\webSocket\server\App;
 use inhere\webSocket\http\Request;
 use inhere\webSocket\server\handlers\IRouteHandler;
 
@@ -20,15 +20,15 @@ $options = [
     'debug' => true,
     'driver' => '',
 ];
-$app = new Application('', 9501, $options);
+$app = new App('', 9501, $options);
 
-$app->onOpen(function (Application $app, Request $request, int $id) {
+$app->onOpen(function (App $app, Request $request, int $id) {
     $app->respond([
         'total' => $app->getWs()->count()
     ], 'welcome!');
 });
 
-$app->onClose(function (Application $app, int $id, array $client) {
+$app->onClose(function (App $app, int $id, array $client) {
     $app->respond([
         'total' => $app->getWs()->count()
     ]);
@@ -65,7 +65,7 @@ $rootHandler->add('login', function ($data, $cid, IRouteHandler $handler) {
     $handler->respond("welcome new friend: $name join us.");
 });
 
-$rootHandler->add('logout', function ($data, $id, Application $app) {
+$rootHandler->add('logout', function ($data, $id, App $app) {
     $user = $app->getUser($id);
 
     return $app->respond("goodbye, {$user['name']}");

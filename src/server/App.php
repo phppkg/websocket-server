@@ -52,7 +52,7 @@ use inhere\webSocket\WSInterface;
  * $app->parseOptRun();
  * ```
  */
-class Application
+class App
 {
     use TraitSimpleOption;
 

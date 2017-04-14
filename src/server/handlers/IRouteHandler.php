@@ -8,7 +8,7 @@
 
 namespace inhere\webSocket\server\handlers;
 
-use inhere\webSocket\server\Application;
+use inhere\webSocket\server\App;
 use inhere\webSocket\http\Request;
 use inhere\webSocket\http\Response;
 use inhere\webSocket\parts\MessageBag;
@@ -45,10 +45,10 @@ interface IRouteHandler
     public function onClose(int $id, array $client);
 
     /**
-     * @param Application $app
+     * @param App $app
      * @param string $msg
      */
-    public function onError(Application $app, string $msg);
+    public function onError(App $app, string $msg);
 
     public function checkIsAllowedOrigin(string $from);
 
@@ -87,14 +87,14 @@ interface IRouteHandler
     public function getOption(string $key, $default = null);
 
     /**
-     * @param Application $app
+     * @param App $app
      */
-    public function setApp(Application $app);
+    public function setApp(App $app);
 
     /**
-     * @return Application
+     * @return App
      */
-    public function getApp(): Application;
+    public function getApp(): App;
 
     /**
      * @return Request

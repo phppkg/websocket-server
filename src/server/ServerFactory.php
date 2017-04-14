@@ -17,6 +17,7 @@ final class ServerFactory
      * version
      */
     const VERSION = '0.5.1';
+
     /**
      * @var array
      */

@@ -82,7 +82,7 @@ abstract class ServerAbstracter extends WSAbstracter implements ServerInterface
             'sleep_ms' => 500,
 
             // 最大允许连接数量
-            'max_connect' => 25,
+            'max_connect' => 100,
 
             // 最大数据接收长度 1024 2048
             'max_data_len' => 2048,
