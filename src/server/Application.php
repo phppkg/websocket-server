@@ -323,11 +323,11 @@ class Application
             $scriptName = 'php ' . $scriptName;
         }
 
-        $this->cliOut->helpPanel(
-            // Usage
-            "$scriptName {start|reload|restart|stop|status} [-d]",
-            // Commands
-            [
+        $this->cliOut->helpPanel([
+            'description' => 'webSocket server tool, Version <comment>' . ServerAbstracter::VERSION .
+                             '</comment> Update time ' . ServerAbstracter::UPDATE_TIME,
+            'usage' => "$scriptName {start|reload|restart|stop|status} [-d]",
+            'commands' => [
                 'start'   => 'Start the websocket application server',
                 'reload'  => 'Reload all workers of the started application server',
                 'restart' => 'Stop the application server, After start the server.',
@@ -336,24 +336,18 @@ class Application
                 'status'  => 'Show the started application server status information',
                 'help'    => 'Display this help message',
             ],
-            // Options
-            [
+            'options' => [
                 '-d'         => 'Run the application server on the background.(<comment>not supported on windows</comment>)',
                 '--task'     => 'Only reload task worker, when reload server',
                 '--debug'    => 'Run the application server on the debug mode',
                 '--driver'   => 'You can custom webSocket driver, allow: <comment>sockets, swoole, streams</comment>',
                 '-h, --help' => 'Display this help message',
             ],
-            // Examples
-            [
+            'examples' => [
                 "<info>$scriptName start -d</info> Start server on daemonize mode.",
                 "<info>$scriptName start --driver={name}</info> custom webSocket driver, allow: sockets, swoole, streams"
-            ],
-            // Description
-            'webSocket server tool, Version <comment>' . ServerAbstracter::VERSION .
-            '</comment> Update time ' . ServerAbstracter::UPDATE_TIME,
-            $showHelpAfterQuit
-        );
+            ]
+        ], $showHelpAfterQuit);
     }
 
     /**
