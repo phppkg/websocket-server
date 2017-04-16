@@ -64,7 +64,7 @@ class SwooleClient extends ClientAbstracter
     /**
      * @inheritdoc
      */
-    protected function doConnect($timeout = 0.1, $flag = 0)
+    protected function doConnect($timeout = 2.2, $flag = 0)
     {
         $type = SWOOLE_SOCK_TCP;
 
@@ -82,7 +82,7 @@ class SwooleClient extends ClientAbstracter
         }
 
         if ( !$this->swClient->connect($this->getHost(), $this->getPort(), $timeout) ) {
-            $this->cliOut->error("connect failed. Error: {$this->swClient->errCode}", -404);
+            $this->cliOut->error("connect failed. Error: {$this->getErrorMsg()}", -404);
         }
     }
 

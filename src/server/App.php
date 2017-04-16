@@ -413,7 +413,7 @@ class App
      */
     public function handleOpen(ServerInterface $ws, Request $request, int $cid)
     {
-        $this->log('A new user connection. Now, connected user count: ' . $ws->count());
+        $this->log("A new user #$cid open connection. Now, user count: " . $ws->count());
         // $this->log("SERVER Data: \n" . var_export($_SERVER, 1), 'info');
 
         if ( $openHandler = $this->wsHandlers[self::OPEN_HANDLER] ) {
@@ -429,11 +429,11 @@ class App
      * @param ServerInterface $ws
      * @param string $data
      * @param int $cid
-     * @param array $client
+     * @param array $meta
      */
-    public function handleMessage(ServerInterface $ws, string $data, int $cid, array $client)
+    public function handleMessage(ServerInterface $ws, string $data, int $cid, array $meta)
     {
-        $this->log("Received user #$cid sent message. MESSAGE: $data, LENGTH: " . mb_strlen($data));
+        $this->log("Received user #$cid sent message. MESSAGE: $data, LENGTH: " . mb_strlen($data) . ', Meta: ', 'info', $meta);
 
         // call custom message handler
         if ( $msgHandler = $this->wsHandlers[self::MESSAGE_HANDLER] ) {
@@ -443,7 +443,7 @@ class App
         // dispatch command
 
         // $path = $ws->getClient($cid)['path'];
-        $result = $this->getRouteHandler($client['path'])->dispatch($data, $cid);
+        $result = $this->getRouteHandler($meta['path'])->dispatch($data, $cid);
 
         if ( $result && is_string($result) ) {
             $ws->send($result);
@@ -784,7 +784,7 @@ class App
      * @param  array $data
      * @param string $type
      */
-    public function log(string $msg, string $type = 'debug', array $data = [])
+    public function log(string $msg, string $type = 'info', array $data = [])
     {
         // if close debug, don't output debug log.
         if ( $this->isDebug() || $type !== 'debug') {

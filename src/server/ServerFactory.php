@@ -117,7 +117,7 @@ final class ServerFactory
 
         if ( isset($opts['h']) || isset($opts['help']) ) {
             $help = <<<EOF
-Start a webSocket Server.  
+Start a webSocket Server.
 
 Options:
   -d         Run the server on the background.
@@ -126,7 +126,7 @@ Options:
   -H,--host  Setting the webSocket server host.(default:9501)
   -p,--port  Setting the webSocket server port.(default:127.0.0.1)
   -h,--help  Show help information
-  
+
 EOF;
 
             fwrite(\STDOUT, $help);
@@ -134,7 +134,7 @@ EOF;
         }
 
         $host = $opts['H'] ?? $opts['host'] ?? '0.0.0.0';
-        $port = $opts['p'] ?? $opts['port'] ?? 8080;
+        $port = $opts['p'] ?? $opts['port'] ?? 9501;
         $options['driver'] = $opts['driver'] ?? $options['driver'] ?? '';
         $options['debug'] = $opts['debug'] ?? $options['debug'] ?? false;
 

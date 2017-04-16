@@ -102,10 +102,11 @@ class SwooleServer extends ServerAbstracter
     protected function doStart()
     {
         // register events
-        $this->server->on(self::ON_CONNECT, [$this, 'onConnect']);
+        // \Swoole\Websocket\Server 不会触发 'connect' 事件
+        // $this->server->on(self::ON_CONNECT, [$this, 'onConnect']);
 
-        // 设置onHandShake回调函数后不会再触发onOpen事件，需要应用代码自行处理
-        // onHandShake函数必须返回true表示握手成功，返回其他值表示握手失败
+        // 设置onHandshake回调函数后不会再触发onOpen事件，需要应用代码自行处理
+        // onHandshake函数必须返回true表示握手成功，返回其他值表示握手失败
         $this->server->on(self::ON_HANDSHAKE, [$this, 'onHandshake']);
         // $this->server->on(self::ON_OPEN, [$this, 'open']);
 
@@ -119,18 +120,18 @@ class SwooleServer extends ServerAbstracter
     }
 
     /**
-     * @param Server $server
-     * @param int $fd
+     * @param SWRequest $swRequest
+     * @param SWResponse $swResponse
+     * @return bool
      */
-    public function onConnect(Server $server, int $fd)
-    {
-        $this->connect($fd);
-    }
-
-    public function onHandShake(SWRequest $swRequest, SWResponse $swResponse)
+    public function onHandshake(SWRequest $swRequest, SWResponse $swResponse)
     {
         $cid = $swRequest->fd;
 
+        // trigger connect event.
+        $this->connect($cid);
+
+        // begin start handshake
         $method = $swRequest->server['request_method'];
         $uriStr = $swRequest->server['request_uri'];
 
@@ -138,13 +139,13 @@ class SwooleServer extends ServerAbstracter
         $request->setHeaders($swRequest->header);
         $request->setCookies($swRequest->cookie);
 
-        $this->log("Ready to shake hands with the #$cid client connection. request:\n" . $request->toString());
+        $this->log("Handshake: Ready to shake hands with the #$cid client connection. request:\n" . $request->toString());
 
         $response = new Response();
 
         // 解析请求头信息错误
         if (!$secKey = $swRequest->header['sec-websocket-key']) {
-            $this->log("handle handshake failed! [Sec-WebSocket-Key] not found in header. Data: \n" . $request->toString(), 'error');
+            $this->log("handshake failed with client #{$cid}! [Sec-WebSocket-Key] not found in header. request: \n" . $request->toString(), 'error');
 
             $swResponse->status(404);
             $swResponse->write('<b>400 Bad Request</b><br>[Sec-WebSocket-Key] not found in request header.');
@@ -190,13 +191,13 @@ class SwooleServer extends ServerAbstracter
         $meta['path'] = $request->getPath();
         $this->metas[$cid] = $meta;
 
-        $this->log("The #$cid client connection handshake successful! Info:", 'info', $meta);
+        $this->log("The #$cid client connection handshake successful! Meta:", 'info', $meta);
 
         // $this->server->defer(function() use($request) {});
 
         // 握手成功 触发 open 事件
         $this->trigger(self::ON_OPEN, [$this, $request, $cid]);
-
+        //var_dump($this);
         return true;
     }
 
@@ -206,6 +207,8 @@ class SwooleServer extends ServerAbstracter
      */
     public function onMessage(Server $server, Frame $frame)
     {
+        //var_dump($this);
+        $this->debug("Swoole: FD $frame->fd, OpCode: $frame->opcode, Data: $frame->data", $this->metas);
         $this->message($frame->fd, $frame->data, strlen($frame->data));
     }
 
@@ -253,14 +256,15 @@ class SwooleServer extends ServerAbstracter
      * @param int $cid
      * @param string $data
      * @param int $bytes
-     * @param array $meta The client info [@see $defaultInfo]
+     * @param array $meta The client info [@see $defaultMeta]
      */
     protected function message(int $cid, string $data, int $bytes, array $meta = [])
     {
         $meta = $meta ?: $this->getMeta($cid);
+        // Notice: don't decode
         // $data = $this->decode($data);
 
-        $this->log("Received $bytes bytes message from #$cid, Data: $data");
+        $this->log("Message: Received $bytes bytes message from #$cid, Data: $data");
 
         // call on message handler
         $this->trigger(self::ON_MESSAGE, [$this, $data, $cid, $meta]);

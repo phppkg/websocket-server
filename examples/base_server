@@ -14,10 +14,6 @@ $options = [
     'driver' => '',
 ];
 
-// $ examples/server --driver streams
-$opts = getopt('', ['driver:']);
-$options['driver'] = $opts['driver'] ?? '';
-
 //$svr = ServerFactory::make('', 9501, $options);
 $svr = ServerFactory::parseOptMake($options);
 

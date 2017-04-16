@@ -19,11 +19,8 @@ $options = [
     ]
 ];
 
-// $ examples/simple_client --driver streams
-$opts = getopt('', ['driver:']);
-$options['driver'] = $opts['driver'] ?? '';
-
-$client = ClientFactory::make('ws://127.0.0.1:9501', $options);
+// $client = ClientFactory::make('ws://127.0.0.1:9501', $options);
+$client = ClientFactory::parseOptMake($options);
 
 $client->connect();
 

@@ -91,4 +91,39 @@ final class ClientFactory
 
         return $client;
     }
+
+    /**
+     * parse cli Opt and make
+     * eg:
+     *  examples/base_server --driver sockets -d
+     * @param array $options
+     * @return ServerInterface
+     */
+    public static function parseOptMake(array $options = [])
+    {
+        $opts = getopt('dh', ['url:', 'driver:', 'help', 'debug']);
+
+        if ( isset($opts['h']) || isset($opts['help']) ) {
+            $help = <<<EOF
+Start a webSocket Server.
+
+Options:
+  -d         Run the server on the background.
+  --url      Setting the webSocket server url.(default ws://127.0.0.1:9501)
+  --debug    Run the server on the debug mode.
+  --driver   You can custom server driver. allow: swoole, sockets, streams.
+  -h,--help  Show help information
+
+EOF;
+
+            fwrite(\STDOUT, $help);
+            exit(0);
+        }
+
+        $url = $opts['url'] ?? 'ws://127.0.0.1:9501';
+        $options['driver'] = $opts['driver'] ?? $options['driver'] ?? '';
+        $options['debug'] = $opts['debug'] ?? $options['debug'] ?? false;
+
+        return self::make($url, $options);
+    }
 }

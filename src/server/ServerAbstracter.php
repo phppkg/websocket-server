@@ -117,7 +117,7 @@ abstract class ServerAbstracter extends WSAbstracter implements ServerInterface
         $this->host = $host;
         $this->port = $port;
 
-        $this->log("The webSocket server power by [<info>{$this->name}</info>], driver class: <default>" . static::class . '</default>', 'info');
+        $this->cliOut->write("The webSocket server power by [<info>{$this->name}</info>], driver class: <default>" . static::class . '</default>', 'info');
     }
 
     /**
@@ -183,7 +183,7 @@ abstract class ServerAbstracter extends WSAbstracter implements ServerInterface
         $this->clients[$cid] = $socket;
         $this->clientNumber++;
 
-        $this->log("A new client connected, ID: $cid, From {$meta['host']}:{$meta['port']}. Count: ($this->clientNumber)");
+        $this->log("Connect: A new client connected, ID: $cid, From {$meta['host']}:{$meta['port']}. Count: ($this->clientNumber)");
 
         // 触发 connect 事件回调
         $this->trigger(self::ON_CONNECT, [$this, $cid]);
@@ -199,7 +199,7 @@ abstract class ServerAbstracter extends WSAbstracter implements ServerInterface
      */
     protected function handshake($socket, string $data, int $cid)
     {
-        $this->log("Ready to shake hands with the #$cid client connection. request:\n$data");
+        $this->log("Handshake: Ready to shake hands with the #$cid client connection. request:\n$data");
         $meta = $this->metas[$cid];
         $response = new Response();
 
@@ -264,7 +264,7 @@ abstract class ServerAbstracter extends WSAbstracter implements ServerInterface
         $meta = $meta ?: $this->getMeta($cid);
         $data = $this->decode($data);
 
-        $this->log("Received $bytes bytes message from #$cid, Data: $data");
+        $this->log("Message: Received $bytes bytes message from #$cid, Data: $data");
 
         // call on message handler
         $this->trigger(self::ON_MESSAGE, [$this, $data, $cid, $meta]);
@@ -284,6 +284,8 @@ abstract class ServerAbstracter extends WSAbstracter implements ServerInterface
     }
     public function close(int $cid, $socket = null, bool $triggerEvent = true)
     {
+        $this->log("Close: Will close the #$cid client connection");
+
         $this->doClose($cid, $socket);
 
         $meta = $this->metas[$cid];
@@ -296,7 +298,7 @@ abstract class ServerAbstracter extends WSAbstracter implements ServerInterface
             $this->trigger(self::ON_CLOSE, [$this, $cid, $meta]);
         }
 
-        $this->log("The #$cid client connection has been closed! From {$meta['host']}:{$meta['port']}. Count: {$this->clientNumber}");
+        $this->log("Close: The #$cid client connection has been closed! From {$meta['host']}:{$meta['port']}. Count: {$this->clientNumber}");
 
         return true;
     }
@@ -452,7 +454,7 @@ abstract class ServerAbstracter extends WSAbstracter implements ServerInterface
 
     /**
      * 获取对端socket的IP地址和端口
-     * @param resource|int $socket driver is sockets or streams, type is resource. driver is swoole type is int.
+     * @param resource|int $socket Driver is sockets or streams, type is resource. Driver is swoole type is int.
      * @return array
      */
     abstract public function getPeerName($socket);
@@ -559,7 +561,7 @@ abstract class ServerAbstracter extends WSAbstracter implements ServerInterface
      */
     public function getMeta(int $cid)
     {
-        return $this->metas[$cid] ?? null;
+        return $this->metas[$cid] ?? [];
     }
 
     /**

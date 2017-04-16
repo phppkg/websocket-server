@@ -124,7 +124,7 @@ abstract class ClientAbstracter extends WSAbstracter implements ClientInterface
      * @param string $url `ws://127.0.0.1:9501/chat`
      * @param array $options
      */
-    public function __construct(string $url, array $options = [])
+    public function __construct(string $url = 'ws:\/\/127.0.0.1:9501', array $options = [])
     {
         $this->url = $url;
 
@@ -134,7 +134,7 @@ abstract class ClientAbstracter extends WSAbstracter implements ClientInterface
             $this->cliOut->error("Your system is not supported the driver: {$this->name}, by " . static::class, -200);
         }
 
-        $this->log("The webSocket client power by [<info>{$this->name}</info>], remote server is <info>{$url}</info>");
+        $this->cliOut->write("The webSocket client power by [<info>{$this->name}</info>], remote server is <info>{$url}</info>");
     }
 
     /**
