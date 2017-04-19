@@ -396,7 +396,7 @@ class App
 
         // application/json
         // text/plain
-        $response->setHeader('Server', 'websocket-server');
+        $response->setHeader('Server', $this->ws->getName() . 'websocket-server');
         // $response->setHeader('Access-Control-Allow-Origin', '*');
 
         $handler->setApp($this);

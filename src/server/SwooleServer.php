@@ -137,7 +137,10 @@ class SwooleServer extends ServerAbstracter
 
         $request = new Request($method, Uri::createFromString($uriStr));
         $request->setHeaders($swRequest->header);
-        $request->setCookies($swRequest->cookie);
+
+        if ($cookies = $swRequest->cookie ?? null) {
+            $request->setCookies($cookies);
+        }
 
         $this->log("Handshake: Ready to shake hands with the #$cid client connection. request:\n" . $request->toString());
 
@@ -149,6 +152,7 @@ class SwooleServer extends ServerAbstracter
 
             $swResponse->status(404);
             $swResponse->write('<b>400 Bad Request</b><br>[Sec-WebSocket-Key] not found in request header.');
+            $swResponse->end();
 
             // $this->close($cid, $socket, false);
             return false;
@@ -166,6 +170,7 @@ class SwooleServer extends ServerAbstracter
             }
 
             $swResponse->write($response->getBody());
+            $swResponse->end();
 
             // $this->close($cid, $socket, false);
             return false;
@@ -173,17 +178,23 @@ class SwooleServer extends ServerAbstracter
 
         // general key
         $sign = $this->genSign($secKey);
-        $response->setHeaders([
-            'Upgrade' => 'websocket',
-            'Connection' => 'Upgrade',
-            'Sec-WebSocket-Accept' => $sign,
-        ]);
+        $response
+            ->setStatus(101)
+            ->setHeaders([
+                'Upgrade' => 'websocket',
+                'Connection' => 'Upgrade',
+                'Sec-WebSocket-Accept' => $sign,
+            ]);
 
         // 响应握手成功
-        $swResponse->status(101);
-        foreach ($response->getHeaders() as $name => $value) {
-            $swResponse->header($name, $value);
-        }
+        // $swResponse->status($response->getStatusCode());
+        // foreach ($response->getHeaders() as $name => $value) {
+        //     $swResponse->header($name, $value);
+        // }
+        // $swResponse->end();
+        $respData = $response->toString();
+        $this->debug("Handshake: response info:\n" . $respData);
+        $this->server->send($cid, $respData);
 
         // 标记已经握手 更新路由 path
         $meta = $this->metas[$cid];
@@ -191,7 +202,7 @@ class SwooleServer extends ServerAbstracter
         $meta['path'] = $request->getPath();
         $this->metas[$cid] = $meta;
 
-        $this->log("The #$cid client connection handshake successful! Meta:", 'info', $meta);
+        $this->log("Handshake: The #$cid client connection handshake successful! Meta:", 'info', $meta);
 
         // $this->server->defer(function() use($request) {});
 
@@ -282,6 +293,60 @@ class SwooleServer extends ServerAbstracter
     }
 
     /**
+     * Send a message to the specified user 发送消息给指定的用户
+     * @param int    $receiver 接收者
+     * @param string $data
+     * @param int    $sender   发送者
+     * @return int
+     */
+    public function sendTo(int $receiver, string $data, int $sender = 0)
+    {
+        $finish = true;
+        $opcode = 1;
+
+        $fromUser = $sender < 1 ? 'SYSTEM' : $sender;
+
+        $this->log("(private)The #{$fromUser} send message to the user #{$receiver}. Data: {$data}");
+
+        return $this->server->push($receiver, $data, $opcode, $finish) ? 0 : -500;
+    }
+
+    /**
+     * broadcast message 广播消息
+     * @param string $data      消息数据
+     * @param int    $sender    发送者
+     * @param int[]  $receivers 指定接收者们
+     * @param int[]  $expected  要排除的接收者
+     * @return int   Return socket last error number code.  gt 0 on failure, eq 0 on success
+     */
+    public function broadcast(string $data, array $receivers = [], array $expected = [], int $sender = 0): int
+    {
+        if ( !$data ) {
+            return 0;
+        }
+
+        // only one receiver
+        if (1 === count($receivers)) {
+            return $this->sendTo(array_shift($receivers), $data, $sender);
+        }
+
+        $res = $this->frame($data);
+        $len = strlen($res);
+        $fromUser = $sender < 1 ? 'SYSTEM' : $sender;
+
+        // to all
+        if ( !$expected && !$receivers) {
+            $this->sendToAll($data, $sender);
+
+            // to some
+        } else {
+            $this->sendToSome($data, $receivers, $expected, $sender);
+        }
+
+        return $this->getErrorNo();
+    }
+
+    /**
      * @param string $data
      * @param int $sender
      * @return int
@@ -306,7 +371,7 @@ class SwooleServer extends ServerAbstracter
 
             /** @var $connList array */
             foreach($connList as $fd) {
-                $this->server->send($fd, $data);
+                $this->server->push($fd, $data);
             }
         }
 
@@ -334,7 +399,7 @@ class SwooleServer extends ServerAbstracter
             foreach ($receivers as $receiver) {
                 if ($this->hasClient($receiver)) {
                     $count++;
-                    $this->writeTo($receiver, $res, $len);
+                    $this->server->push($receiver, $res, $len);
                 }
             }
 
@@ -365,25 +430,11 @@ class SwooleServer extends ServerAbstracter
                     continue;
                 }
 
-                $this->server->send($fd, $data);
+                $this->server->push($fd, $data);
             }
         }
 
         return $count;
-    }
-
-    /**
-     */
-    protected function checkEnvWhenEnableSSL()
-    {
-        if ( !defined('SWOOLE_SSL')) {
-            $this->cliOut->error('If you want use SSL(https), must add option --enable-openssl on the compile swoole.', -500);
-        }
-
-        // check ssl config
-        if ( !$this->getOption('ssl_cert_file') || !$this->getOption('ssl_key_file')) {
-            $this->cliOut->error("If you want use SSL(https), must config the 'swoole.ssl_cert_file' and 'swoole.ssl_key_file'", -500);
-        }
     }
 
     /**
@@ -398,7 +449,8 @@ class SwooleServer extends ServerAbstracter
         $finish = true;
         $opcode = 1;
 
-        return $this->server->push($fd, $data, $opcode, $finish) ? 0 : 1;
+        // return $this->server->push($fd, $data, $opcode, $finish) ? 0 : 1;
+        return $this->server->send($fd, $data) ? 0 : 1;
     }
 
     /**
@@ -408,6 +460,20 @@ class SwooleServer extends ServerAbstracter
     public function exist(int $cid)
     {
         return $this->server->exist($cid);
+    }
+
+    /**
+     */
+    protected function checkEnvWhenEnableSSL()
+    {
+        if ( !defined('SWOOLE_SSL')) {
+            $this->cliOut->error('If you want use SSL(https), must add option --enable-openssl on the compile swoole.', -500);
+        }
+
+        // check ssl config
+        if ( !$this->getOption('ssl_cert_file') || !$this->getOption('ssl_key_file')) {
+            $this->cliOut->error("If you want use SSL(https), must config the 'swoole.ssl_cert_file' and 'swoole.ssl_key_file'", -500);
+        }
     }
 
     /**

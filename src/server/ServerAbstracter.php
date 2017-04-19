@@ -239,7 +239,9 @@ abstract class ServerAbstracter extends WSAbstracter implements ServerInterface
             ]);
 
         // 响应握手成功
-        $this->writeTo($socket, $response->toString());
+        $respData = $response->toString();
+        $this->debug("Handshake: response info:\n" . $respData);
+        $this->writeTo($socket, $respData);
 
         // 标记已经握手 更新路由 path
         $meta['handshake'] = true;
@@ -464,10 +466,11 @@ abstract class ServerAbstracter extends WSAbstracter implements ServerInterface
     /////////////////////////////////////////////////////////////////////////////////////////
 
     /**
-     * @param $s
+     * packData encode
+     * @param string $s
      * @return string
      */
-    public function frame($s)
+    public function frame(string $s)
     {
         /** @var array $a */
         $a = str_split($s, 125);
@@ -493,7 +496,19 @@ abstract class ServerAbstracter extends WSAbstracter implements ServerInterface
     public function decode($buffer)
     {
         /*$len = $masks = $data =*/ $decoded = '';
-        $len = ord($buffer[1]) & 127;
+
+        $fin = ($buffer[0] & 0x80) == 0x80; // 1bit，1表示最后一帧
+        if(!fin) {
+            return '';// 超过一帧暂不处理
+        }
+
+        $maskFlag = ($buffer[1] & 0x80) == 0x80; // 是否包含掩码
+        if(!$maskFlag) {
+            return '';// 不包含掩码的暂不处理
+        }
+
+        // $len = ord($buffer[1]) & 0x7F; // 数据长度
+        $len = ord($buffer[1]) & 127; // 数据长度
 
         if ($len === 126) {
             $masks = substr($buffer, 4, 4);
