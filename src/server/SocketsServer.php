@@ -75,6 +75,9 @@ class SocketsServer extends ServerAbstracter
         socket_listen($this->socket, $maxConnect);
     }
 
+    /**
+     * {@inheritDoc}
+     */
     protected function doStart()
     {
         $maxLen = (int)$this->getOption('max_data_len', 2048);
@@ -133,7 +136,7 @@ class SocketsServer extends ServerAbstracter
         $cid = (int)$sock;
 
         // 不在已经记录的client列表中
-        if ( !isset($this->metas[$cid], $this->clients[$cid])) {
+        if (!isset($this->metas[$cid], $this->clients[$cid])) {
             return $this->close($cid, $sock);
         }
 
@@ -142,7 +145,7 @@ class SocketsServer extends ServerAbstracter
         $bytes = socket_recv($sock, $data, $len, 0);
 
         // 没有发送数据或者小于7字节
-        if (false === $bytes || $bytes < 7 || !$data ) {
+        if (false === $bytes || $bytes < 7 || !$data) {
             $this->log("Failed to receive data or not received data(client close connection) from #$cid client, will close the socket.");
             return $this->close($cid, $sock);
         }

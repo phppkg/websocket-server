@@ -62,9 +62,10 @@ class SwooleClient extends ClientAbstracter
     }
 
     /**
-     * @inheritdoc
+     * @param float $timeout
+     * @param int $flags
      */
-    protected function doConnect($timeout = 2.2, $flag = 0)
+    protected function doConnect($timeout = 2.2, $flags = 0)
     {
         $type = SWOOLE_SOCK_TCP;
 
@@ -158,7 +159,7 @@ class SwooleClient extends ClientAbstracter
     {
         $this->swClient->close($force);
 
-        $this->setConnected(false);
+        parent::close($force);
     }
 
     /**

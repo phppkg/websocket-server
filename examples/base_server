@@ -18,11 +18,11 @@ $options = [
 $svr = ServerFactory::parseOptMake($options);
 
 $svr->on('open', function (ServerInterface $svr) {
-    $svr->send('welcome!');
+    $svr->send('OPEN: welcome!');
 });
 
 $svr->on(WSInterface::ON_MESSAGE, function (ServerInterface $svr, $data) {
-    $svr->send("you input: $data");
+    $svr->send("You input: $data");
 });
 
 $svr->start();

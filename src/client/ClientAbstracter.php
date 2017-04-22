@@ -38,19 +38,6 @@ abstract class ClientAbstracter extends WSAbstracter implements ClientInterface
     protected $socket;
 
     /**
-     * all available opCodes
-     * @var array
-     */
-    protected static $opCodes = [
-        'continuation' => 0,
-        'text' => 1,
-        'binary' => 2,
-        'close' => 8,
-        'ping' => 9,
-        'pong' => 10,
-    ];
-
-    /**
      * @var Request
      */
     protected $request;
@@ -66,9 +53,10 @@ abstract class ClientAbstracter extends WSAbstracter implements ClientInterface
     private $key;
 
     /**
-     * @var bool
+     * the ws state
+     * @var integer
      */
-    private $connected = false;
+    private $state = 0;
 
     /**
      * @return array
@@ -221,7 +209,7 @@ abstract class ClientAbstracter extends WSAbstracter implements ClientInterface
     {
         $this->doConnect($timeout, $flags);
 
-        $this->connected = true;
+        $this->state = self::STATE_CONNECTED;
 
         return $this->doHandShake();
     }
@@ -350,7 +338,9 @@ abstract class ClientAbstracter extends WSAbstracter implements ClientInterface
     const SEND_ALL_FRAGMENT = 2;
 
     /**
-     * @inheritdoc
+     * @param string $data
+     * @param null|int $flag
+     * @return mixed
      */
     public function send($data, $flag = null)
     {
@@ -361,18 +351,18 @@ abstract class ClientAbstracter extends WSAbstracter implements ClientInterface
 
     /**
      * @param string $payload
-     * @param string $opcode
+     * @param string $opCode
      * @param bool $masked
      * @return int
      */
-    protected function sendByFragment($payload, $opcode = 'text', $masked = true)
+    protected function sendByFragment($payload, $opCode = 'text', $masked = true)
     {
-        if ( !$this->connected ) {
+        if (!$this->isConnected()) {
             $this->connect();
         }
 
-        if (!isset(self::$opCodes[$opcode])) {
-            throw new \InvalidArgumentException("Bad opcode '$opcode'.  Try 'text' or 'binary'.");
+        if (!isset(self::$opCodes[$opCode])) {
+            throw new \InvalidArgumentException("Bad opcode '$opCode'.  Try 'text' or 'binary'.");
         }
 
         // record the length of the payload
@@ -392,7 +382,7 @@ abstract class ClientAbstracter extends WSAbstracter implements ClientInterface
             $final = $payloadLength <= $fragmentCursor;
 
             // send the fragment
-            $encoded = $this->encode($sub_payload, $opcode, $masked, $final);
+            $encoded = $this->encode($sub_payload, $opCode, $masked, $final);
             $this->write($encoded);
 
             // all fragments after the first will be marked a continuation
@@ -449,11 +439,11 @@ abstract class ClientAbstracter extends WSAbstracter implements ClientInterface
     }
     public function close(bool $force = false)
     {
-        if ( $this->socket ) {
+        if ($this->socket) {
             $this->socket = null;
         }
 
-        $this->connected = false;
+        $this->state = self::STATE_CLOSED;
     }
 
     /**
@@ -609,6 +599,50 @@ abstract class ClientAbstracter extends WSAbstracter implements ClientInterface
     /////////////////////////////////////////////////////////////////////////////////////////
 
     /**
+     * @return int
+     */
+    public function getState(): int
+    {
+        return $this->state;
+    }
+
+    /**
+     * is waiting
+     * @return boolean
+     */
+    public function isWaiting(): bool
+    {
+        return $this->state === self::STATE_WAITING;
+    }
+
+    /**
+     * is Connected
+     * @return boolean
+     */
+    public function isConnected(): bool
+    {
+        return $this->state === self::STATE_CONNECTED;
+    }
+
+    /**
+     * is closing
+     * @return boolean
+     */
+    public function isClosing(): bool
+    {
+        return $this->state === self::STATE_CLOSING;
+    }
+
+    /**
+     * is closed
+     * @return boolean
+     */
+    public function isClosed(): bool
+    {
+        return $this->state === self::STATE_CLOSED;
+    }
+
+    /**
      * Default headers
      * @return array
      */
@@ -625,14 +659,6 @@ abstract class ClientAbstracter extends WSAbstracter implements ClientInterface
             'Sec-WebSocket-Version' => self::WS_VERSION,
             'Sec-WebSocket-Protocol' => 'sws',
         ];
-    }
-
-    /**
-     * @return array
-     */
-    public static function getOpCodes(): array
-    {
-        return self::$opCodes;
     }
 
     /**
@@ -715,21 +741,5 @@ abstract class ClientAbstracter extends WSAbstracter implements ClientInterface
     public function getResponse(): Response
     {
         return $this->response;
-    }
-
-    /**
-     * @return bool
-     */
-    public function isConnected(): bool
-    {
-        return $this->connected;
-    }
-
-    /**
-     * @param bool $connected
-     */
-    public function setConnected(bool $connected)
-    {
-        $this->connected = $connected;
     }
 }

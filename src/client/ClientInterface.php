@@ -73,11 +73,11 @@ interface ClientInterface
 //    public function getPeerCert();
 
     /**
-     * @param string $message
+     * @param string $data
      * @param null|int $flag
      * @return mixed
      */
-    public function send($message, $flag = null);
+    public function send($data, $flag = null);
 
     /*
      * @param string $ip

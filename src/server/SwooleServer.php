@@ -136,7 +136,7 @@ class SwooleServer extends ServerAbstracter
         $uriStr = $swRequest->server['request_uri'];
 
         $request = new Request($method, Uri::createFromString($uriStr));
-        $request->setHeaders($swRequest->header);
+        $request->setHeaders($swRequest->header ?: []);
 
         if ($cookies = $swRequest->cookie ?? null) {
             $request->setCookies($cookies);
@@ -152,7 +152,7 @@ class SwooleServer extends ServerAbstracter
 
             $swResponse->status(404);
             $swResponse->write('<b>400 Bad Request</b><br>[Sec-WebSocket-Key] not found in request header.');
-            $swResponse->end();
+            //$swResponse->end();
 
             // $this->close($cid, $socket, false);
             return false;
@@ -160,7 +160,7 @@ class SwooleServer extends ServerAbstracter
 
         // 触发 handshake 事件回调，如果返回 false -- 拒绝连接，比如需要认证，限定路由，限定ip，限定domain等
         // 就停止继续处理。并返回信息给客户端
-        if ( false === $this->trigger(self::ON_HANDSHAKE, [$request, $response, $cid]) ) {
+        if (false === $this->trigger(self::ON_HANDSHAKE, [$request, $response, $cid])) {
             $this->log("The #$cid client handshake's callback return false, will close the connection", 'notice');
 
             $swResponse->status($response->getStatusCode());
@@ -170,31 +170,33 @@ class SwooleServer extends ServerAbstracter
             }
 
             $swResponse->write($response->getBody());
-            $swResponse->end();
+            // $swResponse->end();
 
             // $this->close($cid, $socket, false);
             return false;
         }
 
-        // general key
-        $sign = $this->genSign($secKey);
+        // setting response
         $response
             ->setStatus(101)
             ->setHeaders([
                 'Upgrade' => 'websocket',
                 'Connection' => 'Upgrade',
-                'Sec-WebSocket-Accept' => $sign,
+                'Sec-WebSocket-Accept' => $this->genSign($secKey),
+                'Sec-WebSocket-Version' => self::WS_VERSION,
             ]);
+        $this->debug("Handshake: response info:\n" . $response->toString());
 
         // 响应握手成功
-        // $swResponse->status($response->getStatusCode());
-        // foreach ($response->getHeaders() as $name => $value) {
-        //     $swResponse->header($name, $value);
-        // }
+        $swResponse->status($response->getStatusCode());
+        foreach ($response->getHeaders() as $name => $value) {
+            $swResponse->header($name, $value);
+        }
+        $swResponse->header('Content-Type', null);
         // $swResponse->end();
-        $respData = $response->toString();
-        $this->debug("Handshake: response info:\n" . $respData);
-        $this->server->send($cid, $respData);
+//        $respData = $response->toString();
+//        $this->debug("Handshake: response info:\n" . $respData);
+//        $r = $this->server->send($cid, $respData);
 
         // 标记已经握手 更新路由 path
         $meta = $this->metas[$cid];
@@ -202,12 +204,16 @@ class SwooleServer extends ServerAbstracter
         $meta['path'] = $request->getPath();
         $this->metas[$cid] = $meta;
 
-        $this->log("Handshake: The #$cid client connection handshake successful! Meta:", 'info', $meta);
-
-        // $this->server->defer(function() use($request) {});
+        $this->log("Handshake: The #$cid client connection handshake successful! Meta:", 'info', [
+            $meta,
+            //$this->server->exist($cid)
+        ]);
 
         // 握手成功 触发 open 事件
-        $this->trigger(self::ON_OPEN, [$this, $request, $cid]);
+        $this->server->defer(function() use($request, $cid) {
+            $this->trigger(self::ON_OPEN, [$this, $request, $cid]);
+        });
+
         //var_dump($this);
         return true;
     }
@@ -219,7 +225,7 @@ class SwooleServer extends ServerAbstracter
     public function onMessage(Server $server, Frame $frame)
     {
         //var_dump($this);
-        $this->debug("Swoole: FD $frame->fd, OpCode: $frame->opcode, Data: $frame->data", $this->metas);
+        $this->debug("Swoole: PID $server->master_pid FD $frame->fd, OpCode: $frame->opcode, Data: $frame->data", $this->metas);
         $this->message($frame->fd, $frame->data, strlen($frame->data));
     }
 
@@ -230,6 +236,7 @@ class SwooleServer extends ServerAbstracter
      */
     public function onClose(Server $server, $cid)
     {
+        $this->debug("Swoole: PID $server->master_pid");
         $this->close($cid);
 
         return true;
@@ -329,10 +336,6 @@ class SwooleServer extends ServerAbstracter
         if (1 === count($receivers)) {
             return $this->sendTo(array_shift($receivers), $data, $sender);
         }
-
-        $res = $this->frame($data);
-        $len = strlen($res);
-        $fromUser = $sender < 1 ? 'SYSTEM' : $sender;
 
         // to all
         if ( !$expected && !$receivers) {

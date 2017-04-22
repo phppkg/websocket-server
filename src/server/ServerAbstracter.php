@@ -74,6 +74,9 @@ abstract class ServerAbstracter extends WSAbstracter implements ServerInterface
         return [ self::ON_CONNECT, self::ON_HANDSHAKE, self::ON_OPEN, self::ON_MESSAGE, self::ON_CLOSE, self::ON_ERROR];
     }
 
+    /**
+     * @return array
+     */
     public function getDefaultOptions()
     {
         return array_merge(parent::getDefaultOptions(),[
@@ -183,7 +186,7 @@ abstract class ServerAbstracter extends WSAbstracter implements ServerInterface
         $this->clients[$cid] = $socket;
         $this->clientNumber++;
 
-        $this->log("Connect: A new client connected, ID: $cid, From {$meta['host']}:{$meta['port']}. Count: ($this->clientNumber)");
+        $this->log("Connect: A new client connected, ID: $cid, From {$meta['host']}:{$meta['port']}. Count: {$this->clientNumber}");
 
         // 触发 connect 事件回调
         $this->trigger(self::ON_CONNECT, [$this, $cid]);
@@ -228,14 +231,21 @@ abstract class ServerAbstracter extends WSAbstracter implements ServerInterface
             return $this->close($cid, $socket, false);
         }
 
-        // general key
-        $key = $this->genSign($match[1]);
+        /**
+         * @TODO
+         *   ? Origin;
+         *   ? Sec-WebSocket-Protocol;
+         *   ? Sec-WebSocket-Extensions.
+         */
+
+        // setting response
         $response
             ->setStatus(101)
             ->setHeaders([
                 'Upgrade' => 'websocket',
                 'Connection' => 'Upgrade',
-                'Sec-WebSocket-Accept' => $key,
+                'Sec-WebSocket-Accept' => $this->genSign($match[1]),
+                'Sec-WebSocket-Version' => self::WS_VERSION,
             ]);
 
         // 响应握手成功
@@ -476,6 +486,7 @@ abstract class ServerAbstracter extends WSAbstracter implements ServerInterface
         $a = str_split($s, 125);
         $prefix = self::BINARY_TYPE_BLOB;
 
+        // <= 125
         if (count($a) === 1){
             return $prefix . chr(strlen($a[0])) . $a[0];
         }
@@ -497,18 +508,18 @@ abstract class ServerAbstracter extends WSAbstracter implements ServerInterface
     {
         /*$len = $masks = $data =*/ $decoded = '';
 
-        $fin = ($buffer[0] & 0x80) == 0x80; // 1bit，1表示最后一帧
-        if(!fin) {
+        $fin = (ord($buffer{0}) & 0x80) === 0x80; // 1bit，1表示最后一帧
+        if(!$fin) {
             return '';// 超过一帧暂不处理
         }
 
-        $maskFlag = ($buffer[1] & 0x80) == 0x80; // 是否包含掩码
+        $maskFlag = (ord($buffer{1}) & 0x80) === 0x80; // 是否包含掩码 0x80 -> 128
         if(!$maskFlag) {
             return '';// 不包含掩码的暂不处理
         }
 
         // $len = ord($buffer[1]) & 0x7F; // 数据长度
-        $len = ord($buffer[1]) & 127; // 数据长度
+        $len = ord($buffer[1]) & 127; // 数据长度 0x7F -> 127
 
         if ($len === 126) {
             $masks = substr($buffer, 4, 4);
@@ -533,6 +544,9 @@ abstract class ServerAbstracter extends WSAbstracter implements ServerInterface
     /// helper method
     /////////////////////////////////////////////////////////////////////////////////////////
 
+    /**
+     * {@inheritDoc}
+     */
     public function log(string $msg, string $type = 'debug', array $data = [])
     {
         // if close debug, don't output debug log.

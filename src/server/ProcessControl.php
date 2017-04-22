@@ -16,6 +16,10 @@ namespace inhere\webSocket\server;
  */
 trait ProcessControl
 {
+    /**
+     * @var bool
+     */
+    protected $loadedPcntl;
 
     /////////////////////////////////////////////////////////////////////////////////////////
     /// process method
@@ -31,12 +35,45 @@ trait ProcessControl
     $ws->start();
      */
 
+    public function spawn($number)
+    {
+        if (!$this->hasPcntl()) {
+            $this->print("Start multi workers process, require 'pcntl' extension!");
+
+            return -3;
+        }
+
+        $num = (int)$number >= 0 ? $number : 0;
+
+        if ($num < 2) {
+            return posix_getpid();
+        }
+
+        $pids = array();
+
+        for ($i = 0; $i < $num; $i++) {
+            $pid = pcntl_fork();
+
+            if ($pid > 0) {
+                $pids[] = $pid;
+            } else {
+                break;
+            }
+        }
+
+        return $pids;
+    }
+
     /**
      * run as daemon process
      */
     public function asDaemon()
     {
-        $this->checkPcntlExtension();
+        if (!$this->hasPcntl()) {
+            $this->print("[NOTICE] Want to run process as daemon, require 'pcntl' extension!");
+
+            return false;
+        }
 
         umask(0);
         // Forks the currently running process
@@ -67,6 +104,8 @@ trait ProcessControl
 
             // return posix_getpid();
         }
+
+        return true;
     }
 
     /**
@@ -77,7 +116,11 @@ trait ProcessControl
      */
     public function changeIdentity(int $uid, int $gid )
     {
-        $this->checkPcntlExtension();
+        if (!$this->hasPcntl()) {
+            $this->print("[NOTICE] Want to change the process user info, require 'pcntl' extension!");
+
+            return $this;
+        }
 
         if( !posix_setgid( $gid ) ) {
             $this->print("Unable to set group id to [$gid]", true, - __LINE__);
@@ -92,7 +135,11 @@ trait ProcessControl
 
     public function installSignals()
     {
-        $this->checkPcntlExtension();
+        if (!$this->hasPcntl()) {
+            $this->print("[NOTICE] Want to register the signal handler, require 'pcntl' extension!");
+
+            return $this;
+        }
 
         /* handle signals */
         // eg: 向当前进程发送SIGUSR1信号
@@ -118,8 +165,6 @@ trait ProcessControl
      */
     public function signalHandler($signal)
     {
-        $this->checkPcntlExtension();
-
         switch ($signal) {
             // Stop.
             case SIGTERM:
@@ -142,10 +187,24 @@ trait ProcessControl
         }
     }
 
-    private function checkPcntlExtension()
+    /**
+     * @return bool
+     */
+    public function isLoadedPcntl(): bool
     {
-        if ( ! function_exists('pcntl_fork') ) {
-            throw new \RuntimeException('PCNTL functions not available on this PHP installation, please install pcntl extension.');
-        }
+        return $this->hasPcntl();
     }
+
+    /**
+     * @return bool
+     */
+    public function hasPcntl()
+    {
+        if (!is_bool($this->loadedPcntl)) {
+            $this->loadedPcntl = function_exists('pcntl_fork');
+        }
+
+        return $this->loadedPcntl;
+    }
+
 }

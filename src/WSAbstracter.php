@@ -29,6 +29,19 @@ abstract class WSAbstracter implements WSInterface
     const DEFAULT_PORT = 8080;
 
     /**
+     * all available opCodes
+     * @var array
+     */
+    protected static $opCodes = [
+        'continuation'  => self::OPCODE_CONTINUATION, // 0
+        'text'          => self::OPCODE_TEXT,   // 1
+        'binary'        => self::OPCODE_BINARY, // 2
+        'close'         => self::OPCODE_CLOSE,  // 8
+        'ping'          => self::OPCODE_PING,   // 9
+        'pong'          => self::OPCODE_PONG,   // 10
+    ];
+
+    /**
      * the driver name
      * @var string
      */
@@ -117,6 +130,14 @@ abstract class WSAbstracter implements WSInterface
         if ( $config = $this->getOption('log_service') ) {
             $this->logger = SFLogger::make($config);
         }
+    }
+
+    /**
+     * @return array
+     */
+    public static function getOpCodes(): array
+    {
+        return self::$opCodes;
     }
 
     /**
@@ -236,7 +257,7 @@ abstract class WSAbstracter implements WSInterface
     public function log(string $msg, string $type = 'debug', array $data = [])
     {
         // if close debug, don't output debug log.
-        if ( $this->isDebug() || $type !== 'debug') {
+        if ($this->isDebug() || $type !== 'debug') {
 
             [$time, $micro] = explode('.', microtime(1));
 
