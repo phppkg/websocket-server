@@ -60,9 +60,9 @@ class SwooleServer extends ServerAbstracter
                 'task_worker_num' => 2, // 启用 task worker,必须为Server设置onTask和onFinish回调
                 'daemonize'     => 0,
                 'max_request'   => 1000,
-                // 在1.7.15以上版本中，当设置dispatch_mode = 1/3时会自动去掉onConnect/onClose事件回调。
+                // 在1.7.15以上版本中，当设置dispatch_mode = 1/3时会自动去掉 `onConnect/onClose` 事件回调。
                 // see @link https://wiki.swoole.com/wiki/page/49.html
-                'dispatch_mode' => 1,
+                'dispatch_mode' => 2,
                 // 'log_file' , // '/tmp/swoole.log', // 不设置log_file会打印到屏幕
 
                 // 使用SSL必须在编译swoole时加入--enable-openssl选项 并且配置下面两项
@@ -103,12 +103,13 @@ class SwooleServer extends ServerAbstracter
     {
         // register events
         // \Swoole\Websocket\Server 不会触发 'connect' 事件
-        // $this->server->on(self::ON_CONNECT, [$this, 'onConnect']);
+         $this->server->on(self::ON_CONNECT, [$this, 'onConnect']);
 
-        // 设置onHandshake回调函数后不会再触发onOpen事件，需要应用代码自行处理
         // onHandshake函数必须返回true表示握手成功，返回其他值表示握手失败
         $this->server->on(self::ON_HANDSHAKE, [$this, 'onHandshake']);
-        // $this->server->on(self::ON_OPEN, [$this, 'open']);
+
+        // 设置onHandshake回调函数后不会再触发onOpen事件，需要应用代码自行处理
+//        $this->server->on(self::ON_OPEN, [$this, 'onOpen']);
 
         $this->server->on(self::ON_MESSAGE, [$this, 'onMessage']);
         $this->server->on(self::ON_CLOSE, [$this, 'onClose']);
@@ -120,6 +121,19 @@ class SwooleServer extends ServerAbstracter
     }
 
     /**
+     * @param Server $server
+     * @param int $fd
+     * @param int $fromId
+     */
+    public function onConnect(Server $server, int $fd, int $fromId)
+    {
+        $this->debug("onConnect: PID {$server->master_pid}, form reactor ID $fromId, connection ID $fd");
+
+        // trigger connect event.
+        $this->connect($fd);
+    }
+
+    /**
      * @param SWRequest $swRequest
      * @param SWResponse $swResponse
      * @return bool
@@ -127,9 +141,6 @@ class SwooleServer extends ServerAbstracter
     public function onHandshake(SWRequest $swRequest, SWResponse $swResponse)
     {
         $cid = $swRequest->fd;
-
-        // trigger connect event.
-        $this->connect($cid);
 
         // begin start handshake
         $method = $swRequest->server['request_method'];
@@ -192,8 +203,7 @@ class SwooleServer extends ServerAbstracter
         foreach ($response->getHeaders() as $name => $value) {
             $swResponse->header($name, $value);
         }
-        $swResponse->header('Content-Type', null);
-        // $swResponse->end();
+
 //        $respData = $response->toString();
 //        $this->debug("Handshake: response info:\n" . $respData);
 //        $r = $this->server->send($cid, $respData);
@@ -204,10 +214,7 @@ class SwooleServer extends ServerAbstracter
         $meta['path'] = $request->getPath();
         $this->metas[$cid] = $meta;
 
-        $this->log("Handshake: The #$cid client connection handshake successful! Meta:", 'info', [
-            $meta,
-            //$this->server->exist($cid)
-        ]);
+        $this->log("Handshake: The #$cid client connection handshake successful! Meta:", 'info', $meta);
 
         // 握手成功 触发 open 事件
         $this->server->defer(function() use($request, $cid) {
@@ -216,6 +223,38 @@ class SwooleServer extends ServerAbstracter
 
         //var_dump($this);
         return true;
+    }
+
+    /**
+     * @notice the method don't use
+     * @param Server $server
+     * @param SWRequest $swRequest
+     */
+    public function onOpen(Server $server, SWRequest $swRequest)
+    {
+        $cid = $swRequest->fd;
+
+        $this->debug("onConnect: PID {$server->master_pid}, connection ID $cid");
+
+        $method = $swRequest->server['request_method'];
+        $uriStr = $swRequest->server['request_uri'];
+
+        $request = new Request($method, Uri::createFromString($uriStr));
+        $request->setHeaders($swRequest->header ?: []);
+
+        if ($cookies = $swRequest->cookie ?? null) {
+            $request->setCookies($cookies);
+        }
+
+        // 标记已经握手 更新路由 path
+        $meta = $this->metas[$cid];
+        $meta['handshake'] = true;
+        $meta['path'] = $request->getPath();
+        $this->metas[$cid] = $meta;
+
+        $this->log("Open: The #$cid client connection open successful! Meta:", 'info', $meta);
+
+        $this->trigger(self::ON_OPEN, [$this, $request, $cid]);
     }
 
     /**
@@ -232,14 +271,12 @@ class SwooleServer extends ServerAbstracter
     /**
      * @param Server $server
      * @param int $cid
-     * @return bool
      */
     public function onClose(Server $server, $cid)
     {
-        $this->debug("Swoole: PID $server->master_pid");
-        $this->close($cid);
+        $this->debug("onClose: A client connection #$cid has been lost");
 
-        return true;
+        $this->afterClose($cid);
     }
 
     ////////////////////// Task Event //////////////////////
@@ -449,8 +486,8 @@ class SwooleServer extends ServerAbstracter
      */
     public function writeTo($fd, string $data, int $length = 0)
     {
-        $finish = true;
-        $opcode = 1;
+//        $finish = true;
+//        $opcode = 1;
 
         // return $this->server->push($fd, $data, $opcode, $finish) ? 0 : 1;
         return $this->server->send($fd, $data) ? 0 : 1;

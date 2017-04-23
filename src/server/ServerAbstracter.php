@@ -298,21 +298,11 @@ abstract class ServerAbstracter extends WSAbstracter implements ServerInterface
     {
         $this->log("Close: Will close the #$cid client connection");
 
-        $this->doClose($cid, $socket);
+        $ret = $this->doClose($cid, $socket);
 
-        $meta = $this->metas[$cid];
-        $this->clientNumber--;
+        $this->afterClose($cid, $triggerEvent);
 
-        unset($this->metas[$cid], $this->clients[$cid]);
-
-        // call close handler
-        if ( $triggerEvent ) {
-            $this->trigger(self::ON_CLOSE, [$this, $cid, $meta]);
-        }
-
-        $this->log("Close: The #$cid client connection has been closed! From {$meta['host']}:{$meta['port']}. Count: {$this->clientNumber}");
-
-        return true;
+        return $ret;
     }
 
     /**
@@ -322,6 +312,25 @@ abstract class ServerAbstracter extends WSAbstracter implements ServerInterface
      * @return bool
      */
     abstract protected function doClose(int $cid, $socket = null);
+
+    /**
+     * @param int $cid
+     * @param bool $triggerEvent
+     */
+    protected function afterClose(int $cid, bool $triggerEvent = true)
+    {
+        $meta = $this->metas[$cid];
+        $this->clientNumber--;
+
+        unset($this->metas[$cid], $this->clients[$cid]);
+
+        // call on close callback
+        if ($triggerEvent) {
+            $this->trigger(self::ON_CLOSE, [$this, $cid, $meta]);
+        }
+
+        $this->log("Close: The #$cid client connection has been closed! From {$meta['host']}:{$meta['port']}. Count: {$this->clientNumber}");
+    }
 
     /**
      * @param $msg
@@ -349,7 +358,7 @@ abstract class ServerAbstracter extends WSAbstracter implements ServerInterface
     {
         // only one receiver
         if ($receiver && (($isInt = is_int($receiver)) || 1 === count($receiver))) {
-            $receiver = $isInt ? $receiver: array_shift($receiver);
+            $receiver = $isInt ? $receiver : array_shift($receiver);
 
             return $this->sendTo($receiver, $data, $sender);
         }

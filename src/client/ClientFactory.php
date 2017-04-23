@@ -24,8 +24,8 @@ final class ClientFactory
     const MSG_LOST_CONNECTION = 3;
 
     const OPCODE_CONTINUE = 0x0; // 标识一个中间数据包
-    const OPCODE_TEXT = 0x1; // 标识一个text类型数据包
-    const OPCODE_BINARY = 0x2; 标识一个binary类型数据包
+    const OPCODE_TEXT = 0x1;   // 标识一个text类型数据包
+    const OPCODE_BINARY = 0x2; // 标识一个binary类型数据包
     // 0x3-7：保留
     const OPCODE_NON_CONTROL_RESERVED_1 = 0x3;
     const OPCODE_NON_CONTROL_RESERVED_2 = 0x4;
@@ -99,7 +99,7 @@ final class ClientFactory
      * eg:
      *  examples/base_server --driver sockets -d
      * @param array $options
-     * @return ServerInterface
+     * @return ClientInterface
      */
     public static function parseOptMake(array $options = [])
     {

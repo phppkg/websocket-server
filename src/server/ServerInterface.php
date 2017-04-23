@@ -53,4 +53,6 @@ interface ServerInterface
     public function setCliOut(Output $output);
 
     public function setCliIn(Input $input);
+
+    public function getName();
 }

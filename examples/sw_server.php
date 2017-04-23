@@ -1,4 +1,6 @@
+#!/usr/bin/env php
 <?php
+
 
 $server = new swoole_websocket_server("0.0.0.0", 9501);
 

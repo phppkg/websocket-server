@@ -1,3 +1,4 @@
+#!/usr/bin/env php
 <?php
 
 // 同步阻塞客户端
