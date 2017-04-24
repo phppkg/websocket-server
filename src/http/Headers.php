@@ -58,7 +58,7 @@ class Headers extends SimpleCollection
     /**
      * @inheritdoc
      */
-    public function has($key)
+    public function has(string $key)
     {
         return parent::has($this->normalizeKey($key));
     }
