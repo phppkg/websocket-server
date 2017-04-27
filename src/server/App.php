@@ -13,7 +13,7 @@ use inhere\console\io\Output;
 use inhere\library\helpers\PhpHelper;
 use inhere\library\helpers\ProcessHelper;
 use inhere\library\traits\TraitSimpleOption;
-use inhere\library\utils\SFLogger;
+use inhere\library\utils\LiteLogger;
 use inhere\webSocket\server\handlers\IRouteHandler;
 use inhere\webSocket\server\handlers\RootHandler;
 use inhere\webSocket\parts\MessageBag;
@@ -93,7 +93,7 @@ class App
     protected $cliIn;
 
     /**
-     * @var SFLogger
+     * @var LiteLogger
      */
     private $logger;
 
@@ -173,7 +173,7 @@ class App
     {
         // create log service instance
         if ( $config = $this->getOption('log_service') ) {
-            $this->logger = SFLogger::make($config);
+            $this->logger = LiteLogger::make($config);
         }
     }
 
@@ -827,7 +827,7 @@ class App
 
     /**
      * get Logger service
-     * @return SFLogger
+     * @return LiteLogger
      */
     public function getLogger()
     {

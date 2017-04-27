@@ -13,7 +13,7 @@ use inhere\console\io\Output;
 use inhere\library\helpers\PhpHelper;
 use inhere\library\traits\TraitSimpleFixedEvent;
 use inhere\library\traits\TraitSimpleOption;
-use inhere\library\utils\SFLogger;
+use inhere\library\utils\LiteLogger;
 
 /**
  * Class WSAbstracter
@@ -68,7 +68,7 @@ abstract class WSAbstracter implements WSInterface
     protected $cliIn;
 
     /**
-     * @var SFLogger
+     * @var LiteLogger
      */
     private $logger;
 
@@ -128,7 +128,7 @@ abstract class WSAbstracter implements WSInterface
     {
         // create log service instance
         if ( $config = $this->getOption('log_service') ) {
-            $this->logger = SFLogger::make($config);
+            $this->logger = LiteLogger::make($config);
         }
     }
 
@@ -241,7 +241,7 @@ abstract class WSAbstracter implements WSInterface
 
     /**
      * get Logger service
-     * @return SFLogger
+     * @return LiteLogger
      */
     public function getLogger()
     {
