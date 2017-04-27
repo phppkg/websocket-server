@@ -9,6 +9,7 @@
  */
 
 namespace inhere\webSocket\http;
+
 use inhere\library\collections\SimpleCollection;
 
 /**
@@ -82,8 +83,8 @@ class Cookies extends SimpleCollection
 
     /**
      * Convert to `Set-Cookie` header
-     * @param  string $name       Cookie name
-     * @param  array  $properties Cookie properties
+     * @param  string $name Cookie name
+     * @param  array $properties Cookie properties
      * @return string
      */
     protected function toHeader($name, array $properties)

@@ -47,7 +47,7 @@ class StreamsClient extends ClientAbstracter
         // Set the stream context options if they're already set in the config
         if ($context = $this->getOption('context')) {
             // Suppress the error since we'll catch it below
-            if ( is_resource($context) && get_resource_type($context) !== 'stream-context') {
+            if (is_resource($context) && get_resource_type($context) !== 'stream-context') {
                 throw new \InvalidArgumentException("Stream context in options[context] isn't a valid context resource");
             }
         } else if ($this->getOption('enable_ssl')) {
@@ -68,7 +68,7 @@ class StreamsClient extends ClientAbstracter
             $remote,
             $errNo,
             $errStr,
-            (int)$timeout < 1 ? self::TIMEOUT_INT: (int)$timeout,
+            (int)$timeout < 1 ? self::TIMEOUT_INT : (int)$timeout,
             STREAM_CLIENT_CONNECT,
             $context
         );
@@ -201,7 +201,7 @@ class StreamsClient extends ClientAbstracter
 
     public function close(bool $force = false)
     {
-        if ( $this->socket ) {
+        if ($this->socket) {
             if (get_resource_type($this->socket) === 'stream') {
                 stream_socket_shutdown($this->socket, STREAM_SHUT_WR);
                 fclose($this->socket);
@@ -217,12 +217,12 @@ class StreamsClient extends ClientAbstracter
     {
         return stream_context_create([
             'ssl' => [
-                'local_cert'        => $this->getOption('ssl_key_file'),
-                'peer_fingerprint'  => openssl_x509_fingerprint(file_get_contents($this->getOption('ssl_cert_file'))),
-                'verify_peer'       => false,
-                'verify_peer_name'  => false,
+                'local_cert' => $this->getOption('ssl_key_file'),
+                'peer_fingerprint' => openssl_x509_fingerprint(file_get_contents($this->getOption('ssl_cert_file'))),
+                'verify_peer' => false,
+                'verify_peer_name' => false,
                 'allow_self_signed' => true,
-                'verify_depth'      => 0
+                'verify_depth' => 0
             ]
         ]);
     }

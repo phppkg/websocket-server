@@ -33,12 +33,12 @@ abstract class WSAbstracter implements WSInterface
      * @var array
      */
     protected static $opCodes = [
-        'continuation'  => self::OPCODE_CONTINUATION, // 0
-        'text'          => self::OPCODE_TEXT,   // 1
-        'binary'        => self::OPCODE_BINARY, // 2
-        'close'         => self::OPCODE_CLOSE,  // 8
-        'ping'          => self::OPCODE_PING,   // 9
-        'pong'          => self::OPCODE_PONG,   // 10
+        'continuation' => self::OPCODE_CONTINUATION, // 0
+        'text' => self::OPCODE_TEXT,   // 1
+        'binary' => self::OPCODE_BINARY, // 2
+        'close' => self::OPCODE_CLOSE,  // 8
+        'ping' => self::OPCODE_PING,   // 9
+        'pong' => self::OPCODE_PONG,   // 10
     ];
 
     /**
@@ -111,7 +111,7 @@ abstract class WSAbstracter implements WSInterface
      */
     public function __construct(array $options = [])
     {
-        if ( !PhpHelper::isCli() ) {
+        if (!PhpHelper::isCli()) {
             throw new \RuntimeException('Server must run in the CLI mode.');
         }
 
@@ -127,7 +127,7 @@ abstract class WSAbstracter implements WSInterface
     protected function init()
     {
         // create log service instance
-        if ( $config = $this->getOption('log_service') ) {
+        if ($config = $this->getOption('log_service')) {
             $this->logger = LiteLogger::make($config);
         }
     }
@@ -153,7 +153,7 @@ abstract class WSAbstracter implements WSInterface
      */
     public function getHost(): string
     {
-        if ( !$this->host ) {
+        if (!$this->host) {
             $this->host = self::DEFAULT_HOST;
         }
 
@@ -165,7 +165,7 @@ abstract class WSAbstracter implements WSInterface
      */
     public function getPort(): int
     {
-        if ( !$this->port || $this->port <= 0 ) {
+        if (!$this->port || $this->port <= 0) {
             $this->port = self::DEFAULT_PORT;
         }
 
@@ -280,7 +280,7 @@ abstract class WSAbstracter implements WSInterface
      */
     public function debug(string $message, array $data = [])
     {
-         $this->log($message, 'debug', $data);
+        $this->log($message, 'debug', $data);
     }
 
     /**

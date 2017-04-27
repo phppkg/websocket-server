@@ -5,6 +5,7 @@
  * Date: 2017-03-27
  * Time: 9:14
  */
+
 namespace inhere\webSocket\server;
 
 /**
@@ -115,7 +116,7 @@ final class ServerFactory
     {
         $opts = getopt('p::H::dh', ['port::', 'host::', 'driver:', 'help', 'debug']);
 
-        if ( isset($opts['h']) || isset($opts['help']) ) {
+        if (isset($opts['h']) || isset($opts['help'])) {
             $help = <<<EOF
 Start a webSocket Server.
 

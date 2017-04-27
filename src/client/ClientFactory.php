@@ -5,6 +5,7 @@
  * Date: 2017-03-27
  * Time: 9:14
  */
+
 namespace inhere\webSocket\client;
 
 /**
@@ -105,7 +106,7 @@ final class ClientFactory
     {
         $opts = getopt('dh', ['url:', 'driver:', 'help', 'debug']);
 
-        if ( isset($opts['h']) || isset($opts['help']) ) {
+        if (isset($opts['h']) || isset($opts['help'])) {
             $help = <<<EOF
 Start a webSocket Server.
 

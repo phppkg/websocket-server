@@ -68,12 +68,12 @@ abstract class ARouteHandler implements IRouteHandler
         'dataType' => 'json',
 
         // It is valid when `'dataType' => 'json'`, allow: 1 raw 2 array 3 object
-        'jsonParseTo'    => IDataParser::JSON_TO_ARRAY,
+        'jsonParseTo' => IDataParser::JSON_TO_ARRAY,
 
         // default command name, if request data not define command name.
-        'defaultCmd'     => self::DEFAULT_CMD,
+        'defaultCmd' => self::DEFAULT_CMD,
         // default command suffix
-        'cmdSuffix'     => self::DEFAULT_CMD_SUFFIX,
+        'cmdSuffix' => self::DEFAULT_CMD_SUFFIX,
 
         // allowed request Origins. e.g: [ 'localhost', 'site.com' ]
         'allowedOrigins' => '*',
@@ -130,7 +130,7 @@ abstract class ARouteHandler implements IRouteHandler
     /**
      * check client is allowed origin
      * `Origin: http://foo.example`
-     * @param string $from\
+     * @param string $from \
      * @return bool
      */
     public function checkIsAllowedOrigin(string $from)
@@ -138,16 +138,16 @@ abstract class ARouteHandler implements IRouteHandler
         $allowed = $this->getOption('allowedOrigins');
 
         // deny all
-        if ( !$allowed ) {
+        if (!$allowed) {
             return false;
         }
 
         // allow all
-        if ( is_string($allowed) && $allowed === self::ALLOW_ALL ) {
+        if (is_string($allowed) && $allowed === self::ALLOW_ALL) {
             return true;
         }
 
-        if ( !$from ) {
+        if (!$from) {
             return false;
         }
 
@@ -167,7 +167,7 @@ abstract class ARouteHandler implements IRouteHandler
         $route = $this->request->getPath();
 
         // parse: get command and real data
-        if ( $results = $this->getDataParser()->parse($data, $cid, $this) ) {
+        if ($results = $this->getDataParser()->parse($data, $cid, $this)) {
             [$command, $data] = $results;
             $command = $command ?: $this->getOption('defaultCmd') ?? self::DEFAULT_CMD;
             $this->log("The #{$cid} request command is: $command, in route: $route, handler: " . static::class);
@@ -179,7 +179,7 @@ abstract class ARouteHandler implements IRouteHandler
         // dispatch command
 
         // is a outside command `by add()`
-        if ( $this->isCommandName($command) ) {
+        if ($this->isCommandName($command)) {
             $handler = $this->getCmdHandler($command);
             return call_user_func_array($handler, [$data, $cid, $this]);
         }
@@ -188,7 +188,7 @@ abstract class ARouteHandler implements IRouteHandler
         $method = $command . $suffix;
 
         // not found
-        if ( !method_exists( $this, $method) ) {
+        if (!method_exists($this, $method)) {
             $this->log("The #{$cid} request command: $command not found, run 'notFound' command", 'notice');
             $method = self::NOT_FOUND . $suffix;
         }
@@ -206,9 +206,10 @@ abstract class ARouteHandler implements IRouteHandler
     {
         return $this->add($command, $handler);
     }
+
     public function add(string $command, $handler)
     {
-        if ( $command && preg_match('/^[a-z][\w-]+$/', $command)) {
+        if ($command && preg_match('/^[a-z][\w-]+$/', $command)) {
             $this->cmdHandlers[$command] = $handler;
         }
 
@@ -273,7 +274,7 @@ abstract class ARouteHandler implements IRouteHandler
      */
     public function getCmdHandler(string $command)//: ?callable
     {
-        if ( !$this->isCommandName($command) ) {
+        if (!$this->isCommandName($command)) {
             return null;
         }
 

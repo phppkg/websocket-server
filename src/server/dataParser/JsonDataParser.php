@@ -54,12 +54,12 @@ class JsonDataParser implements IDataParser
         }
 
         if ($toAssoc) {
-            if ( isset($data[$cmdKey]) && $data[$cmdKey]) {
+            if (isset($data[$cmdKey]) && $data[$cmdKey]) {
                 $command = $data[$cmdKey];
                 unset($data[$cmdKey]);
             }
         } elseif ($to === self::JSON_TO_OBJECT) {
-            if ( isset($data->{$cmdKey}) && $data->{$cmdKey}) {
+            if (isset($data->{$cmdKey}) && $data->{$cmdKey}) {
                 $command = $data->{$cmdKey};
                 unset($data->{$cmdKey});
             }

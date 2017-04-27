@@ -44,7 +44,7 @@ class SocketsServer extends ServerAbstracter
      */
     protected function prepareWork(int $maxConnect)
     {
-        if ( count($this->callbacks) < 1 ) {
+        if (count($this->callbacks) < 1) {
             $sup = implode(',', $this->getSupportedEvents());
             $this->cliOut->error('Please register event handle callback before start. supported events: ' . $sup, -500);
         }
@@ -59,9 +59,9 @@ class SocketsServer extends ServerAbstracter
         // more see http://php.net/manual/en/function.socket-create.php
         $this->socket = socket_create(AF_INET, SOCK_STREAM, SOL_TCP);
 
-        if ( !is_resource($this->socket) ) {
+        if (!is_resource($this->socket)) {
             $this->fetchError();
-            $this->cliOut->error('Unable to create socket: '. $this->errMsg, $this->errNo);
+            $this->cliOut->error('Unable to create socket: ' . $this->errMsg, $this->errNo);
         }
 
         // 设置IP和端口重用,在重启服务器后能重新使用此端口;
@@ -87,7 +87,7 @@ class SocketsServer extends ServerAbstracter
         $sleepTime = $setTime > 50 ? $setTime : 500;
         $sleepTime *= 1000; // ms -> us
 
-        while(true) {
+        while (true) {
             $write = $except = null;
             // copy， 防止 $this->clients 的变动被 socket_select() 接收到
             $read = $this->clients;
@@ -96,7 +96,7 @@ class SocketsServer extends ServerAbstracter
             // 会监控 $read 中的 socket 是否有变动
             // $tv_sec =0 时此函数立即返回，可以用于轮询机制
             // $tv_sec =null 将会阻塞程序执行，直到有新连接时才会继续向下执行
-            if ( false === socket_select($read, $write, $except, null) ) {
+            if (false === socket_select($read, $write, $except, null)) {
                 $this->fetchError();
                 $this->log('socket_select() failed, reason: ' . $this->errMsg, 'error');
                 continue;
@@ -120,9 +120,9 @@ class SocketsServer extends ServerAbstracter
     protected function handleSocket($sock, $len)
     {
         // 每次循环检查到 $this->socket 时，都会用 socket_accept() 去检查是否有新的连接进入，有就加入连接列表
-        if($sock === $this->socket) {
+        if ($sock === $this->socket) {
             // 从已经监控的socket中接受新的客户端请求
-            if ( false === ($newSock = socket_accept($sock)) ) {
+            if (false === ($newSock = socket_accept($sock))) {
                 $this->fetchError();
                 $this->error($this->errMsg);
 
@@ -151,7 +151,7 @@ class SocketsServer extends ServerAbstracter
         }
 
         // 是否已经握手
-        if ( !$this->metas[$cid]['handshake'] ) {
+        if (!$this->metas[$cid]['handshake']) {
             return $this->handshake($sock, $data, $cid);
         }
 
@@ -188,9 +188,9 @@ class SocketsServer extends ServerAbstracter
 
     /**
      * response data to client by socket connection
-     * @param resource  $socket
-     * @param string    $data
-     * @param int       $length
+     * @param resource $socket
+     * @param string $data
+     * @param int $length
      * @return int      Return socket last error number code. gt 0 on failure, eq 0 on success
      */
     public function writeTo($socket, string $data, int $length = 0)

@@ -88,18 +88,18 @@ class MessageBag implements \ArrayAccess
      */
     public function send(bool $reset = true)
     {
-        if ( !$this->ws ) {
+        if (!$this->ws) {
             throw new \InvalidArgumentException('Please set the property [ws], is instance of the ServerInterface');
         }
 
         // if message have been sent, stop and return last status code
-        if ( $this->isSent() ) {
+        if ($this->isSent()) {
             return $this->_status;
         }
 
         $status = $this->ws->send($this->getData(), $this->sender, $this->receivers, $this->excepted);
 
-        if ( $reset ) {
+        if ($reset) {
             $this->reset();
         }
 
@@ -158,10 +158,12 @@ class MessageBag implements \ArrayAccess
     {
         return $this->setSender($sender);
     }
+
     public function from(int $sender)
     {
         return $this->setSender($sender);
     }
+
     public function setSender(int $sender)
     {
         $this->sender = $sender;
@@ -185,9 +187,10 @@ class MessageBag implements \ArrayAccess
     {
         return $this->addReceiver($cid);
     }
+
     public function addReceiver(int $cid)
     {
-        if ( !in_array($cid, $this->receivers, true) ) {
+        if (!in_array($cid, $this->receivers, true)) {
             $this->receivers[] = $cid;
         }
 
@@ -202,6 +205,7 @@ class MessageBag implements \ArrayAccess
     {
         return $this->setReceivers($receivers);
     }
+
     public function setReceivers($receivers)
     {
         $this->receivers = (array)$receivers;
@@ -223,7 +227,7 @@ class MessageBag implements \ArrayAccess
      */
     public function except(int $receiver)
     {
-        if ( !in_array($receiver, $this->excepted, true) ) {
+        if (!in_array($receiver, $this->excepted, true)) {
             $this->excepted[] = $receiver;
         }
 
@@ -248,7 +252,7 @@ class MessageBag implements \ArrayAccess
      */
     public function addData(string $data, bool $toLast = true)
     {
-        if ( $toLast ) {
+        if ($toLast) {
             $this->data .= $data;
         } else {
             $this->data = $data . $this->data;
@@ -290,7 +294,7 @@ class MessageBag implements \ArrayAccess
      */
     public function setWs(ServerInterface $ws)
     {
-        if ( !$this->ws ) {
+        if (!$this->ws) {
             $this->ws = $ws;
         }
 

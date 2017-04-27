@@ -71,7 +71,7 @@ abstract class ClientAbstracter extends WSAbstracter implements ClientInterface
      */
     public function getDefaultOptions()
     {
-        return array_merge(parent::getDefaultOptions(),[
+        return array_merge(parent::getDefaultOptions(), [
 
             // while 循环时间间隔 毫秒 millisecond. 1s = 1000ms = 1000 000us
             'sleep_ms' => 500,
@@ -188,11 +188,11 @@ abstract class ClientAbstracter extends WSAbstracter implements ClientInterface
 
             if (stream_select($changed, $write, $except, null) > 0) {
                 //foreach ($changed as $socket) {
-                    $message = $this->receive();
+                $message = $this->receive();
 
-                    if ($message !== false && $msgHandler) {
-                        call_user_func($msgHandler, $message, $this);
-                    }
+                if ($message !== false && $msgHandler) {
+                    call_user_func($msgHandler, $message, $this);
+                }
                 //}
             }
 
@@ -393,7 +393,8 @@ abstract class ClientAbstracter extends WSAbstracter implements ClientInterface
     }
 
     public function sendFile(string $filename)
-    {}
+    {
+    }
 
     /**
      * @return string
@@ -419,7 +420,7 @@ abstract class ClientAbstracter extends WSAbstracter implements ClientInterface
      */
     public function readResponse()
     {
-        $body   = '';
+        $body = '';
         $header = $this->readResponseHeader();
 
         // feof() — 测试文件指针是否到了文件结束的位置
@@ -437,6 +438,7 @@ abstract class ClientAbstracter extends WSAbstracter implements ClientInterface
     {
         $this->close($force);
     }
+
     public function close(bool $force = false)
     {
         if ($this->socket) {
@@ -531,15 +533,15 @@ abstract class ClientAbstracter extends WSAbstracter implements ClientInterface
             return false;
         }
 
-        $final = (bool) (ord($data[0]) & 1 << 7);
-        $rsv1 = (bool) (ord($data[0]) & 1 << 6);
-        $rsv2 = (bool) (ord($data[0]) & 1 << 5);
-        $rsv3 = (bool) (ord($data[0]) & 1 << 4);
+        $final = (bool)(ord($data[0]) & 1 << 7);
+        $rsv1 = (bool)(ord($data[0]) & 1 << 6);
+        $rsv2 = (bool)(ord($data[0]) & 1 << 5);
+        $rsv3 = (bool)(ord($data[0]) & 1 << 4);
 
         $opcode = ord($data[0]) & 31;
-        $masked = (bool) (ord($data[1]) >> 7);
+        $masked = (bool)(ord($data[1]) >> 7);
         $payload = '';
-        $length = (int) (ord($data[1]) & 127); // Bits 1-7 in byte 1
+        $length = (int)(ord($data[1]) & 127); // Bits 1-7 in byte 1
 
         if ($length > 125) {
             $temp = $length === 126 ? fread($this->socket, 2) : fread($this->socket, 8);
@@ -654,7 +656,7 @@ abstract class ClientAbstracter extends WSAbstracter implements ClientInterface
             'Host' => $this->getHost() . ':' . $this->getPort(),
             'User-Agent' => 'php-webSocket-client',
             'Connection' => 'Upgrade',
-            'Upgrade'   => 'websocket',
+            'Upgrade' => 'websocket',
             'Sec-WebSocket-Key' => $this->key,
             'Sec-WebSocket-Version' => self::WS_VERSION,
             'Sec-WebSocket-Protocol' => 'sws',

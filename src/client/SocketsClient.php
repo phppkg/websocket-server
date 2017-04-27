@@ -53,9 +53,9 @@ class SocketsClient extends ClientAbstracter
     {
         $this->socket = socket_create(AF_INET, SOCK_STREAM, SOL_TCP);
 
-        if ( !is_resource($this->socket) ) {
+        if (!is_resource($this->socket)) {
             $this->fetchError();
-            $this->cliOut->error('Unable to create socket: '. $this->errMsg, $this->errNo);
+            $this->cliOut->error('Unable to create socket: ' . $this->errMsg, $this->errNo);
         }
 
         $timeout = $timeout ?: $this->getOption('timeout', self::TIMEOUT_FLOAT);
@@ -72,7 +72,7 @@ class SocketsClient extends ClientAbstracter
 
         if (!PhpHelper::isWin() && !socket_set_nonblock($this->socket)) {
             $this->fetchError();
-            $this->cliOut->error('Unable to set non-block on socket: '. $this->errMsg, $this->errNo);
+            $this->cliOut->error('Unable to set non-block on socket: ' . $this->errMsg, $this->errNo);
         }
 
         $host = $this->getHost();
@@ -110,7 +110,7 @@ class SocketsClient extends ClientAbstracter
     {
         $headerBuffer = '';
 
-        while(true) {
+        while (true) {
             socket_recv($this->socket, $_tmp, $length, null);
 
             if (!$_tmp) {
@@ -209,7 +209,7 @@ class SocketsClient extends ClientAbstracter
 
 //    public function sendTo($socket, $data)
 //    {
-          // socket_sendto 针对udp套接字发送数据
+    // socket_sendto 针对udp套接字发送数据
 //        socket_sendto($socket, $data);
 //    }
 
@@ -244,7 +244,7 @@ class SocketsClient extends ClientAbstracter
      */
     public function close(bool $force = false)
     {
-        if ( $this->socket ) {
+        if ($this->socket) {
             socket_close($this->socket);
 
             $this->socket = null;

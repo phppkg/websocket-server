@@ -41,12 +41,12 @@ abstract class BaseWebSocket
     const DEFAULT_PORT = 8080;
 
     // 事件的回调函数名
-    const ON_CONNECT   = 'connect';
+    const ON_CONNECT = 'connect';
     const ON_HANDSHAKE = 'handshake';
-    const ON_OPEN      = 'open';
-    const ON_MESSAGE   = 'message';
-    const ON_CLOSE     = 'close';
-    const ON_ERROR     = 'error';
+    const ON_OPEN = 'open';
+    const ON_MESSAGE = 'message';
+    const ON_CLOSE = 'close';
+    const ON_ERROR = 'error';
 
     /**
      * @var string
@@ -62,7 +62,7 @@ abstract class BaseWebSocket
      * @var array
      */
     protected $options = [
-        'debug'    => false,
+        'debug' => false,
 
         'open_log' => true,
         'log_file' => '',
@@ -96,13 +96,13 @@ abstract class BaseWebSocket
         $a = str_split($s, 125);
         $prefix = self::BINARY_TYPE_BLOB;
 
-        if (count($a) === 1){
+        if (count($a) === 1) {
             return $prefix . chr(strlen($a[0])) . $a[0];
         }
 
         $ns = '';
 
-        foreach ($a as $o){
+        foreach ($a as $o) {
             $ns .= $prefix . chr(strlen($o)) . $o;
         }
 
@@ -115,7 +115,8 @@ abstract class BaseWebSocket
      */
     public function decode($buffer)
     {
-        /*$len = $masks = $data =*/ $decoded = '';
+        /*$len = $masks = $data =*/
+        $decoded = '';
         $len = ord($buffer[1]) & 127;
 
         if ($len === 126) {
@@ -157,7 +158,7 @@ abstract class BaseWebSocket
         $date = date('Y-m-d H:i:s');
         $type = strtoupper(trim($type));
 
-        $this->print("[$date] [$type] $message " . ( $data ? json_encode($data) : '' ) );
+        $this->print("[$date] [$type] $message " . ($data ? json_encode($data) : ''));
     }
 
     /**
@@ -171,7 +172,7 @@ abstract class BaseWebSocket
 
         fwrite(\STDOUT, $text . ($nl ? "\n" : ''));
 
-        if ( $exit !== null ) {
+        if ($exit !== null) {
             exit((int)$exit);
         }
     }
@@ -181,7 +182,7 @@ abstract class BaseWebSocket
      */
     public function getHost(): string
     {
-        if ( !$this->host ) {
+        if (!$this->host) {
             $this->host = self::DEFAULT_HOST;
         }
 
@@ -193,7 +194,7 @@ abstract class BaseWebSocket
      */
     public function getPort(): int
     {
-        if ( !$this->port || $this->port <= 0 ) {
+        if (!$this->port || $this->port <= 0) {
             $this->port = self::DEFAULT_PORT;
         }
 

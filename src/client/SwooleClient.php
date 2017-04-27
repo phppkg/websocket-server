@@ -46,7 +46,7 @@ class SwooleClient extends ClientAbstracter
             'swoole' => [
                 // 结束符检测
                 'open_eof_check' => true,
-                'package_eof'    => self::HEADER_END,
+                'package_eof' => self::HEADER_END,
                 'package_max_length' => 1024 * 1024 * 2, //协议最大长度
 
                 // 长度检测
@@ -56,7 +56,7 @@ class SwooleClient extends ClientAbstracter
 //            'package_body_offset'   => 4,       //第几个字节开始计算长度
 
                 // Socket缓存区尺寸
-                'socket_buffer_size'     => 1024*1024*2, //2M缓存区
+                'socket_buffer_size' => 1024 * 1024 * 2, //2M缓存区
             ]
         ]);
     }
@@ -69,7 +69,7 @@ class SwooleClient extends ClientAbstracter
     {
         $type = SWOOLE_SOCK_TCP;
 
-        if ( $this->getOption('enable_ssl') ) {
+        if ($this->getOption('enable_ssl')) {
             $type |= SWOOLE_SSL;
         }
 
@@ -82,7 +82,7 @@ class SwooleClient extends ClientAbstracter
             ]);
         }
 
-        if ( !$this->swClient->connect($this->getHost(), $this->getPort(), $timeout) ) {
+        if (!$this->swClient->connect($this->getHost(), $this->getPort(), $timeout)) {
             $this->cliOut->error("connect failed. Error: {$this->getErrorMsg()}", -404);
         }
     }
@@ -94,7 +94,7 @@ class SwooleClient extends ClientAbstracter
     {
         $headerBuffer = '';
 
-        while(true) {
+        while (true) {
             $_tmp = $this->swClient->recv();
 
             if (!$_tmp) {

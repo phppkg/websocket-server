@@ -15,12 +15,12 @@ namespace inhere\webSocket\http;
  * response for handshake
  * @package inhere\webSocket\http
  *
- * @property int    $statusCode
+ * @property int $statusCode
  * @property string $statusMsg
  *
  * @property array $body
  */
-class Response  extends BaseMessage
+class Response extends BaseMessage
 {
     /**
      * eg: 404
@@ -114,7 +114,8 @@ class Response  extends BaseMessage
     public static function make(
         int $statusCode = 200, array $headers = [], array $cookies = [], $body = '',
         string $protocol = 'HTTP', string $protocolVersion = '1.1'
-    ) {
+    )
+    {
         return new self($statusCode, $headers, $cookies, $body, $protocol, $protocolVersion);
     }
 
@@ -130,7 +131,8 @@ class Response  extends BaseMessage
     public function __construct(
         int $statusCode = 200, array $headers = [], array $cookies = [], string $body = '',
         string $protocol = 'HTTP', string $protocolVersion = '1.1'
-    ) {
+    )
+    {
         $this->setStatus($statusCode);
 
         parent::__construct($protocol, $protocolVersion, $headers, $cookies, $body);
@@ -208,7 +210,7 @@ class Response  extends BaseMessage
      */
     protected function filterStatus($status)
     {
-        if (!is_int($status) || $status<100 || $status>599) {
+        if (!is_int($status) || $status < 100 || $status > 599) {
             throw new \InvalidArgumentException('Invalid HTTP status code');
         }
 
@@ -246,7 +248,7 @@ class Response  extends BaseMessage
      */
     public function addContent(string $content)
     {
-        if ( $this->body === null ) {
+        if ($this->body === null) {
             $this->body = [];
         }
 

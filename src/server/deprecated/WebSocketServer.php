@@ -54,7 +54,7 @@ class WebSocketServer extends BaseWebSocket
      * @var array
      */
     protected $options = [
-        'debug'    => false,
+        'debug' => false,
 
         'open_log' => true,
         'log_file' => '',
@@ -83,7 +83,7 @@ class WebSocketServer extends BaseWebSocket
      */
     public function getSupportedEvents(): array
     {
-        return [ self::ON_CONNECT, self::ON_HANDSHAKE, self::ON_OPEN, self::ON_MESSAGE, self::ON_CLOSE, self::ON_ERROR];
+        return [self::ON_CONNECT, self::ON_HANDSHAKE, self::ON_OPEN, self::ON_MESSAGE, self::ON_CLOSE, self::ON_ERROR];
     }
 
     /////////////////////////////////////////////////////////////////////////////////////////
@@ -92,11 +92,11 @@ class WebSocketServer extends BaseWebSocket
 
     protected function beforeStart()
     {
-        if ( !extension_loaded('sockets') ) {
+        if (!extension_loaded('sockets')) {
             throw new \InvalidArgumentException('the extension [sockets] is required for run the server.');
         }
 
-        if ( count($this->callbacks) < 1 ) {
+        if (count($this->callbacks) < 1) {
             $sup = implode(',', $this->getSupportedEvents());
             $this->print('[ERROR] Please register event handle callback before start. supported events: ' . $sup, true, -500);
         }
@@ -117,8 +117,8 @@ class WebSocketServer extends BaseWebSocket
         // more see http://php.net/manual/en/function.socket-create.php
         $this->master = socket_create(AF_INET, SOCK_STREAM, SOL_TCP);
 
-        if ( !is_resource($this->master) ) {
-            $this->print('[ERROR] Unable to create socket: '. $this->getSocketError(), true, socket_last_error());
+        if (!is_resource($this->master)) {
+            $this->print('[ERROR] Unable to create socket: ' . $this->getSocketError(), true, socket_last_error());
         }
 
         // 设置IP和端口重用,在重启服务器后能重新使用此端口;
@@ -153,7 +153,7 @@ class WebSocketServer extends BaseWebSocket
         $sleepTime = $setTime > 50 ? $setTime : 800;
         $sleepTime *= 1000; // ms -> us
 
-        while(true) {
+        while (true) {
             $write = $except = null;
             // copy， 防止 $this->sockets 的变动被 socket_select() 接收到
             $read = $this->sockets;
@@ -162,7 +162,7 @@ class WebSocketServer extends BaseWebSocket
             // 会监控 $read 中的 socket 是否有变动
             // $tv_sec =0 时此函数立即返回，可以用于轮询机制
             // $tv_sec =null 将会阻塞程序执行，直到有新连接时才会继续向下执行
-            if ( false === socket_select($read, $write, $except, null) ) {
+            if (false === socket_select($read, $write, $except, null)) {
                 $this->log('socket_select() failed, reason: ' . $this->getSocketError(), 'error');
                 continue;
             }
@@ -185,9 +185,9 @@ class WebSocketServer extends BaseWebSocket
     protected function handleSocket($sock, $len)
     {
         // 每次循环检查到 $this->socket 时，都会用 socket_accept() 去检查是否有新的连接进入，有就加入连接列表
-        if($sock === $this->master) {
+        if ($sock === $this->master) {
             // 从已经监控的socket中接受新的客户端请求
-            if ( false === ($newSock = socket_accept($sock)) ) {
+            if (false === ($newSock = socket_accept($sock))) {
                 $this->error($this->getSocketError());
 
                 return false;
@@ -200,7 +200,7 @@ class WebSocketServer extends BaseWebSocket
         $cid = (int)$sock;
 
         // 不在已经记录的client列表中
-        if ( !isset($this->sockets[$cid], $this->clients[$cid])) {
+        if (!isset($this->sockets[$cid], $this->clients[$cid])) {
             return $this->close($cid, $sock);
         }
 
@@ -209,13 +209,13 @@ class WebSocketServer extends BaseWebSocket
         $bytes = socket_recv($sock, $data, $len, 0);
 
         // 没有发送数据或者小于7字节
-        if (false === $bytes || $bytes < 7 || !$data ) {
+        if (false === $bytes || $bytes < 7 || !$data) {
             $this->log("Failed to receive data or not received data(client close connection) from #$cid client, will close the socket.");
             return $this->close($cid, $sock);
         }
 
         // 是否已经握手
-        if ( !$this->clients[$cid]['handshake'] ) {
+        if (!$this->clients[$cid]['handshake']) {
             return $this->handshake($sock, $data, $cid);
         }
 
@@ -264,7 +264,7 @@ class WebSocketServer extends BaseWebSocket
         $response = new Response();
 
         // 解析请求头信息错误
-        if ( !preg_match("/Sec-WebSocket-Key: (.*)\r\n/i",$data, $match) ) {
+        if (!preg_match("/Sec-WebSocket-Key: (.*)\r\n/i", $data, $match)) {
             $this->log("handle handshake failed! [Sec-WebSocket-Key] not found in header. Data: \n $data", 'error');
 
             $response
@@ -281,7 +281,7 @@ class WebSocketServer extends BaseWebSocket
 
         // 触发 handshake 事件回调，如果返回 false -- 拒绝连接，比如需要认证，限定路由，限定ip，限定domain等
         // 就停止继续处理。并返回信息给客户端
-        if ( false === $this->trigger(self::ON_HANDSHAKE, [$request, $response, $cid]) ) {
+        if (false === $this->trigger(self::ON_HANDSHAKE, [$request, $response, $cid])) {
             $this->log("The #$cid client handshake's callback return false, will close the connection", 'notice');
             $this->writeTo($socket, $response->toString());
 
@@ -349,12 +349,12 @@ class WebSocketServer extends BaseWebSocket
      */
     public function close(int $cid, $socket = null, bool $triggerEvent = true)
     {
-        if ( !is_resource($socket) && !($socket = $this->sockets[$cid] ?? null) ) {
+        if (!is_resource($socket) && !($socket = $this->sockets[$cid] ?? null)) {
             $this->log("Close the client socket connection failed! #$cid client socket not exists", 'error');
         }
 
         // close socket connection
-        if ( is_resource($socket)  ) {
+        if (is_resource($socket)) {
             socket_shutdown($socket, 2);
             socket_close($socket);
         }
@@ -363,7 +363,7 @@ class WebSocketServer extends BaseWebSocket
         unset($this->sockets[$cid], $this->clients[$cid]);
 
         // call close handler
-        if ( $triggerEvent ) {
+        if ($triggerEvent) {
             $this->trigger(self::ON_CLOSE, [$this, $cid, $client]);
         }
 
@@ -398,28 +398,28 @@ class WebSocketServer extends BaseWebSocket
     {
         // only one receiver
         if ($receiver && (($isInt = is_int($receiver)) || 1 === count($receiver))) {
-            $receiver = $isInt ? $receiver: array_shift($receiver);
+            $receiver = $isInt ? $receiver : array_shift($receiver);
 
             return $this->sendTo($receiver, $data, $sender);
         }
 
-        return $this->broadcast($data, (array)$receiver,  $expected, $sender);
+        return $this->broadcast($data, (array)$receiver, $expected, $sender);
     }
 
     /**
      * Send a message to the specified user 发送消息给指定的用户
-     * @param int    $receiver 接收者
+     * @param int $receiver 接收者
      * @param string $data
-     * @param int    $sender   发送者
+     * @param int $sender 发送者
      * @return int
      */
     public function sendTo(int $receiver, string $data, int $sender = 0)
     {
-        if ( !$data || $receiver < 1 ) {
+        if (!$data || $receiver < 1) {
             return 0;
         }
 
-        if ( !($socket = $this->getSocket($receiver)) ) {
+        if (!($socket = $this->getSocket($receiver))) {
             $this->log("The target user #$receiver not connected or has been logout!", 'error');
 
             return 0;
@@ -435,15 +435,15 @@ class WebSocketServer extends BaseWebSocket
 
     /**
      * broadcast message 广播消息
-     * @param string $data      消息数据
-     * @param int    $sender    发送者
-     * @param int[]  $receivers 指定接收者们
-     * @param int[]  $expected  要排除的接收者
+     * @param string $data 消息数据
+     * @param int $sender 发送者
+     * @param int[] $receivers 指定接收者们
+     * @param int[] $expected 要排除的接收者
      * @return int   Return socket last error number code.  gt 0 on failure, eq 0 on success
      */
     public function broadcast(string $data, array $receivers = [], array $expected = [], int $sender = 0): int
     {
-        if ( !$data || !$this->count()) {
+        if (!$data || !$this->count()) {
             return 0;
         }
 
@@ -457,31 +457,31 @@ class WebSocketServer extends BaseWebSocket
         $fromUser = $sender < 1 ? 'SYSTEM' : $sender;
 
         // to all
-        if ( !$expected && !$receivers) {
+        if (!$expected && !$receivers) {
             $this->log("(broadcast)The #{$fromUser} send a message to all users. Data: {$data}");
 
             foreach ($this->sockets as $socket) {
                 $this->writeTo($socket, $res, $len);
             }
 
-        // to receivers
+            // to receivers
         } elseif ($receivers) {
             $this->log("(broadcast)The #{$fromUser} gave some specified user sending a message. Data: {$data}");
             foreach ($receivers as $receiver) {
-                if ( $socket = $this->getSocket($receiver) ) {
+                if ($socket = $this->getSocket($receiver)) {
                     $this->writeTo($socket, $res, $len);
                 }
             }
 
-        // to all
+            // to all
         } else {
             $this->log("(broadcast)The #{$fromUser} send the message to everyone except some people. Data: {$data}");
             foreach ($this->sockets as $cid => $socket) {
-                if ( isset($expected[$cid]) ) {
+                if (isset($expected[$cid])) {
                     continue;
                 }
 
-                if ( $receivers && !isset($receivers[$cid]) ) {
+                if ($receivers && !isset($receivers[$cid])) {
                     continue;
                 }
 
@@ -494,9 +494,9 @@ class WebSocketServer extends BaseWebSocket
 
     /**
      * response data to client by socket connection
-     * @param resource  $socket
-     * @param string    $data
-     * @param int       $length
+     * @param resource $socket
+     * @param string $data
+     * @param int $length
      * @return int      Return socket last error number code. gt 0 on failure, eq 0 on success
      */
     public function writeTo($socket, string $data, int $length = 0)
@@ -556,6 +556,7 @@ class WebSocketServer extends BaseWebSocket
     {
         return $this->count();
     }
+
     public function count(): int
     {
         return count($this->clients);
@@ -568,7 +569,7 @@ class WebSocketServer extends BaseWebSocket
      */
     public function hasHandshake(int $cid): bool
     {
-        if ( $this->hasClient($cid) ) {
+        if ($this->hasClient($cid)) {
             return $this->getClient($cid)['handshake'];
         }
 
@@ -610,7 +611,7 @@ class WebSocketServer extends BaseWebSocket
      */
     public function getSocket($cid)
     {
-        if ( $this->hasClient($cid) ) {
+        if ($this->hasClient($cid)) {
             return $this->sockets[$cid];
         }
 

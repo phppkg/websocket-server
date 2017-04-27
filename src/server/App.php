@@ -127,9 +127,9 @@ class App
 
         // 日志配置
         'log_service' => [
-            'name'         => 'ws_app_log',
-            'basePath'     => './tmp/logs/app',
-            'logConsole'   => false,
+            'name' => 'ws_app_log',
+            'basePath' => './tmp/logs/app',
+            'logConsole' => false,
             'logThreshold' => 0,
         ],
 
@@ -172,7 +172,7 @@ class App
     protected function init()
     {
         // create log service instance
-        if ( $config = $this->getOption('log_service') ) {
+        if ($config = $this->getOption('log_service')) {
             $this->logger = LiteLogger::make($config);
         }
     }
@@ -196,7 +196,7 @@ class App
         $this->ws->on(WSInterface::ON_ERROR, [$this, 'handleError']);
 
         // if not register route, add root path route handler
-        if ( 0 === count($this->routesHandlers) ) {
+        if (0 === count($this->routesHandlers)) {
             $this->route('/', new RootHandler);
         }
 
@@ -224,9 +224,9 @@ class App
         }
 
         // start: do Start Server
-        if ( $command === 'start' ) {
+        if ($command === 'start') {
             // check master process is running
-            if ( $masterIsStarted ) {
+            if ($masterIsStarted) {
                 $this->cliOut->error("The ws application server have been started. (PID:{$masterPid})", true);
             }
 
@@ -238,7 +238,7 @@ class App
         }
 
         // check master process
-        if ( !$masterIsStarted ) {
+        if (!$masterIsStarted) {
             $this->cliOut->error('The websocket server is not running.', true);
         }
 
@@ -319,28 +319,28 @@ class App
         $scriptName = $this->cliIn->getScriptName();
 
         // 'bin/test_server.php'
-        if (strpos($scriptName, '.') && 'php' === pathinfo($scriptName,PATHINFO_EXTENSION)) {
+        if (strpos($scriptName, '.') && 'php' === pathinfo($scriptName, PATHINFO_EXTENSION)) {
             $scriptName = 'php ' . $scriptName;
         }
 
         $this->cliOut->helpPanel([
             'description' => 'webSocket server tool, Version <comment>' . ServerAbstracter::VERSION .
-                             '</comment> Update time ' . ServerAbstracter::UPDATE_TIME,
+                '</comment> Update time ' . ServerAbstracter::UPDATE_TIME,
             'usage' => "$scriptName {start|reload|restart|stop|status} [-d]",
             'commands' => [
-                'start'   => 'Start the websocket application server',
-                'reload'  => 'Reload all workers of the started application server',
+                'start' => 'Start the websocket application server',
+                'reload' => 'Reload all workers of the started application server',
                 'restart' => 'Stop the application server, After start the server.',
-                'stop'    => 'Stop the application server',
-                'info'    => 'Show the application server information for current project',
-                'status'  => 'Show the started application server status information',
-                'help'    => 'Display this help message',
+                'stop' => 'Stop the application server',
+                'info' => 'Show the application server information for current project',
+                'status' => 'Show the started application server status information',
+                'help' => 'Display this help message',
             ],
             'options' => [
-                '-d'         => 'Run the application server on the background.(<comment>not supported on windows</comment>)',
-                '--task'     => 'Only reload task worker, when reload server',
-                '--debug'    => 'Run the application server on the debug mode',
-                '--driver'   => 'You can custom webSocket driver, allow: <comment>sockets, swoole, streams</comment>',
+                '-d' => 'Run the application server on the background.(<comment>not supported on windows</comment>)',
+                '--task' => 'Only reload task worker, when reload server',
+                '--debug' => 'Run the application server on the debug mode',
+                '--driver' => 'You can custom webSocket driver, allow: <comment>sockets, swoole, streams</comment>',
                 '-h, --help' => 'Display this help message',
             ],
             'examples' => [
@@ -352,9 +352,9 @@ class App
 
     /**
      * webSocket 只会在连接握手时会有 request, response
-     * @param Request   $request
-     * @param Response  $response
-     * @param int       $cid
+     * @param Request $request
+     * @param Response $response
+     * @param int $cid
      * @return bool
      */
     public function handleHandshake(Request $request, Response $response, int $cid)
@@ -362,11 +362,11 @@ class App
         $path = $request->getPath();
 
         // check route. if not exists, response 404 error
-        if ( !$this->hasRoute($path) ) {
+        if (!$this->hasRoute($path)) {
             $this->log("The #$cid request's path [$path] route handler not exists.", 'error');
 
             // call custom route-not-found handler
-            if ( $rnfHandler = $this->wsHandlers[self::ROUTE_NOT_FOUND] ) {
+            if ($rnfHandler = $this->wsHandlers[self::ROUTE_NOT_FOUND]) {
                 $rnfHandler($cid, $path, $this);
             }
 
@@ -383,7 +383,7 @@ class App
 
         // check `Origin`
         // Access-Control-Allow-Origin: *
-        if ( !$handler->checkIsAllowedOrigin($origin) ) {
+        if (!$handler->checkIsAllowedOrigin($origin)) {
             $this->log("The #$cid Origin [$origin] is not in the 'allowedOrigins' list.", 'error');
 
             $response
@@ -416,8 +416,8 @@ class App
         $this->log("A new user #$cid open connection. Now, user count: " . $ws->count());
         // $this->log("SERVER Data: \n" . var_export($_SERVER, 1), 'info');
 
-        if ( $openHandler = $this->wsHandlers[self::OPEN_HANDLER] ) {
-             $openHandler($this, $request, $cid);
+        if ($openHandler = $this->wsHandlers[self::OPEN_HANDLER]) {
+            $openHandler($this, $request, $cid);
         }
 
         // $path = $ws->getClient($cid)['path'];
@@ -436,7 +436,7 @@ class App
         $this->log("Received user #$cid sent message. MESSAGE: $data, LENGTH: " . mb_strlen($data) . ', Meta: ', 'info', $meta);
 
         // call custom message handler
-        if ( $msgHandler = $this->wsHandlers[self::MESSAGE_HANDLER] ) {
+        if ($msgHandler = $this->wsHandlers[self::MESSAGE_HANDLER]) {
             $msgHandler($ws, $this);
         }
 
@@ -445,7 +445,7 @@ class App
         // $path = $ws->getClient($cid)['path'];
         $result = $this->getRouteHandler($meta['path'])->dispatch($data, $cid);
 
-        if ( $result && is_string($result) ) {
+        if ($result && is_string($result)) {
             $ws->send($result);
         }
     }
@@ -459,7 +459,7 @@ class App
     {
         $this->log("The #$cid user disconnected. Now, connected user count: " . $ws->count());
 
-        if ( $closeHandler = $this->wsHandlers[self::CLOSE_HANDLER] ) {
+        if ($closeHandler = $this->wsHandlers[self::CLOSE_HANDLER]) {
             $closeHandler($this, $cid, $client);
         }
 
@@ -474,7 +474,7 @@ class App
     {
         $this->log('Accepts a connection on a socket error: ' . $msg, 'error');
 
-        if ( $errHandler = $this->wsHandlers[self::ERROR_HANDLER] ) {
+        if ($errHandler = $this->wsHandlers[self::ERROR_HANDLER]) {
             $errHandler($ws, $this);
         }
     }
@@ -517,9 +517,9 @@ class App
 
     /**
      * register a route and it's handler
-     * @param string        $path           route path
-     * @param IRouteHandler $routeHandler   the route path handler
-     * @param bool          $replace        replace exists's route
+     * @param string $path route path
+     * @param IRouteHandler $routeHandler the route path handler
+     * @param bool $replace replace exists's route
      * @return IRouteHandler
      */
     public function route(string $path, IRouteHandler $routeHandler, $replace = false)
@@ -527,11 +527,11 @@ class App
         $path = trim($path) ?: '/';
         $pattern = '/^\/[a-zA-Z][\w-]+$/';
 
-        if ( $path !== '/' && preg_match($pattern, $path) ) {
+        if ($path !== '/' && preg_match($pattern, $path)) {
             throw new \InvalidArgumentException("The route path format must be match: $pattern");
         }
 
-        if ( $this->hasRoute($path) && !$replace ) {
+        if ($this->hasRoute($path) && !$replace) {
             throw new \InvalidArgumentException("The route path [$path] have been registered!");
         }
 
@@ -555,7 +555,7 @@ class App
      */
     public function getRouteHandler(string $path = '/'): IRouteHandler
     {
-        if ( !$this->hasRoute($path) ) {
+        if (!$this->hasRoute($path)) {
             throw new \RuntimeException("The route handler not exists for the path: $path");
         }
 
@@ -602,7 +602,7 @@ class App
     {
         return json_encode([
             'data' => $data,
-            'msg'  => $msg,
+            'msg' => $msg,
             'code' => (int)$code,
             'time' => time(),
         ]);
@@ -617,12 +617,12 @@ class App
     public function buildMessage($data, string $msg = 'success', int $code = 0)
     {
         // json
-        if ( $this->isJsonType() ) {
+        if ($this->isJsonType()) {
             $data = $this->fmtJson($data, $msg ?: 'success', $code);
 
             // text
         } else {
-            if ( $data && is_array($data) ) {
+            if ($data && is_array($data)) {
                 $data = json_encode($data);
             }
 
@@ -655,13 +655,13 @@ class App
      */
     public function respondText($data, bool $doSend = true)
     {
-        if ( is_array($data) ) {
+        if (is_array($data)) {
             $data = implode('', $data);
         }
 
         $mr = MessageBag::make($data)->setWs($this->ws);
 
-        if ( $doSend ) {
+        if ($doSend) {
             $mr->send(true);
         }
 
@@ -692,17 +692,17 @@ class App
      */
     public function sendText($data, \Closure $afterMakeMR = null, bool $reset = true)
     {
-        if ( is_array($data) ) {
+        if (is_array($data)) {
             $data = implode('', $data);
         }
 
         $mr = MessageBag::make($data)->setWs($this->ws);
 
-        if ( $afterMakeMR ) {
+        if ($afterMakeMR) {
             $status = $afterMakeMR($mr);
 
             // If the message have been sent
-            if ( is_int($status) ) {
+            if (is_int($status)) {
                 return $status;
             }
         }
@@ -787,7 +787,7 @@ class App
     public function log(string $msg, string $type = 'info', array $data = [])
     {
         // if close debug, don't output debug log.
-        if ( $this->isDebug() || $type !== 'debug') {
+        if ($this->isDebug() || $type !== 'debug') {
             if (!$this->isDaemon()) {
                 [$time, $micro] = explode('.', microtime(1));
                 $time = date('Y-m-d H:i:s', $time);

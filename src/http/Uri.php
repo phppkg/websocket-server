@@ -84,13 +84,13 @@ class Uri
     /**
      * Create new Uri.
      *
-     * @param string $scheme   Uri scheme.
-     * @param string $host     Uri host.
-     * @param int    $port     Uri port number.
-     * @param string $path     Uri path.
-     * @param string $query    Uri query string.
+     * @param string $scheme Uri scheme.
+     * @param string $host Uri host.
+     * @param int $port Uri port number.
+     * @param string $path Uri path.
+     * @param string $query Uri query string.
      * @param string $fragment Uri fragment.
-     * @param string $user     Uri user.
+     * @param string $user Uri user.
      * @param string $password Uri password.
      */
     public function __construct(
@@ -102,7 +102,8 @@ class Uri
         $fragment = '',
         $user = '',
         $password = ''
-    ) {
+    )
+    {
         $this->scheme = $this->filterScheme($scheme);
         $this->host = $host;
         $this->port = $this->filterPort($port);

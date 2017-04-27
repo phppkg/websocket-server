@@ -36,7 +36,7 @@ class StreamsServer extends ServerAbstracter
         // Set the stream context options if they're already set in the config
         if ($context = $this->getOption('context')) {
             // Suppress the error since we'll catch it below
-            if ( is_resource($context) && get_resource_type($context) !== 'stream-context') {
+            if (is_resource($context) && get_resource_type($context) !== 'stream-context') {
                 throw new \InvalidArgumentException("Stream context in options[context] isn't a valid context resource");
             }
         } else if ($this->getOption('enable_ssl')) {
@@ -63,8 +63,8 @@ class StreamsServer extends ServerAbstracter
             $context
         );
 
-        if ( !is_resource($this->socket) ) {
-            $this->cliOut->error('Could not listen on socket: '. $errStr, $errNo);
+        if (!is_resource($this->socket)) {
+            $this->cliOut->error('Could not listen on socket: ' . $errStr, $errNo);
         }
 
         $this->setTimeout($this->socket, $this->getOption('timeout', self::TIMEOUT_FLOAT));
@@ -87,7 +87,7 @@ class StreamsServer extends ServerAbstracter
         $sleepTime = $setTime > 50 ? $setTime : 800;
         $sleepTime *= 1000; // ms -> us
 
-        while(true) {
+        while (true) {
             $write = $except = null;
             // copy， 防止 $this->clients 的变动被 socket_select() 接收到
             $read = $this->clients;
@@ -96,7 +96,7 @@ class StreamsServer extends ServerAbstracter
             // 会监控 $read 中的 socket 是否有变动
             // $tv_sec =0 时此函数立即返回，可以用于轮询机制
             // $tv_sec =null 将会阻塞程序执行，直到有新连接时才会继续向下执行
-            if ( false === stream_select($read, $write, $except, null) ) {
+            if (false === stream_select($read, $write, $except, null)) {
                 $this->log('stream_select() failed, reason: unknown', 'error');
                 continue;
             }
@@ -119,9 +119,9 @@ class StreamsServer extends ServerAbstracter
     protected function handleSocket($sock, $dataLen)
     {
         // 每次循环检查到 $this->socket 时，都会用 stream_socket_accept() 去检查是否有新的连接进入，有就加入连接列表
-        if($sock === $this->socket) {
+        if ($sock === $this->socket) {
             // 从已经监控的socket中接受新的客户端请求
-            if ( false === ($newSock = stream_socket_accept($sock)) ) {
+            if (false === ($newSock = stream_socket_accept($sock))) {
                 $this->error('accept new socket connection failed');
 
                 return false;
@@ -146,7 +146,7 @@ class StreamsServer extends ServerAbstracter
         $cid = (int)$sock;
 
         // 不在已经记录的client列表中
-        if ( !isset($this->metas[$cid], $this->clients[$cid])) {
+        if (!isset($this->metas[$cid], $this->clients[$cid])) {
             return $this->close($cid, $sock);
         }
 
@@ -155,13 +155,13 @@ class StreamsServer extends ServerAbstracter
         $bytes = strlen($data);
 
         // 没有发送数据或者小于7字节
-        if ($bytes < 7 || !$data ) {
+        if ($bytes < 7 || !$data) {
             $this->log("Failed to receive data or not received data(client close connection) from #$cid client, will close the socket.");
             return $this->close($cid, $sock);
         }
 
         // 是否已经握手
-        if ( !$this->metas[$cid]['handshake'] ) {
+        if (!$this->metas[$cid]['handshake']) {
             return $this->handshake($sock, $data, $cid);
         }
 
@@ -210,15 +210,15 @@ class StreamsServer extends ServerAbstracter
         $context = stream_context_create();
 
         // local_cert must be in PEM format
-        stream_context_set_option ( $context, 'ssl', 'local_cert', $pemfile );
-        stream_context_set_option ( $context, 'ssl', 'cafile', $ca );
-        stream_context_set_option ( $context, 'ssl', 'capath', './');
+        stream_context_set_option($context, 'ssl', 'local_cert', $pemfile);
+        stream_context_set_option($context, 'ssl', 'cafile', $ca);
+        stream_context_set_option($context, 'ssl', 'capath', './');
 
         // Pass Phrase (password) of private key
-        stream_context_set_option ( $context, 'ssl', 'passphrase', $pem_passphrase );
+        stream_context_set_option($context, 'ssl', 'passphrase', $pem_passphrase);
 
-        stream_context_set_option ( $context, 'ssl', 'allow_self_signed', true );
-        stream_context_set_option ( $context, 'ssl', 'verify_peer', true );
+        stream_context_set_option($context, 'ssl', 'allow_self_signed', true);
+        stream_context_set_option($context, 'ssl', 'verify_peer', true);
 
         return $context;
     }

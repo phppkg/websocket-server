@@ -80,9 +80,9 @@ trait ProcessControl
         $pid = pcntl_fork();
 
         // 父进程和子进程都会执行下面代码
-        if ( $pid === -1) {
+        if ($pid === -1) {
             /* fork failed, exit */
-            $this->print('fork sub-process failure!', true, - __LINE__);
+            $this->print('fork sub-process failure!', true, -__LINE__);
         }
 
         if ($pid) {
@@ -114,7 +114,7 @@ trait ProcessControl
      * @param int $gid
      * @return $this
      */
-    public function changeIdentity(int $uid, int $gid )
+    public function changeIdentity(int $uid, int $gid)
     {
         if (!$this->hasPcntl()) {
             $this->print("[NOTICE] Want to change the process user info, require 'pcntl' extension!");
@@ -122,12 +122,12 @@ trait ProcessControl
             return $this;
         }
 
-        if( !posix_setgid( $gid ) ) {
-            $this->print("Unable to set group id to [$gid]", true, - __LINE__);
+        if (!posix_setgid($gid)) {
+            $this->print("Unable to set group id to [$gid]", true, -__LINE__);
         }
 
-        if( !posix_setuid( $uid ) ) {
-            $this->print("Unable to set user id to [$uid]", true, - __LINE__);
+        if (!posix_setuid($uid)) {
+            $this->print("Unable to set user id to [$uid]", true, -__LINE__);
         }
 
         return $this;
@@ -146,15 +146,15 @@ trait ProcessControl
         // posix_kill(posix_getpid(), SIGUSR1);
 
         // stop
-        pcntl_signal(SIGINT, [ $this, 'signalHandler'], false);
+        pcntl_signal(SIGINT, [$this, 'signalHandler'], false);
         // reload
-        pcntl_signal(SIGUSR1, [ $this, 'signalHandler'], false);
+        pcntl_signal(SIGUSR1, [$this, 'signalHandler'], false);
         // status
-        pcntl_signal(SIGUSR2, [ $this, 'signalHandler'], false);
+        pcntl_signal(SIGUSR2, [$this, 'signalHandler'], false);
         // ignore
         pcntl_signal(SIGPIPE, SIG_IGN, false);
 
-        pcntl_signal(SIGCHLD, [ $this, 'signalHandler'], false);
+        pcntl_signal(SIGCHLD, [$this, 'signalHandler'], false);
 
         return $this;
     }

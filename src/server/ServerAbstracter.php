@@ -71,7 +71,7 @@ abstract class ServerAbstracter extends WSAbstracter implements ServerInterface
      */
     public function getSupportedEvents(): array
     {
-        return [ self::ON_CONNECT, self::ON_HANDSHAKE, self::ON_OPEN, self::ON_MESSAGE, self::ON_CLOSE, self::ON_ERROR];
+        return [self::ON_CONNECT, self::ON_HANDSHAKE, self::ON_OPEN, self::ON_MESSAGE, self::ON_CLOSE, self::ON_ERROR];
     }
 
     /**
@@ -79,7 +79,7 @@ abstract class ServerAbstracter extends WSAbstracter implements ServerInterface
      */
     public function getDefaultOptions()
     {
-        return array_merge(parent::getDefaultOptions(),[
+        return array_merge(parent::getDefaultOptions(), [
 
             // while 循环时间间隔 毫秒 millisecond. 1s = 1000ms = 1000 000us
             'sleep_ms' => 500,
@@ -94,9 +94,9 @@ abstract class ServerAbstracter extends WSAbstracter implements ServerInterface
 
             // 日志配置
             'log_service' => [
-                'name'         => 'ws_server_log',
-                'basePath'     => './tmp/logs/websocket',
-                'logConsole'   => false,
+                'name' => 'ws_server_log',
+                'basePath' => './tmp/logs/websocket',
+                'logConsole' => false,
                 'logThreshold' => 0,
             ]
         ]);
@@ -207,7 +207,7 @@ abstract class ServerAbstracter extends WSAbstracter implements ServerInterface
         $response = new Response();
 
         // 解析请求头信息错误
-        if ( !preg_match("/Sec-WebSocket-Key: (.*)\r\n/i",$data, $match) ) {
+        if (!preg_match("/Sec-WebSocket-Key: (.*)\r\n/i", $data, $match)) {
             $this->log("handle handshake failed! [Sec-WebSocket-Key] not found in header. Data: \n $data", 'error');
 
             $response
@@ -224,7 +224,7 @@ abstract class ServerAbstracter extends WSAbstracter implements ServerInterface
 
         // 触发 handshake 事件回调，如果返回 false -- 拒绝连接，比如需要认证，限定路由，限定ip，限定domain等
         // 就停止继续处理。并返回信息给客户端
-        if ( false === $this->trigger(self::ON_HANDSHAKE, [$request, $response, $cid]) ) {
+        if (false === $this->trigger(self::ON_HANDSHAKE, [$request, $response, $cid])) {
             $this->log("The #$cid client handshake's callback return false, will close the connection", 'notice');
             $this->writeTo($socket, $response->toString());
 
@@ -294,6 +294,7 @@ abstract class ServerAbstracter extends WSAbstracter implements ServerInterface
     {
         return $this->close($cid, $socket, $triggerEvent);
     }
+
     public function close(int $cid, $socket = null, bool $triggerEvent = true)
     {
         $this->log("Close: Will close the #$cid client connection");
@@ -363,23 +364,23 @@ abstract class ServerAbstracter extends WSAbstracter implements ServerInterface
             return $this->sendTo($receiver, $data, $sender);
         }
 
-        return $this->broadcast($data, (array)$receiver,  $expected, $sender);
+        return $this->broadcast($data, (array)$receiver, $expected, $sender);
     }
 
     /**
      * Send a message to the specified user 发送消息给指定的用户
-     * @param int    $receiver 接收者
+     * @param int $receiver 接收者
      * @param string $data
-     * @param int    $sender   发送者
+     * @param int $sender 发送者
      * @return int
      */
     public function sendTo(int $receiver, string $data, int $sender = 0)
     {
-        if ( !$data || $receiver < 1 ) {
+        if (!$data || $receiver < 1) {
             return 0;
         }
 
-        if ( !($socket = $this->getClient($receiver)) ) {
+        if (!($socket = $this->getClient($receiver))) {
             $this->log("The target user #$receiver not connected or has been logout!", 'error');
 
             return 0;
@@ -395,15 +396,15 @@ abstract class ServerAbstracter extends WSAbstracter implements ServerInterface
 
     /**
      * broadcast message 广播消息
-     * @param string $data      消息数据
-     * @param int    $sender    发送者
-     * @param int[]  $receivers 指定接收者们
-     * @param int[]  $expected  要排除的接收者
+     * @param string $data 消息数据
+     * @param int $sender 发送者
+     * @param int[] $receivers 指定接收者们
+     * @param int[] $expected 要排除的接收者
      * @return int   Return socket last error number code.  gt 0 on failure, eq 0 on success
      */
     public function broadcast(string $data, array $receivers = [], array $expected = [], int $sender = 0): int
     {
-        if ( !$data ) {
+        if (!$data) {
             return 0;
         }
 
@@ -417,7 +418,7 @@ abstract class ServerAbstracter extends WSAbstracter implements ServerInterface
         $fromUser = $sender < 1 ? 'SYSTEM' : $sender;
 
         // to all
-        if ( !$expected && !$receivers) {
+        if (!$expected && !$receivers) {
             $this->log("(broadcast)The #{$fromUser} send a message to all users. Data: {$data}");
 
             foreach ($this->clients as $socket) {
@@ -437,11 +438,11 @@ abstract class ServerAbstracter extends WSAbstracter implements ServerInterface
         } else {
             $this->log("(broadcast)The #{$fromUser} send the message to everyone except some people. Data: {$data}");
             foreach ($this->clients as $cid => $socket) {
-                if ( isset($expected[$cid]) ) {
+                if (isset($expected[$cid])) {
                     continue;
                 }
 
-                if ( $receivers && !isset($receivers[$cid]) ) {
+                if ($receivers && !isset($receivers[$cid])) {
                     continue;
                 }
 
@@ -454,9 +455,9 @@ abstract class ServerAbstracter extends WSAbstracter implements ServerInterface
 
     /**
      * response data to client by socket connection
-     * @param resource  $socket
-     * @param string    $data
-     * @param int       $length
+     * @param resource $socket
+     * @param string $data
+     * @param int $length
      * @return int      Return socket last error number code. gt 0 on failure, eq 0 on success
      */
     abstract public function writeTo($socket, string $data, int $length = 0);
@@ -496,13 +497,13 @@ abstract class ServerAbstracter extends WSAbstracter implements ServerInterface
         $prefix = self::BINARY_TYPE_BLOB;
 
         // <= 125
-        if (count($a) === 1){
+        if (count($a) === 1) {
             return $prefix . chr(strlen($a[0])) . $a[0];
         }
 
         $ns = '';
 
-        foreach ($a as $o){
+        foreach ($a as $o) {
             $ns .= $prefix . chr(strlen($o)) . $o;
         }
 
@@ -515,15 +516,16 @@ abstract class ServerAbstracter extends WSAbstracter implements ServerInterface
      */
     public function decode($buffer)
     {
-        /*$len = $masks = $data =*/ $decoded = '';
+        /*$len = $masks = $data =*/
+        $decoded = '';
 
         $fin = (ord($buffer{0}) & 0x80) === 0x80; // 1bit，1表示最后一帧
-        if(!$fin) {
+        if (!$fin) {
             return '';// 超过一帧暂不处理
         }
 
         $maskFlag = (ord($buffer{1}) & 0x80) === 0x80; // 是否包含掩码 0x80 -> 128
-        if(!$maskFlag) {
+        if (!$maskFlag) {
             return '';// 不包含掩码的暂不处理
         }
 
@@ -559,7 +561,7 @@ abstract class ServerAbstracter extends WSAbstracter implements ServerInterface
     public function log(string $msg, string $type = 'debug', array $data = [])
     {
         // if close debug, don't output debug log.
-        if ( $this->isDebug() || $type !== 'debug') {
+        if ($this->isDebug() || $type !== 'debug') {
             if (!$this->isDaemon()) {
                 [$time, $micro] = explode('.', microtime(1));
                 $time = date('Y-m-d H:i:s', $time);
@@ -635,7 +637,7 @@ abstract class ServerAbstracter extends WSAbstracter implements ServerInterface
      */
     public function isHandshake(int $cid): bool
     {
-        if ( $this->hasMeta($cid) ) {
+        if ($this->hasMeta($cid)) {
             return $this->getMeta($cid)['handshake'];
         }
 
@@ -688,7 +690,7 @@ abstract class ServerAbstracter extends WSAbstracter implements ServerInterface
      */
     public function getClient($cid)
     {
-        if ( $this->hasMeta($cid) ) {
+        if ($this->hasMeta($cid)) {
             return $this->clients[$cid];
         }
 

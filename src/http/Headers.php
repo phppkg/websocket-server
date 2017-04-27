@@ -97,9 +97,9 @@ class Headers extends SimpleCollection
     {
         $ls = [];
 
-        if ( $value = $this->get('Accept-Language') ) {
-            if ( strpos($value, ';') ) {
-                [$value,] = explode(';', $value,2);
+        if ($value = $this->get('Accept-Language')) {
+            if (strpos($value, ';')) {
+                [$value,] = explode(';', $value, 2);
             }
 
             $value = str_replace(' ', '', $value);
@@ -118,9 +118,9 @@ class Headers extends SimpleCollection
     {
         $ens = [];
 
-        if ( $value = $this->get('Accept-Encoding') ) {
-            if ( strpos($value, ';') ) {
-                [$value,] = explode(';', $value,2);
+        if ($value = $this->get('Accept-Encoding')) {
+            if (strpos($value, ';')) {
+                [$value,] = explode(';', $value, 2);
             }
 
             $value = str_replace(' ', '', $value);

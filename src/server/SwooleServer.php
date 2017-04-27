@@ -56,10 +56,10 @@ class SwooleServer extends ServerAbstracter
             'mode' => self::MODE_PROCESS,
             'swoole' => [
                 // 'user'    => '',
-                'worker_num'    => 4,
+                'worker_num' => 4,
                 'task_worker_num' => 2, // 启用 task worker,必须为Server设置onTask和onFinish回调
-                'daemonize'     => 0,
-                'max_request'   => 1000,
+                'daemonize' => 0,
+                'max_request' => 1000,
                 // 在1.7.15以上版本中，当设置dispatch_mode = 1/3时会自动去掉 `onConnect/onClose` 事件回调。
                 // see @link https://wiki.swoole.com/wiki/page/49.html
                 'dispatch_mode' => 2,
@@ -92,7 +92,7 @@ class SwooleServer extends ServerAbstracter
         // setting swoole config
         // 对于Server的配置即 $server->set() 中传入的参数设置，必须关闭/重启整个Server才可以重新加载
         $this->server->set($this->getOption('swoole', [
-            'worker_num'  => 2
+            'worker_num' => 2
         ]));
     }
 
@@ -103,7 +103,7 @@ class SwooleServer extends ServerAbstracter
     {
         // register events
         // \Swoole\Websocket\Server 不会触发 'connect' 事件
-         $this->server->on(self::ON_CONNECT, [$this, 'onConnect']);
+        $this->server->on(self::ON_CONNECT, [$this, 'onConnect']);
 
         // onHandshake函数必须返回true表示握手成功，返回其他值表示握手失败
         $this->server->on(self::ON_HANDSHAKE, [$this, 'onHandshake']);
@@ -217,7 +217,7 @@ class SwooleServer extends ServerAbstracter
         $this->log("Handshake: The #$cid client connection handshake successful! Meta:", 'info', $meta);
 
         // 握手成功 触发 open 事件
-        $this->server->defer(function() use($request, $cid) {
+        $this->server->defer(function () use ($request, $cid) {
             $this->trigger(self::ON_OPEN, [$this, $request, $cid]);
         });
 
@@ -284,9 +284,9 @@ class SwooleServer extends ServerAbstracter
     /**
      * 处理异步任务( onTask )
      * @param  Server $server
-     * @param  int           $taskId
-     * @param  int           $fromId
-     * @param  mixed         $data
+     * @param  int $taskId
+     * @param  int $fromId
+     * @param  mixed $data
      */
     public function onTask(Server $server, $taskId, $fromId, $data)
     {
@@ -298,8 +298,8 @@ class SwooleServer extends ServerAbstracter
     /**
      * 处理异步任务的结果
      * @param  Server $server
-     * @param  int           $taskId
-     * @param  mixed         $data
+     * @param  int $taskId
+     * @param  mixed $data
      */
     public function onFinish(Server $server, $taskId, $data)
     {
@@ -338,9 +338,9 @@ class SwooleServer extends ServerAbstracter
 
     /**
      * Send a message to the specified user 发送消息给指定的用户
-     * @param int    $receiver 接收者
+     * @param int $receiver 接收者
      * @param string $data
-     * @param int    $sender   发送者
+     * @param int $sender 发送者
      * @return int
      */
     public function sendTo(int $receiver, string $data, int $sender = 0)
@@ -357,15 +357,15 @@ class SwooleServer extends ServerAbstracter
 
     /**
      * broadcast message 广播消息
-     * @param string $data      消息数据
-     * @param int    $sender    发送者
-     * @param int[]  $receivers 指定接收者们
-     * @param int[]  $expected  要排除的接收者
+     * @param string $data 消息数据
+     * @param int $sender 发送者
+     * @param int[] $receivers 指定接收者们
+     * @param int[] $expected 要排除的接收者
      * @return int   Return socket last error number code.  gt 0 on failure, eq 0 on success
      */
     public function broadcast(string $data, array $receivers = [], array $expected = [], int $sender = 0): int
     {
-        if ( !$data ) {
+        if (!$data) {
             return 0;
         }
 
@@ -375,7 +375,7 @@ class SwooleServer extends ServerAbstracter
         }
 
         // to all
-        if ( !$expected && !$receivers) {
+        if (!$expected && !$receivers) {
             $this->sendToAll($data, $sender);
 
             // to some
@@ -399,10 +399,10 @@ class SwooleServer extends ServerAbstracter
 
         $this->log("(broadcast)The #{$fromUser} send a message to all users. Data: {$data}");
 
-        while(true) {
+        while (true) {
             $connList = $this->server->connection_list($startFd, 50);
 
-            if($connList===false || ($num = count($connList)) === 0) {
+            if ($connList === false || ($num = count($connList)) === 0) {
                 break;
             }
 
@@ -410,7 +410,7 @@ class SwooleServer extends ServerAbstracter
             $startFd = end($connList);
 
             /** @var $connList array */
-            foreach($connList as $fd) {
+            foreach ($connList as $fd) {
                 $this->server->push($fd, $data);
             }
         }
@@ -450,10 +450,10 @@ class SwooleServer extends ServerAbstracter
         $startFd = 0;
         $this->log("(broadcast)The #{$fromUser} send the message to everyone except some people. Data: {$data}");
 
-        while(true) {
+        while (true) {
             $connList = $this->server->connection_list($startFd, 50);
 
-            if($connList===false || ($num = count($connList)) === 0) {
+            if ($connList === false || ($num = count($connList)) === 0) {
                 break;
             }
 
@@ -461,12 +461,12 @@ class SwooleServer extends ServerAbstracter
             $startFd = end($connList);
 
             /** @var $connList array */
-            foreach($connList as $fd) {
-                if ( isset($expected[$fd]) ) {
+            foreach ($connList as $fd) {
+                if (isset($expected[$fd])) {
                     continue;
                 }
 
-                if ( $receivers && !isset($receivers[$fd]) ) {
+                if ($receivers && !isset($receivers[$fd])) {
                     continue;
                 }
 
@@ -479,9 +479,9 @@ class SwooleServer extends ServerAbstracter
 
     /**
      * response data to client by socket connection
-     * @param int    $fd
+     * @param int $fd
      * @param string $data
-     * @param int    $length
+     * @param int $length
      * @return int   Return error number code. gt 0 on failure, eq 0 on success
      */
     public function writeTo($fd, string $data, int $length = 0)
@@ -506,12 +506,12 @@ class SwooleServer extends ServerAbstracter
      */
     protected function checkEnvWhenEnableSSL()
     {
-        if ( !defined('SWOOLE_SSL')) {
+        if (!defined('SWOOLE_SSL')) {
             $this->cliOut->error('If you want use SSL(https), must add option --enable-openssl on the compile swoole.', -500);
         }
 
         // check ssl config
-        if ( !$this->getOption('ssl_cert_file') || !$this->getOption('ssl_key_file')) {
+        if (!$this->getOption('ssl_cert_file') || !$this->getOption('ssl_key_file')) {
             $this->cliOut->error("If you want use SSL(https), must config the 'swoole.ssl_cert_file' and 'swoole.ssl_key_file'", -500);
         }
     }

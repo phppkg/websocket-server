@@ -29,13 +29,13 @@ class Helper
         $a = str_split($s, 125);
         $prefix = WSInterface::BINARY_TYPE_BLOB;
 
-        if (count($a) === 1){
+        if (count($a) === 1) {
             return $prefix . chr(strlen($a[0])) . $a[0];
         }
 
         $ns = '';
 
-        foreach ($a as $o){
+        foreach ($a as $o) {
             $ns .= $prefix . chr(strlen($o)) . $o;
         }
 
@@ -48,7 +48,8 @@ class Helper
      */
     public static function decode($buffer)
     {
-        /*$len = $masks = $data =*/ $decoded = '';
+        /*$len = $masks = $data =*/
+        $decoded = '';
         $len = ord($buffer[1]) & 127;
 
         if ($len === 126) {

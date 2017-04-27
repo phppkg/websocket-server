@@ -42,7 +42,8 @@ class Request extends BaseMessage
     public function __construct(
         string $method = 'GET', Uri $uri = null, string $protocol = 'HTTP',
         string $protocolVersion = '1.1', array $headers = [], array $cookies = [], string $body = ''
-    ) {
+    )
+    {
         parent::__construct($protocol, $protocolVersion, $headers, $cookies, $body);
 
         $this->method = $method ? strtoupper($method) : 'GET';
@@ -101,9 +102,9 @@ class Request extends BaseMessage
         }
 
         // $rawData = trim($rawData);
-        $two = explode("\r\n\r\n", $rawData,2);
+        $two = explode("\r\n\r\n", $rawData, 2);
 
-        if ( !$rawHeader = $two[0] ?? '' ) {
+        if (!$rawHeader = $two[0] ?? '') {
             return new static();
         }
 
@@ -114,7 +115,7 @@ class Request extends BaseMessage
 
         // e.g: `GET / HTTP/1.1`
         $first = array_shift($list);
-        $data = array_map('trim', explode(' ', trim($first)) );
+        $data = array_map('trim', explode(' ', trim($first)));
 
         [$method, $uri, $protoStr] = $data;
         [$protocol, $protocolVersion] = explode('/', $protoStr);
@@ -137,12 +138,12 @@ class Request extends BaseMessage
         $port = 80;
         $host = '';
         if ($val = $headers['Host'] ?? '') {
-            [$host, $port] = strpos($val, ':') ? explode(':', $val): [$val, 80];
+            [$host, $port] = strpos($val, ':') ? explode(':', $val) : [$val, 80];
         }
 
         $path = $uri;
         $query = $fragment = '';
-        if ( strlen($uri) > 1 ) {
+        if (strlen($uri) > 1) {
             $parts = parse_url($uri);
             $path = $parts['path'] ?? '';
             $query = $parts['query'] ?? '';

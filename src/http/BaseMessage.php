@@ -103,7 +103,7 @@ abstract class BaseMessage
      */
     public function getProtocol(): string
     {
-        if ( !$this->protocol ) {
+        if (!$this->protocol) {
             $this->protocol = 'HTTP';
         }
 
@@ -123,7 +123,7 @@ abstract class BaseMessage
      */
     public function getProtocolVersion(): string
     {
-        if ( !$this->protocolVersion ) {
+        if (!$this->protocolVersion) {
             $this->protocolVersion = '1.1';
         }
 
@@ -223,7 +223,7 @@ abstract class BaseMessage
      */
     public function setCookies(array $cookies)
     {
-        if ( !$this->cookies ) {
+        if (!$this->cookies) {
             $this->cookies = new Cookies($cookies);
         } else {
             $this->cookies->sets($cookies);
