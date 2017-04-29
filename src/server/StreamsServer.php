@@ -78,6 +78,9 @@ class StreamsServer extends ServerAbstracter
         // $this->listening = true;
     }
 
+    /**
+     * {@inheritDoc}
+     */
     protected function doStart()
     {
         $maxLen = (int)$this->getOption('max_data_len', 2048);
