@@ -9,7 +9,7 @@
 namespace inhere\webSocket\client;
 
 use inhere\library\helpers\PhpHelper;
-use inhere\webSocket\Helper;
+use inhere\webSocket\WSHelper;
 
 /**
  * Class SocketsClient
@@ -236,7 +236,7 @@ class SocketsClient extends ClientAbstracter
             }
         }
 
-        return Helper::hybi10Decode($data);
+        return WSHelper::hybi10Decode($data);
     }
 
     /**

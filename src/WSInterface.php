@@ -40,7 +40,7 @@ interface WSInterface
     const WS_FIN = 128;
     const WS_MASK = 128;
 
-    const OPCODE_CONTINUATION = 0;
+    const OPCODE_CONT = 0; // CONTINUATION
     const OPCODE_TEXT = 1;
     const OPCODE_BINARY = 2;
     const OPCODE_CLOSE = 8;
@@ -58,7 +58,7 @@ interface WSInterface
     const STATUS_PROTOCOL_ERROR = 1002;
     const STATUS_UNSUPPORTED_MESSAGE_TYPE = 1003;
     const STATUS_MESSAGE_TOO_BIG = 1004;
-    const STATUS_TIMEOUT = 3000;
+    const STATUS_TIMEOUT = 1100;
 
     // 事件的回调函数名
     const ON_CONNECT = 'connect';
@@ -81,7 +81,16 @@ interface WSInterface
      */
     const BINARY_TYPE_ARRAY_BUFFER = "\x82";
 
-    const TIMEOUT_FLOAT = 2.2;
+    /**
+     * some default values
+     */
+    const WORKER_NUM   = 1;
+    const MAX_LIFETIME = 3600;
+    const MAX_REQUEST  = 2000;
+    const RESTART_SPLAY = 600;
+    const WATCH_INTERVAL = 300;
+    const MAX_DATA_LEN = 2048;
+    const SLEEP_TIME = 100; // 100 ms
 
-    const TIMEOUT_INT = 3;
+    const TIMEOUT = 3.2;
 }

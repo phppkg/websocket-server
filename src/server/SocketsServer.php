@@ -8,6 +8,8 @@
 
 namespace inhere\webSocket\server;
 
+use inhere\webSocket\traits\ProcessControlTrait;
+
 /**
  * Class SocketsServer
  * power by `sockets` extension
@@ -15,6 +17,8 @@ namespace inhere\webSocket\server;
  */
 class SocketsServer extends ServerAbstracter
 {
+    use ProcessControlTrait;
+
     /**
      * @var string
      */
@@ -75,19 +79,26 @@ class SocketsServer extends ServerAbstracter
         socket_listen($this->socket, $maxConnect);
     }
 
+    protected function startEventLoop()
+    {
+
+    }
+
     /**
      * {@inheritDoc}
      */
     protected function doStart()
     {
-        $maxLen = (int)$this->getOption('max_data_len', 2048);
+        $maxLen = (int)$this->get('max_data_len', self::MAX_DATA_LEN);
 
         // interval time
-        $setTime = (int)$this->getOption('sleep_ms', 800);
-        $sleepTime = $setTime > 50 ? $setTime : 500;
+        $setTime = (int)$this->get('sleep_time', self::SLEEP_TIME);
+        $sleepTime = $setTime >= 10 ? $setTime : 50;
         $sleepTime *= 1000; // ms -> us
 
         while (true) {
+            $this->dispatchSignals();
+
             $write = $except = null;
             // copy， 防止 $this->clients 的变动被 socket_select() 接收到
             $read = $this->clients;

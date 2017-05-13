@@ -9,10 +9,10 @@
 namespace inhere\webSocket;
 
 /**
- * Class Helper
+ * Class WSHelper
  * @package inhere\webSocket
  */
-class Helper
+class WSHelper
 {
     public static function encode()
     {

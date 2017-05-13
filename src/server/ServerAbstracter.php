@@ -11,13 +11,16 @@ namespace inhere\webSocket\server;
 use inhere\webSocket\WSAbstracter;
 use inhere\webSocket\http\Request;
 use inhere\webSocket\http\Response;
+use inhere\webSocket\traits\LogTrait;
 
 /**
  * Class AServerDriver
  * @package inhere\webSocket\server
  */
-abstract class ServerAbstracter extends WSAbstracter implements ServerInterface
+abstract class ServerAbstracter extends WSAbstracter implements ServerInterface, LogInterface
 {
+    use LogTrait;
+
     /**
      * the callback on the before start server
      * @var \Closure
@@ -77,29 +80,50 @@ abstract class ServerAbstracter extends WSAbstracter implements ServerInterface
     /**
      * @return array
      */
-    public function getDefaultOptions()
+    public function appendDefaultConfig()
     {
-        return array_merge(parent::getDefaultOptions(), [
+        return [
 
-            // while 循环时间间隔 毫秒 millisecond. 1s = 1000ms = 1000 000us
-            'sleep_ms' => 500,
+            // if you setting name, will display on the process name.
+            'name' => '',
 
-            // 最大允许连接数量
+            'conf_file' => '',
+
+            // run in the background
+            'daemon' => false,
+
+            // will start 4 workers
+            'worker_num' => 2,
+
+            // Workers will only live for 1 hour, after will auto restart.
+            'max_lifetime' => 3600,
+
+            // now, max_lifetime is >= 3600 and <= 4200
+            'restart_splay' => 600,
+
+            // max handle 2000 request of each worker, after will auto restart.
+            'max_request' => 2000,
+
+            // max connect client numbers of each worker
             'max_connect' => 100,
 
-            // 最大数据接收长度 1024 2048
-            'max_data_len' => 2048,
+            // the master process pid save file
+            'pid_file' => 'gwm.pid',
 
-            'buffer_size' => 8192, // 8kb
+            // will record manager meta data to file
+            'meta_file' => 'meta.dat',
 
-            // 日志配置
-            'log_service' => [
-                'name' => 'ws_server_log',
-                'basePath' => './tmp/logs/websocket',
-                'logConsole' => false,
-                'logThreshold' => 0,
-            ]
-        ]);
+            // job handle default timeout seconds
+            'timeout' => 300,
+
+            // log
+            'log_level' => 4,
+            // 'day' 'hour', if is empty, not split.
+            'log_split' => 'day',
+            // will write log by `syslog()`
+            'log_syslog' => false,
+            'log_file' => 'gwm.log',
+        ];
     }
 
     /**
@@ -110,8 +134,6 @@ abstract class ServerAbstracter extends WSAbstracter implements ServerInterface
      */
     public function __construct(string $host = '0.0.0.0', int $port = 8080, array $options = [])
     {
-        parent::__construct($options);
-
         if (!static::isSupported()) {
             // throw new \InvalidArgumentException("The extension [$this->name] is required for run the server.");
             $this->cliOut->error("Your system is not supported the driver: {$this->name}, by " . static::class, -200);
@@ -120,15 +142,193 @@ abstract class ServerAbstracter extends WSAbstracter implements ServerInterface
         $this->host = $host;
         $this->port = $port;
 
+        parent::__construct($options);
+
         $this->cliOut->write("The webSocket server power by [<info>{$this->name}</info>], driver class: <default>" . static::class . '</default>', 'info');
     }
+
+    /**
+     * handle CLI command and load options
+     * @return bool
+     */
+    protected function handleCommandAndConfig()
+    {
+        $command = $this->cliIn->getCommand();
+        $supported = ['start', 'stop', 'restart', 'reload', 'status'];
+
+        if (!in_array($command, $supported, true)) {
+            $this->showHelp("The command [{$command}] is don't supported!");
+        }
+
+        $options = $this->cliIn->getOpts();
+
+        // load CLI Options
+        $this->loadCommandOptions($options);
+
+        // init Config And Properties
+        $this->initConfigAndProperties($this->config);
+
+        // Debug option to dump the config and exit
+        if (isset($options['D']) || isset($options['dump'])) {
+            $val = isset($options['D']) ? $options['D'] : (isset($options['dump']) ? $options['dump'] : '');
+            $this->dumpInfo($val === 'all');
+        }
+
+        $masterPid = $this->getPidFromFile($this->pidFile);
+        $isRunning = $this->isRunning($masterPid);
+
+        // start: do Start Server
+        if ($command === 'start') {
+            // check master process is running
+            if ($isRunning) {
+                $this->stderr("The worker manager has been running. (PID:{$masterPid})\n", true, -__LINE__);
+            }
+
+            return true;
+        }
+
+        // check master process
+        if (!$isRunning) {
+            $this->stderr("The worker manager is not running. can not execute the command: {$command}\n", true, -__LINE__);
+        }
+
+        // switch command
+        switch ($command) {
+            case 'stop':
+            case 'restart':
+                // stop: stop and exit. restart: stop and start
+                $this->stopMaster($masterPid, $command === 'stop');
+                break;
+            case 'reload':
+                // reload workers
+                $this->reloadWorkers($masterPid);
+                break;
+            case 'status':
+                $cmd = isset($options['cmd']) ? $options['cmd']: 'status';
+                $this->showStatus($cmd, isset($options['watch-status']));
+                break;
+            default:
+                $this->showHelp("The command [{$command}] is don't supported!");
+                break;
+        }
+
+        return true;
+    }
+    /**
+     * load the command line options
+     * @param array $opts
+     */
+    protected function loadCommandOptions(array $opts)
+    {
+        $map = [
+            'c' => 'conf_file', // config file
+            's' => 'server',    // server address
+
+            'n' => 'worker_num',  // worker number do all jobs
+            'u' => 'user',
+            'g' => 'group',
+
+            'l' => 'log_file',
+            'p' => 'pid_file',
+
+            'r' => 'max_run_jobs', // max run jobs for a worker
+            'x' => 'max_lifetime',// max lifetime for a worker
+            't' => 'timeout',
+        ];
+
+        // show help
+        if (isset($opts['h']) || isset($opts['help'])) {
+            $this->showHelp();
+        }
+        // show version
+        if (isset($opts['V']) || isset($opts['version'])) {
+            $this->showVersion();
+        }
+
+        // load opts values to config
+        foreach ($map as $k => $v) {
+            if (isset($opts[$k]) && $opts[$k]) {
+                $this->config[$v] = $opts[$k];
+            }
+        }
+
+        // load Custom Config File
+        if ($file = $this->config['conf_file']) {
+            if (!file_exists($file)) {
+                $this->showHelp("Custom config file {$file} not found.");
+            }
+
+            $config = require $file;
+            $this->setConfig($config);
+        }
+
+        // watch modify
+        if (isset($opts['w']) || isset($opts['watch'])) {
+            $this->config['watch_modify'] = $opts['w'];
+        }
+
+        // run as daemon
+        if (isset($opts['d']) || isset($opts['daemon'])) {
+            $this->config['daemon'] = true;
+        }
+
+        // no test
+        if (isset($opts['no-test'])) {
+            $this->config['no_test'] = true;
+        }
+
+        if (isset($opts['v'])) {
+            $opts['v'] = $opts['v'] === true ? '' : $opts['v'];
+
+            switch ($opts['v']) {
+                case '':
+                    $this->config['log_level'] = self::LOG_INFO;
+                    break;
+                case 'v':
+                    $this->config['log_level'] = self::LOG_PROC_INFO;
+                    break;
+                case 'vv':
+                    $this->config['log_level'] = self::LOG_WORKER_INFO;
+                    break;
+                case 'vvv':
+                    $this->config['log_level'] = self::LOG_DEBUG;
+                    break;
+                case 'vvvv':
+                    $this->config['log_level'] = self::LOG_CRAZY;
+                    break;
+                default:
+                    // $this->config['log_level'] = self::LOG_INFO;
+                    break;
+            }
+        }
+    }
+
+    protected function showHelp($error = '')
+    {
+
+    }
+
+    protected function showVersion()
+    {
+
+    }
+
+    protected function showStatus($cmd = 'status', $watch = false)
+    {
+
+    }
+
+    protected function beforeStart()
+    {}
 
     /**
      * start server
      */
     public function start()
     {
-        $max = (int)$this->getOption('max_connect', self::MAX_CONNECT);
+        $this->beforeStart();
+
+        $max = $this->config['max_connect'];
         $this->log("Started WebSocket server on <info>{$this->getHost()}:{$this->getPort()}</info> (max allow connection: $max)", 'info');
 
         // create and prepare
@@ -140,6 +340,23 @@ abstract class ServerAbstracter extends WSAbstracter implements ServerInterface
         }
 
         $this->doStart();
+
+        $this->afterStart();
+    }
+
+    protected function beforeStartWorkers()
+    {}
+
+    protected function startEventLoop()
+    {
+
+    }
+
+    protected function afterStart()
+    {
+        $this->log('Stopping Manager ...', self::LOG_PROC_INFO);
+
+        $this->quit();
     }
 
     /**
@@ -552,35 +769,15 @@ abstract class ServerAbstracter extends WSAbstracter implements ServerInterface
     }
 
     /////////////////////////////////////////////////////////////////////////////////////////
-    /// helper method
+    /// getter/setter method
     /////////////////////////////////////////////////////////////////////////////////////////
-
-    /**
-     * {@inheritDoc}
-     */
-    public function log(string $msg, string $type = 'debug', array $data = [])
-    {
-        // if close debug, don't output debug log.
-        if ($this->isDebug() || $type !== 'debug') {
-            if (!$this->isDaemon()) {
-                [$time, $micro] = explode('.', microtime(1));
-                $time = date('Y-m-d H:i:s', $time);
-                $json = $data ? json_encode($data) : '';
-                $type = strtoupper($type);
-
-                $this->cliOut->write("[{$time}.{$micro}] [$type] $msg {$json}");
-            } else if ($logger = $this->getLogger()) {
-                $logger->$type(strip_tags($msg), $data);
-            }
-        }
-    }
 
     /**
      * @return bool
      */
     public function isDaemon(): bool
     {
-        return (bool)$this->getOption('as_daemon', false);
+        return (bool)$this->get('daemon', false);
     }
 
     /**

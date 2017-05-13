@@ -12,8 +12,7 @@ use inhere\console\io\Input;
 use inhere\console\io\Output;
 use inhere\library\helpers\PhpHelper;
 use inhere\library\traits\TraitSimpleFixedEvent;
-use inhere\library\traits\TraitSimpleOption;
-use inhere\library\utils\LiteLogger;
+use inhere\library\traits\TraitSimpleConfig;
 
 /**
  * Class WSAbstracter
@@ -21,8 +20,10 @@ use inhere\library\utils\LiteLogger;
  */
 abstract class WSAbstracter implements WSInterface
 {
-    use TraitSimpleOption;
     use TraitSimpleFixedEvent;
+    use TraitSimpleConfig {
+        setConfig as tSetConfig;
+    }
 
     const DEFAULT_HOST = '0.0.0.0';
 
@@ -33,7 +34,7 @@ abstract class WSAbstracter implements WSInterface
      * @var array
      */
     protected static $opCodes = [
-        'continuation' => self::OPCODE_CONTINUATION, // 0
+        'continuation' => self::OPCODE_CONT, // 0
         'text' => self::OPCODE_TEXT,   // 1
         'binary' => self::OPCODE_BINARY, // 2
         'close' => self::OPCODE_CLOSE,  // 8
@@ -68,48 +69,63 @@ abstract class WSAbstracter implements WSInterface
     protected $cliIn;
 
     /**
-     * @var LiteLogger
+     * @var bool
      */
-    private $logger;
+    private $initialized = false;
 
     /**
      * @var array
      */
-    protected $options = [];
+    protected $config = [
+
+        // enable ssl
+        'enable_ssl' => false,
+
+        // 设置写(发送)缓冲区 最大2m @see `StreamsServer::setBufferSize()`
+        'write_buffer_size' => 2097152,
+
+        // 设置读(接收)缓冲区 最大2m
+        'read_buffer_size' => 2097152,
+
+        // while 循环时间间隔 毫秒(ms) millisecond. 1s = 1000ms = 1000 000us
+        'sleep_time' => 500,
+
+        // 连接超时时间 s
+        'timeout' => 2.2,
+
+
+        // 最大数据接收长度 1024 / 2048 byte
+        'max_data_len' => 2048,
+
+        'buffer_size' => 8192, // 8kb
+
+        // 数据块大小 byte 发送数据时将会按这个大小拆分发送
+        'fragment_size' => 1024,
+
+        // 日志配置
+        'log_service' => [
+            // 'name' => 'ws_server_log'
+            // 'basePath' => PROJECT_PATH . '/temp/logs/ws_server',
+            // 'logConsole' => false,
+            // 'logThreshold' => 0,
+        ],
+    ];
 
     /**
      * @return array
      */
-    public function getDefaultOptions()
+    protected function appendDefaultConfig()
     {
         return [
-            'debug' => false,
-            'as_daemon' => false,
-
-            // enable ssl
-            'enable_ssl' => false,
-
-            // 设置写(发送)缓冲区 最大2m @see `StreamsServer::setBufferSize()`
-            'write_buffer_size' => 2097152,
-
-            // 设置读(接收)缓冲区 最大2m
-            'read_buffer_size' => 2097152,
-
-            // 日志配置
-            'log_service' => [
-                // 'name' => 'ws_server_log'
-                // 'basePath' => PROJECT_PATH . '/temp/logs/ws_server',
-                // 'logConsole' => false,
-                // 'logThreshold' => 0,
-            ],
+            // ...
         ];
     }
 
     /**
      * WSAbstracter constructor.
-     * @param array $options
+     * @param array $config
      */
-    public function __construct(array $options = [])
+    public function __construct(array $config = [])
     {
         if (!PhpHelper::isCli()) {
             throw new \RuntimeException('Server must run in the CLI mode.');
@@ -117,19 +133,29 @@ abstract class WSAbstracter implements WSInterface
 
         $this->cliIn = new Input();
         $this->cliOut = new Output();
-        $this->options = $this->getDefaultOptions();
 
-        $this->setOptions($options, true);
+        if ($append = $this->appendDefaultConfig()) {
+            $this->config = array_merge($this->config, $append);
+        }
+
+        $this->setConfig($config);
 
         $this->init();
+
+        $this->initialized = true;
     }
 
+    /**
+     * init
+     */
     protected function init()
     {
-        // create log service instance
-        if ($config = $this->getOption('log_service')) {
-            $this->logger = LiteLogger::make($config);
-        }
+        $this->handleCommandAndConfig();
+    }
+
+    protected function handleCommandAndConfig()
+    {
+
     }
 
     /**
@@ -138,6 +164,28 @@ abstract class WSAbstracter implements WSInterface
     public static function getOpCodes(): array
     {
         return self::$opCodes;
+    }
+
+    /**
+     * {@inheritDoc}
+     */
+    public function setConfig(array $config)
+    {
+        if ($this->initialized) {
+            throw new \InvalidArgumentException('Has been initialize completed. don\'t allow change config.');
+        }
+
+        $this->tSetConfig($config);
+    }
+
+    /**
+     * @param $name
+     * @param null $default
+     * @return mixed
+     */
+    public function get($name, $default = null)
+    {
+        return $this->getValue($name, $default);
     }
 
     /**
@@ -236,51 +284,7 @@ abstract class WSAbstracter implements WSInterface
      */
     public function isDebug(): bool
     {
-        return (bool)$this->getOption('debug', false);
-    }
-
-    /**
-     * get Logger service
-     * @return LiteLogger
-     */
-    public function getLogger()
-    {
-        return $this->logger;
-    }
-
-    /**
-     * output and record websocket log message
-     * @param  string $msg
-     * @param  array $data
-     * @param string $type
-     */
-    public function log(string $msg, string $type = 'debug', array $data = [])
-    {
-        // if close debug, don't output debug log.
-        if ($this->isDebug() || $type !== 'debug') {
-
-            [$time, $micro] = explode('.', microtime(1));
-
-            $time = date('Y-m-d H:i:s', $time);
-            $json = $data ? json_encode($data) : '';
-            $type = strtoupper(trim($type));
-
-            $this->cliOut->write("[{$time}.{$micro}] [$type] $msg {$json}");
-
-            if ($logger = $this->getLogger()) {
-                $logger->$type(strip_tags($msg), $data);
-            }
-        }
-    }
-
-    /**
-     * output debug log message
-     * @param string $message
-     * @param array $data
-     */
-    public function debug(string $message, array $data = [])
-    {
-        $this->log($message, 'debug', $data);
+        return (bool)$this->getValue('debug', false);
     }
 
     /**
@@ -291,5 +295,13 @@ abstract class WSAbstracter implements WSInterface
     public function print($messages, $nl = true, $exit = false)
     {
         $this->cliOut->write($messages, $nl, $exit);
+    }
+
+    /**
+     * @param int $code
+     */
+    protected function quit($code = 0)
+    {
+        exit((int)$code);
     }
 }

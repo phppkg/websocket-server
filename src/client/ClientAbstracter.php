@@ -9,6 +9,7 @@
 namespace inhere\webSocket\client;
 
 use inhere\exceptions\ConnectException;
+use inhere\library\utils\LiteLogger;
 use inhere\webSocket\WSAbstracter;
 use inhere\webSocket\http\Request;
 use inhere\webSocket\http\Response;
@@ -69,22 +70,9 @@ abstract class ClientAbstracter extends WSAbstracter implements ClientInterface
     /**
      * @return array
      */
-    public function getDefaultOptions()
+    public function appendDefaultConfig()
     {
-        return array_merge(parent::getDefaultOptions(), [
-
-            // while 循环时间间隔 毫秒 millisecond. 1s = 1000ms = 1000 000us
-            'sleep_ms' => 500,
-
-            // 连接超时时间
-            'timeout' => 2.2,
-
-            // 最大数据接收长度 1024 2048
-            'max_data_len' => 2048,
-
-            // 数据块大小 发送数据时将会按这个大小拆分发送
-            'fragment_size' => 1024,
-
+        return [
             // stream context
             'context' => null,
 
@@ -104,7 +92,7 @@ abstract class ClientAbstracter extends WSAbstracter implements ClientInterface
 
             // append headers
             'cookies' => [],
-        ]);
+        ];
     }
 
     /**
@@ -112,7 +100,7 @@ abstract class ClientAbstracter extends WSAbstracter implements ClientInterface
      * @param string $url `ws://127.0.0.1:9501/chat`
      * @param array $options
      */
-    public function __construct(string $url = 'ws:\/\/127.0.0.1:9501', array $options = [])
+    public function __construct(string $url = 'ws://127.0.0.1:9501', array $options = [])
     {
         $this->url = $url;
 
@@ -596,9 +584,43 @@ abstract class ClientAbstracter extends WSAbstracter implements ClientInterface
         return $final ? $payload : ($payload . $this->receive());
     }
 
+    /**
+     * output and record websocket log message
+     * @param  string $msg
+     * @param  array $data
+     * @param string $type
+     */
+    public function log(string $msg, string $type = 'debug', array $data = [])
+    {
+        // if close debug, don't output debug log.
+        if ($this->isDebug() || $type !== 'debug') {
+
+            [$time, $micro] = explode('.', microtime(1));
+
+            $time = date('Y-m-d H:i:s', $time);
+            $json = $data ? json_encode($data) : '';
+            $type = strtoupper(trim($type));
+
+            $this->cliOut->write("[{$time}.{$micro}] [$type] $msg {$json}");
+
+            if ($logger = $this->getLogger()) {
+                $logger->$type(strip_tags($msg), $data);
+            }
+        }
+    }
+
     /////////////////////////////////////////////////////////////////////////////////////////
     /// getter/setter method
     /////////////////////////////////////////////////////////////////////////////////////////
+
+    /**
+     * get Logger service
+     * @return LiteLogger
+     */
+    public function getLogger()
+    {
+        return $this->logger;
+    }
 
     /**
      * @return int

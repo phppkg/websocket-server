@@ -50,10 +50,10 @@ class SwooleServer extends ServerAbstracter
     /**
      * @return array
      */
-    public function getDefaultOptions()
+    public function appendDefaultConfig()
     {
-        return array_merge(parent::getDefaultOptions(), [
-            'mode' => self::MODE_PROCESS,
+        return [
+            'mode'   => self::MODE_PROCESS,
             'swoole' => [
                 // 'user'    => '',
                 'worker_num' => 4,
@@ -69,7 +69,7 @@ class SwooleServer extends ServerAbstracter
                 // 'ssl_cert_file' => __DIR__.'/config/ssl.crt',
                 // 'ssl_key_file' => __DIR__.'/config/ssl.key',
             ]
-        ]);
+        ];
     }
 
     /**
@@ -79,7 +79,7 @@ class SwooleServer extends ServerAbstracter
     {
         $host = $this->getHost();
         $port = $this->getPort();
-        $mode = $this->getOption('mode') === self::MODE_BASE ? SWOOLE_BASE : SWOOLE_PROCESS;
+        $mode = $this->config['mode'] === self::MODE_BASE ? SWOOLE_BASE : SWOOLE_PROCESS;
         $socketType = SWOOLE_SOCK_TCP;
 
         if ($this->getOption('enable_ssl')) {

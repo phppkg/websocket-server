@@ -113,7 +113,7 @@ class App
      */
     protected $options = [
         'debug' => false,
-        'as_daemon' => false,
+        'daemon' => false,
         'driver' => '', // allow: sockets, swoole, streams. if not set, will auto select.
 
         // pid file
@@ -232,7 +232,7 @@ class App
 
             // run as daemon
             $asDaemon = (bool)$this->cliIn->boolOpt('d', $this->isDaemon());
-            $this->setOption('as_daemon', $asDaemon);
+            $this->setOption('daemon', $asDaemon);
 
             return true;
         }
@@ -767,7 +767,7 @@ class App
      */
     public function isDaemon(): bool
     {
-        return (bool)$this->getOption('as_daemon', false);
+        return (bool)$this->getOption('daemon', false);
     }
 
     /**

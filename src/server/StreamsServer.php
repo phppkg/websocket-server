@@ -8,6 +8,8 @@
 
 namespace inhere\webSocket\server;
 
+use inhere\webSocket\traits\ProcessControlTrait;
+
 /**
  * Class StreamsServer
  * power by `streams` extension(php built-in)
@@ -15,6 +17,8 @@ namespace inhere\webSocket\server;
  */
 class StreamsServer extends ServerAbstracter
 {
+    use ProcessControlTrait;
+
     /**
      * @var string
      */
@@ -29,17 +33,27 @@ class StreamsServer extends ServerAbstracter
     }
 
     /**
+     * {@inheritDoc}
+     */
+    protected function init()
+    {
+        parent::init();
+
+        $this->checkEnvironment();
+    }
+
+    /**
      * @inheritdoc
      */
     protected function prepareWork(int $maxConnect)
     {
         // Set the stream context options if they're already set in the config
-        if ($context = $this->getOption('context')) {
+        if ($context = $this->get('context')) {
             // Suppress the error since we'll catch it below
             if (is_resource($context) && get_resource_type($context) !== 'stream-context') {
                 throw new \InvalidArgumentException("Stream context in options[context] isn't a valid context resource");
             }
-        } else if ($this->getOption('enable_ssl')) {
+        } else if ($this->get('enable_ssl')) {
             $context = $this->enableSSL();
         } else {
             $context = stream_context_create();
@@ -67,13 +81,13 @@ class StreamsServer extends ServerAbstracter
             $this->cliOut->error('Could not listen on socket: ' . $errStr, $errNo);
         }
 
-        $this->setTimeout($this->socket, $this->getOption('timeout', self::TIMEOUT_FLOAT));
+        $this->setTimeout($this->socket, $this->get('timeout', self::TIMEOUT_FLOAT));
 
         // 设置缓冲区大小
         $this->setBufferSize(
             $this->socket,
-            (int)$this->getOption('write_buffer_size'),
-            (int)$this->getOption('read_buffer_size')
+            (int)$this->get('write_buffer_size'),
+            (int)$this->get('read_buffer_size')
         );
         // $this->listening = true;
     }
@@ -83,10 +97,10 @@ class StreamsServer extends ServerAbstracter
      */
     protected function doStart()
     {
-        $maxLen = (int)$this->getOption('max_data_len', 2048);
+        $maxLen = (int)$this->get('max_data_len', 2048);
 
         // interval time
-        $setTime = (int)$this->getOption('sleep_ms', 800);
+        $setTime = (int)$this->get('sleep_ms', 800);
         $sleepTime = $setTime > 50 ? $setTime : 800;
         $sleepTime *= 1000; // ms -> us
 
@@ -133,8 +147,8 @@ class StreamsServer extends ServerAbstracter
             // 设置缓冲区大小
             $this->setBufferSize(
                 $newSock,
-                (int)$this->getOption('write_buffer_size'),
-                (int)$this->getOption('read_buffer_size')
+                (int)$this->get('write_buffer_size'),
+                (int)$this->get('read_buffer_size')
             );
 
             $name = stream_socket_get_name($this->socket, false);
