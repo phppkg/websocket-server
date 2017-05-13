@@ -22,13 +22,6 @@ interface ClientInterface
     public function start();
 
     /**
-     * @param array $options
-     * @param bool $merge
-     * @return mixed
-     */
-    public function setOptions(array $options, $merge = false);
-
-    /**
      * @param string $event
      * @param callable $cb
      * @param bool $replace

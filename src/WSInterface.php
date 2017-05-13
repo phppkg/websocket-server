@@ -81,16 +81,7 @@ interface WSInterface
      */
     const BINARY_TYPE_ARRAY_BUFFER = "\x82";
 
-    /**
-     * some default values
-     */
-    const WORKER_NUM   = 1;
-    const MAX_LIFETIME = 3600;
-    const MAX_REQUEST  = 2000;
-    const RESTART_SPLAY = 600;
-    const WATCH_INTERVAL = 300;
-    const MAX_DATA_LEN = 2048;
-    const SLEEP_TIME = 100; // 100 ms
 
     const TIMEOUT = 3.2;
+
 }

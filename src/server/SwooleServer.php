@@ -32,12 +32,12 @@ class SwooleServer extends ServerAbstracter
     /**
      * @var string
      */
-    protected $name = 'swoole';
+    protected $driver = 'swoole';
 
     /**
      * @var Server
      */
-    private $server;
+    private $swoole;
 
     /**
      * @return bool
@@ -75,23 +75,23 @@ class SwooleServer extends ServerAbstracter
     /**
      * @inheritdoc
      */
-    protected function prepareWork(int $maxConnect)
+    protected function prepare()
     {
         $host = $this->getHost();
         $port = $this->getPort();
         $mode = $this->config['mode'] === self::MODE_BASE ? SWOOLE_BASE : SWOOLE_PROCESS;
         $socketType = SWOOLE_SOCK_TCP;
 
-        if ($this->getOption('enable_ssl')) {
+        if ($this->get('enable_ssl')) {
             $this->checkEnvWhenEnableSSL();
             $socketType |= SWOOLE_SSL;
         }
 
-        $this->server = new Server($host, $port, $mode, $socketType);
+        $this->swoole = new Server($host, $port, $mode, $socketType);
 
         // setting swoole config
         // 对于Server的配置即 $server->set() 中传入的参数设置，必须关闭/重启整个Server才可以重新加载
-        $this->server->set($this->getOption('swoole', [
+        $this->swoole->set($this->get('swoole', [
             'worker_num' => 2
         ]));
     }
@@ -103,21 +103,21 @@ class SwooleServer extends ServerAbstracter
     {
         // register events
         // \Swoole\Websocket\Server 不会触发 'connect' 事件
-        $this->server->on(self::ON_CONNECT, [$this, 'onConnect']);
+        $this->swoole->on(self::ON_CONNECT, [$this, 'onConnect']);
 
         // onHandshake函数必须返回true表示握手成功，返回其他值表示握手失败
-        $this->server->on(self::ON_HANDSHAKE, [$this, 'onHandshake']);
+        $this->swoole->on(self::ON_HANDSHAKE, [$this, 'onHandshake']);
 
         // 设置onHandshake回调函数后不会再触发onOpen事件，需要应用代码自行处理
 //        $this->server->on(self::ON_OPEN, [$this, 'onOpen']);
 
-        $this->server->on(self::ON_MESSAGE, [$this, 'onMessage']);
-        $this->server->on(self::ON_CLOSE, [$this, 'onClose']);
+        $this->swoole->on(self::ON_MESSAGE, [$this, 'onMessage']);
+        $this->swoole->on(self::ON_CLOSE, [$this, 'onClose']);
 
-        $this->server->on('task', [$this, 'onTask']);
-        $this->server->on('finish', [$this, 'onFinish']);
+        $this->swoole->on('task', [$this, 'onTask']);
+        $this->swoole->on('finish', [$this, 'onFinish']);
 
-        $this->server->start();
+        $this->swoole->start();
     }
 
     /**
@@ -217,7 +217,7 @@ class SwooleServer extends ServerAbstracter
         $this->log("Handshake: The #$cid client connection handshake successful! Meta:", 'info', $meta);
 
         // 握手成功 触发 open 事件
-        $this->server->defer(function () use ($request, $cid) {
+        $this->swoole->defer(function () use ($request, $cid) {
             $this->trigger(self::ON_OPEN, [$this, $request, $cid]);
         });
 
@@ -333,7 +333,7 @@ class SwooleServer extends ServerAbstracter
      */
     protected function doClose(int $cid, $socket = null)
     {
-        return $this->server->close($cid);
+        return $this->swoole->close($cid);
     }
 
     /**
@@ -352,7 +352,7 @@ class SwooleServer extends ServerAbstracter
 
         $this->log("(private)The #{$fromUser} send message to the user #{$receiver}. Data: {$data}");
 
-        return $this->server->push($receiver, $data, $opcode, $finish) ? 0 : -500;
+        return $this->swoole->push($receiver, $data, $opcode, $finish) ? 0 : -500;
     }
 
     /**
@@ -400,7 +400,7 @@ class SwooleServer extends ServerAbstracter
         $this->log("(broadcast)The #{$fromUser} send a message to all users. Data: {$data}");
 
         while (true) {
-            $connList = $this->server->connection_list($startFd, 50);
+            $connList = $this->swoole->connection_list($startFd, 50);
 
             if ($connList === false || ($num = count($connList)) === 0) {
                 break;
@@ -411,7 +411,7 @@ class SwooleServer extends ServerAbstracter
 
             /** @var $connList array */
             foreach ($connList as $fd) {
-                $this->server->push($fd, $data);
+                $this->swoole->push($fd, $data);
             }
         }
 
@@ -439,7 +439,7 @@ class SwooleServer extends ServerAbstracter
             foreach ($receivers as $receiver) {
                 if ($this->hasClient($receiver)) {
                     $count++;
-                    $this->server->push($receiver, $res, $len);
+                    $this->swoole->push($receiver, $res, $len);
                 }
             }
 
@@ -451,7 +451,7 @@ class SwooleServer extends ServerAbstracter
         $this->log("(broadcast)The #{$fromUser} send the message to everyone except some people. Data: {$data}");
 
         while (true) {
-            $connList = $this->server->connection_list($startFd, 50);
+            $connList = $this->swoole->connection_list($startFd, 50);
 
             if ($connList === false || ($num = count($connList)) === 0) {
                 break;
@@ -470,7 +470,7 @@ class SwooleServer extends ServerAbstracter
                     continue;
                 }
 
-                $this->server->push($fd, $data);
+                $this->swoole->push($fd, $data);
             }
         }
 
@@ -490,7 +490,7 @@ class SwooleServer extends ServerAbstracter
 //        $opcode = 1;
 
         // return $this->server->push($fd, $data, $opcode, $finish) ? 0 : 1;
-        return $this->server->send($fd, $data) ? 0 : 1;
+        return $this->swoole->send($fd, $data) ? 0 : 1;
     }
 
     /**
@@ -499,7 +499,7 @@ class SwooleServer extends ServerAbstracter
      */
     public function exist(int $cid)
     {
-        return $this->server->exist($cid);
+        return $this->swoole->exist($cid);
     }
 
     /**
@@ -511,7 +511,7 @@ class SwooleServer extends ServerAbstracter
         }
 
         // check ssl config
-        if (!$this->getOption('ssl_cert_file') || !$this->getOption('ssl_key_file')) {
+        if (!$this->get('ssl_cert_file') || !$this->get('ssl_key_file')) {
             $this->cliOut->error("If you want use SSL(https), must config the 'swoole.ssl_cert_file' and 'swoole.ssl_key_file'", -500);
         }
     }
@@ -547,7 +547,7 @@ class SwooleServer extends ServerAbstracter
     public function getClientInfo(int $cid)
     {
         // @link https://wiki.swoole.com/wiki/page/p-connection_info.html
-        return $this->server->getClientInfo($cid);
+        return $this->swoole->getClientInfo($cid);
     }
 
     /**
@@ -556,7 +556,7 @@ class SwooleServer extends ServerAbstracter
      */
     public function getErrorNo($socket = null)
     {
-        return $this->server->getLastError();
+        return $this->swoole->getLastError();
     }
 
     /**
@@ -575,6 +575,6 @@ class SwooleServer extends ServerAbstracter
      */
     public function getSocket(): resource
     {
-        return $this->server->getSocket();
+        return $this->swoole->getSocket();
     }
 }

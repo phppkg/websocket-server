@@ -46,7 +46,7 @@ abstract class WSAbstracter implements WSInterface
      * the driver name
      * @var string
      */
-    protected $name = '';
+    protected $driver = '';
 
     /**
      * @var string
@@ -77,7 +77,6 @@ abstract class WSAbstracter implements WSInterface
      * @var array
      */
     protected $config = [
-
         // enable ssl
         'enable_ssl' => false,
 
@@ -92,7 +91,6 @@ abstract class WSAbstracter implements WSInterface
 
         // 连接超时时间 s
         'timeout' => 2.2,
-
 
         // 最大数据接收长度 1024 / 2048 byte
         'max_data_len' => 2048,
@@ -191,9 +189,9 @@ abstract class WSAbstracter implements WSInterface
     /**
      * @return string
      */
-    public function getName(): string
+    public function getDriver(): string
     {
-        return $this->name;
+        return $this->driver;
     }
 
     /**

@@ -22,7 +22,7 @@ class SwooleClient extends ClientAbstracter
     /**
      * @var string
      */
-    protected $name = 'swoole';
+    protected $driver = 'swoole';
 
     /**
      * @var Client

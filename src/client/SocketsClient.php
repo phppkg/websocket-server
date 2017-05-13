@@ -9,6 +9,7 @@
 namespace inhere\webSocket\client;
 
 use inhere\library\helpers\PhpHelper;
+use inhere\webSocket\traits\SocketsTrait;
 use inhere\webSocket\WSHelper;
 
 /**
@@ -18,10 +19,12 @@ use inhere\webSocket\WSHelper;
  */
 class SocketsClient extends ClientAbstracter
 {
+    use SocketsTrait;
+
     /**
      * @var string
      */
-    protected $name = 'sockets';
+    protected $driver = 'sockets';
 
     /**
      * @var resource
@@ -58,7 +61,7 @@ class SocketsClient extends ClientAbstracter
             $this->cliOut->error('Unable to create socket: ' . $this->errMsg, $this->errNo);
         }
 
-        $timeout = $timeout ?: $this->getOption('timeout', self::TIMEOUT_FLOAT);
+        $timeout = $timeout ?: $this->get('timeout', self::TIMEOUT);
 
         // 设置connect超时
         $this->setTimeout($this->socket, $timeout);
@@ -66,8 +69,8 @@ class SocketsClient extends ClientAbstracter
         // 设置缓冲区大小
         $this->setBufferSize(
             $this->socket,
-            (int)$this->getOption('write_buffer_size'),
-            (int)$this->getOption('read_buffer_size')
+            (int)$this->get('write_buffer_size'),
+            (int)$this->get('read_buffer_size')
         );
 
         if (!PhpHelper::isWin() && !socket_set_nonblock($this->socket)) {
@@ -137,7 +140,7 @@ class SocketsClient extends ClientAbstracter
         // socket_write($this->socket, $data, strlen($data));
         $length = strlen($data);
         $written = 0;
-        $timeoutSend = $this->getOption('timeout_send', 0.3);
+        $timeoutSend = $this->get('timeout_send', 0.3);
         $lastTime = $timeoutSend + microtime(true);
 
         // 总超时，for循环中计时
@@ -177,7 +180,7 @@ class SocketsClient extends ClientAbstracter
     {
         $length = strlen($data);
         $written = 0;
-        $timeoutSend = $this->getOption('timeout_send', 0.3);
+        $timeoutSend = $this->get('timeout_send', 0.3);
         $lastTime = $timeoutSend + microtime(true);
 
         // 总超时，for循环中计时
@@ -251,88 +254,6 @@ class SocketsClient extends ClientAbstracter
         }
 
         $this->setConnected(false);
-    }
-
-    /**
-     * 设置buffer区
-     * @param resource $socket
-     * @param int $writeBufferSize
-     * @param int $readBufferSize
-     */
-    public function setBufferSize($socket, int $writeBufferSize, int $readBufferSize)
-    {
-        if ($writeBufferSize > 0) {
-            $this->setSocketOption($socket, SO_SNDBUF, $writeBufferSize);
-        }
-
-        if ($readBufferSize > 0) {
-            $this->setSocketOption($socket, SO_RCVBUF, $readBufferSize);
-        }
-    }
-
-    /**
-     * 设置超时
-     * @param $socket
-     * @param float $timeout
-     */
-    public function setTimeout($socket, $timeout = 2.2)
-    {
-        if (strpos($timeout, '.')) {
-            [$s, $us] = explode('.', $timeout);
-            $s = $s < 1 ? 3 : (int)$s;
-            $us = (int)($us * 1000 * 1000);
-        } else {
-            $s = (int)$timeout;
-            $us = null;
-        }
-
-        $timeoutAry = [
-            'sec' => $s,
-            'usec' => $us
-        ];
-
-        $this->setSocketOption($socket, SO_RCVTIMEO, $timeoutAry);
-        $this->setSocketOption($socket, SO_SNDTIMEO, $timeoutAry);
-    }
-
-    /**
-     * fetch socket Error
-     */
-    private function fetchError()
-    {
-        $this->errNo = socket_last_error($this->socket);
-        $this->errMsg = socket_strerror($this->errNo);
-
-        // clear error
-        socket_clear_error($this->socket);
-    }
-
-    /**
-     * 用于获取客户端socket的本地host:port，必须在连接之后才可以使用
-     * @return array
-     */
-    public function getSockName()
-    {
-        socket_getsockname($this->socket, $host, $port);
-
-        return [
-            'host' => $host,
-            'port' => $port,
-        ];
-    }
-
-    /**
-     * 获取对端(远端)socket的IP地址和端口
-     * @return array
-     */
-    public function getPeerName()
-    {
-        socket_getpeername($this->socket, $host, $port);
-
-        return [
-            'host' => $host,
-            'port' => $port,
-        ];
     }
 
     /**

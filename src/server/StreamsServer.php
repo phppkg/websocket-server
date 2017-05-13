@@ -9,6 +9,7 @@
 namespace inhere\webSocket\server;
 
 use inhere\webSocket\traits\ProcessControlTrait;
+use inhere\webSocket\traits\StreamsTrait;
 
 /**
  * Class StreamsServer
@@ -18,11 +19,12 @@ use inhere\webSocket\traits\ProcessControlTrait;
 class StreamsServer extends ServerAbstracter
 {
     use ProcessControlTrait;
+    use StreamsTrait;
 
     /**
      * @var string
      */
-    protected $name = 'streams';
+    protected $driver = 'streams';
 
     /**
      * @inheritdoc
@@ -45,7 +47,7 @@ class StreamsServer extends ServerAbstracter
     /**
      * @inheritdoc
      */
-    protected function prepareWork(int $maxConnect)
+    protected function prepare(int $maxConnect)
     {
         // Set the stream context options if they're already set in the config
         if ($context = $this->get('context')) {
@@ -81,7 +83,7 @@ class StreamsServer extends ServerAbstracter
             $this->cliOut->error('Could not listen on socket: ' . $errStr, $errNo);
         }
 
-        $this->setTimeout($this->socket, $this->get('timeout', self::TIMEOUT_FLOAT));
+        $this->setTimeout($this->socket, $this->get('timeout', self::TIMEOUT));
 
         // 设置缓冲区大小
         $this->setBufferSize(
@@ -216,83 +218,6 @@ class StreamsServer extends ServerAbstracter
     public function writeTo($socket, string $data, int $length = 0)
     {
         return stream_socket_sendto($socket, $data);
-    }
-
-    public function enableSSL()
-    {
-        $pem_passphrase = 'mykey';
-        $pemfile = './server.pem';
-        $ca = './server.crt';
-
-        $context = stream_context_create();
-
-        // local_cert must be in PEM format
-        stream_context_set_option($context, 'ssl', 'local_cert', $pemfile);
-        stream_context_set_option($context, 'ssl', 'cafile', $ca);
-        stream_context_set_option($context, 'ssl', 'capath', './');
-
-        // Pass Phrase (password) of private key
-        stream_context_set_option($context, 'ssl', 'passphrase', $pem_passphrase);
-
-        stream_context_set_option($context, 'ssl', 'allow_self_signed', true);
-        stream_context_set_option($context, 'ssl', 'verify_peer', true);
-
-        return $context;
-    }
-
-    /**
-     * 设置超时
-     * @param resource $stream
-     * @param float $timeout
-     */
-    public function setTimeout($stream, $timeout = self::TIMEOUT_FLOAT)
-    {
-        if (strpos($timeout, '.')) {
-            [$s, $us] = explode('.', $timeout);
-            $s = $s < 1 ? self::TIMEOUT_INT : (int)$s;
-            $us = (int)($us * 1000 * 1000);
-        } else {
-            $s = (int)$timeout;
-            $us = null;
-        }
-
-        // Set timeout on the stream as well.
-        stream_set_timeout($stream, $s, $us);
-    }
-
-    /**
-     * 设置buffer区
-     * @param resource $stream
-     * @param int $writeBufferSize
-     * @param int $readBufferSize
-     */
-    protected function setBufferSize($stream, int $writeBufferSize, int $readBufferSize)
-    {
-        if ($writeBufferSize > 0) {
-            stream_set_write_buffer($stream, $writeBufferSize);
-        }
-
-        if ($readBufferSize > 0) {
-            stream_set_read_buffer($stream, $readBufferSize);
-        }
-    }
-
-    /**
-     * 获取对端socket的IP地址和端口
-     * @param resource $socket
-     * @return array
-     */
-    public function getPeerName($socket)
-    {
-        $name = stream_socket_get_name($socket, true);
-        $data = [
-            'host' => '',
-            'port' => 0,
-        ];
-
-        [$data['host'], $data['port']] = explode(':', $name);
-
-        return $data;
     }
 
     /**

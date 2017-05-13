@@ -9,6 +9,7 @@
 namespace inhere\webSocket\server;
 
 use inhere\webSocket\traits\ProcessControlTrait;
+use inhere\webSocket\traits\SocketsTrait;
 
 /**
  * Class SocketsServer
@@ -18,11 +19,12 @@ use inhere\webSocket\traits\ProcessControlTrait;
 class SocketsServer extends ServerAbstracter
 {
     use ProcessControlTrait;
+    use SocketsTrait;
 
     /**
      * @var string
      */
-    protected $name = 'sockets';
+    protected $driver = 'sockets';
 
     /**
      * @var int
@@ -44,9 +46,8 @@ class SocketsServer extends ServerAbstracter
 
     /**
      * create and prepare socket resource
-     * @param int $maxConnect
      */
-    protected function prepareWork(int $maxConnect)
+    protected function prepare()
     {
         if (count($this->callbacks) < 1) {
             $sup = implode(',', $this->getSupportedEvents());
@@ -69,25 +70,33 @@ class SocketsServer extends ServerAbstracter
         }
 
         // 设置IP和端口重用,在重启服务器后能重新使用此端口;
-        socket_set_option($this->socket, SOL_SOCKET, SO_REUSEADDR, TRUE);
-        // socket_set_option($this->socket,SOL_SOCKET, SO_RCVTIMEO, ['sec' =>0, 'usec' =>100]);
+        $this->setSocketOption($this->socket, SO_REUSEADDR, TRUE);
 
         // 给套接字绑定名字
         socket_bind($this->socket, $this->getHost(), $this->getPort());
 
         // 监听套接字上的连接. 最多允许 $max 个连接，超过的客户端连接会返回 WSAECONNREFUSED 错误
-        socket_listen($this->socket, $maxConnect);
-    }
-
-    protected function startEventLoop()
-    {
-
+        socket_listen($this->socket, $this->config['max_connect']);
     }
 
     /**
      * {@inheritDoc}
      */
     protected function doStart()
+    {
+        $this->log("Started server with pid {$this->pid}, Current script owner: " . get_current_user(), self::LOG_PROC_INFO);
+
+        $this->isMaster = true;
+        $this->stat['start_time'] = time();
+        $this->setProcessTitle(sprintf("php-ws: master process%s (%s)", $this->getShowName(), $this->fullScript));
+
+
+    }
+
+    /**
+     * startDriverWorker
+     */
+    protected function startDriverWorker()
     {
         $maxLen = (int)$this->get('max_data_len', self::MAX_DATA_LEN);
 
@@ -122,6 +131,7 @@ class SocketsServer extends ServerAbstracter
             usleep($sleepTime);
         }
     }
+
 
     /**
      * @param resource $sock
@@ -210,72 +220,6 @@ class SocketsServer extends ServerAbstracter
         socket_write($socket, $data, $length > 0 ? $length : strlen($data));
 
         return $this->getErrorNo($socket);
-    }
-
-    /**
-     * 设置buffer区
-     * @param resource $socket
-     * @param int $writeBufferSize
-     * @param int $readBufferSize
-     */
-    public function setBufferSize($socket, int $writeBufferSize, int $readBufferSize)
-    {
-        if ($writeBufferSize > 0) {
-            $this->setSocketOption($socket, SO_SNDBUF, $writeBufferSize);
-        }
-
-        if ($readBufferSize > 0) {
-            $this->setSocketOption($socket, SO_RCVBUF, $readBufferSize);
-        }
-    }
-
-    /**
-     * fetch socket Error
-     */
-    private function fetchError()
-    {
-        $this->errNo = socket_last_error($this->socket);
-        $this->errMsg = socket_strerror($this->errNo);
-
-        // clear error
-        socket_clear_error($this->socket);
-    }
-
-    /**
-     * 设置socket参数
-     * @param resource $socket
-     * @param string $opt
-     * @param string $set
-     */
-    public function setSocketOption($socket, string $opt, $set)
-    {
-        socket_set_option($socket, SOL_SOCKET, $opt, $set);
-    }
-
-    /**
-     * 获取socket参数
-     * @param resource $socket
-     * @param string $opt
-     * @return mixed
-     */
-    public function getSocketOption($socket, string $opt)
-    {
-        return socket_get_option($socket, SOL_SOCKET, $opt);
-    }
-
-    /**
-     * 获取对端socket的IP地址和端口
-     * @param resource $socket
-     * @return array
-     */
-    public function getPeerName($socket)
-    {
-        socket_getpeername($socket, $host, $port);
-
-        return [
-            'host' => $host,
-            'port' => $port,
-        ];
     }
 
     /**

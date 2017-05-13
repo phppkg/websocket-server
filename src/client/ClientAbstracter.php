@@ -107,10 +107,10 @@ abstract class ClientAbstracter extends WSAbstracter implements ClientInterface
         parent::__construct($options);
 
         if (!static::isSupported()) {
-            $this->cliOut->error("Your system is not supported the driver: {$this->name}, by " . static::class, -200);
+            $this->cliOut->error("Your system is not supported the driver: {$this->driver}, by " . static::class, -200);
         }
 
-        $this->cliOut->write("The webSocket client power by [<info>{$this->name}</info>], remote server is <info>{$url}</info>");
+        $this->cliOut->write("The webSocket client power by [<info>{$this->driver}</info>], remote server is <info>{$url}</info>");
     }
 
     /**

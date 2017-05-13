@@ -8,6 +8,7 @@
 
 namespace inhere\webSocket\server;
 
+use inhere\library\helpers\ProcessHelper;
 use inhere\webSocket\WSAbstracter;
 use inhere\webSocket\http\Request;
 use inhere\webSocket\http\Response;
@@ -40,6 +41,12 @@ abstract class ServerAbstracter extends WSAbstracter implements ServerInterface,
     private $clientNumber = 0;
 
     /**
+     * max connect client numbers of each worker
+     * @var integer
+     */
+    protected $maxConnect = 200;
+
+    /**
      * 连接的客户端列表
      * @var resource[]
      * [
@@ -70,60 +77,88 @@ abstract class ServerAbstracter extends WSAbstracter implements ServerInterface,
     ];
 
     /**
+     * @var string
+     */
+    protected $pidFile;
+
+    /**
+     * The statistics info for server/worker
+     * @var array
+     */
+    protected $stat = [
+        'start_time' => 0,
+        'stop_time'  => 0,
+        'start_times' => 0,
+    ];
+
+    protected $config = [
+        // if you setting name, will display on the process name.
+        'name' => '',
+
+        'conf_file' => '',
+
+        // run in the background
+        'daemon' => false,
+
+        // will start 4 workers
+        'worker_num' => 2,
+
+        // Workers will only live for 1 hour, after will auto restart.
+        'max_lifetime' => 3600,
+
+        // now, max_lifetime is >= 3600 and <= 4200
+        'restart_splay' => 600,
+
+        // max handle 2000 request of each worker, after will auto restart.
+        'max_request' => 2000,
+
+        // max connect client numbers of each worker
+        'max_connect' => 200,
+
+        // the master process pid save file
+        'pid_file' => 'ws_server.pid',
+
+        // will record server stat data to file
+        'stat_file' => 'stat.dat',
+
+        // 连接超时时间 s
+        'timeout' => 2.2,
+
+        // log
+        'log_level' => 4,
+        // 'day' 'hour', if is empty, not split.
+        'log_split' => 'day',
+        // will write log by `syslog()`
+        'log_syslog' => false,
+        'log_file' => 'ws_server.log',
+
+        // enable ssl
+        'enable_ssl' => false,
+
+        'buffer_size' => 8192, // 8kb
+
+        // 设置写(发送)缓冲区 最大2m @see `StreamsServer::setBufferSize()`
+        'write_buffer_size' => 2097152,
+
+        // 设置读(接收)缓冲区 最大2m
+        'read_buffer_size' => 2097152,
+
+        // while 循环时间间隔 毫秒(ms) millisecond. 1s = 1000ms = 1000 000us
+        'sleep_time' => 500,
+
+        // 最大数据接收长度 1024 / 2048 byte
+        'max_data_len' => 2048,
+
+        // 数据块大小 byte 发送数据时将会按这个大小拆分发送
+        'fragment_size' => 1024,
+    ];
+
+    /**
      * @return array
      */
     public function getSupportedEvents(): array
     {
         return [self::ON_CONNECT, self::ON_HANDSHAKE, self::ON_OPEN, self::ON_MESSAGE, self::ON_CLOSE, self::ON_ERROR];
-    }
-
-    /**
-     * @return array
-     */
-    public function appendDefaultConfig()
-    {
-        return [
-
-            // if you setting name, will display on the process name.
-            'name' => '',
-
-            'conf_file' => '',
-
-            // run in the background
-            'daemon' => false,
-
-            // will start 4 workers
-            'worker_num' => 2,
-
-            // Workers will only live for 1 hour, after will auto restart.
-            'max_lifetime' => 3600,
-
-            // now, max_lifetime is >= 3600 and <= 4200
-            'restart_splay' => 600,
-
-            // max handle 2000 request of each worker, after will auto restart.
-            'max_request' => 2000,
-
-            // max connect client numbers of each worker
-            'max_connect' => 100,
-
-            // the master process pid save file
-            'pid_file' => 'gwm.pid',
-
-            // will record manager meta data to file
-            'meta_file' => 'meta.dat',
-
-            // job handle default timeout seconds
-            'timeout' => 300,
-
-            // log
-            'log_level' => 4,
-            // 'day' 'hour', if is empty, not split.
-            'log_split' => 'day',
-            // will write log by `syslog()`
-            'log_syslog' => false,
-            'log_file' => 'gwm.log',
-        ];
     }
 
     /**
@@ -136,7 +171,7 @@ abstract class ServerAbstracter extends WSAbstracter implements ServerInterface,
     {
         if (!static::isSupported()) {
             // throw new \InvalidArgumentException("The extension [$this->name] is required for run the server.");
-            $this->cliOut->error("Your system is not supported the driver: {$this->name}, by " . static::class, -200);
+            $this->cliOut->error("Your system is not supported the driver: {$this->driver}, by " . static::class, -200);
         }
 
         $this->host = $host;
@@ -144,7 +179,7 @@ abstract class ServerAbstracter extends WSAbstracter implements ServerInterface,
 
         parent::__construct($options);
 
-        $this->cliOut->write("The webSocket server power by [<info>{$this->name}</info>], driver class: <default>" . static::class . '</default>', 'info');
+        $this->cliOut->write("The webSocket server power by [<info>{$this->driver}</info>], driver class: <default>" . static::class . '</default>', 'info');
     }
 
     /**
@@ -174,8 +209,8 @@ abstract class ServerAbstracter extends WSAbstracter implements ServerInterface,
             $this->dumpInfo($val === 'all');
         }
 
-        $masterPid = $this->getPidFromFile($this->pidFile);
-        $isRunning = $this->isRunning($masterPid);
+        $masterPid = ProcessHelper::getPidByPidFile($this->pidFile);
+        $isRunning = ProcessHelper::isRunning($masterPid);
 
         // start: do Start Server
         if ($command === 'start') {
@@ -331,13 +366,8 @@ abstract class ServerAbstracter extends WSAbstracter implements ServerInterface,
         $max = $this->config['max_connect'];
         $this->log("Started WebSocket server on <info>{$this->getHost()}:{$this->getPort()}</info> (max allow connection: $max)", 'info');
 
-        // create and prepare
-        $this->prepareWork($max);
-
-        // if `$this->beforeStartCb` exists.
-        if ($cb = $this->beforeStartCb) {
-            $cb($this);
-        }
+        // prepare something for start
+        $this->prepare();
 
         $this->doStart();
 
@@ -347,11 +377,6 @@ abstract class ServerAbstracter extends WSAbstracter implements ServerInterface,
     protected function beforeStartWorkers()
     {}
 
-    protected function startEventLoop()
-    {
-
-    }
-
     protected function afterStart()
     {
         $this->log('Stopping Manager ...', self::LOG_PROC_INFO);
@@ -360,18 +385,9 @@ abstract class ServerAbstracter extends WSAbstracter implements ServerInterface,
     }
 
     /**
-     * @param \Closure $closure
-     */
-    public function beforeStart(\Closure $closure = null)
-    {
-        $this->beforeStartCb = $closure;
-    }
-
-    /**
      * create and prepare socket resource
-     * @param int $maxConnect
      */
-    abstract protected function prepareWork(int $maxConnect);
+    abstract protected function prepare();
 
     /**
      * do start server
@@ -379,7 +395,7 @@ abstract class ServerAbstracter extends WSAbstracter implements ServerInterface,
     abstract protected function doStart();
 
     /////////////////////////////////////////////////////////////////////////////////////////
-    /// event method
+    /// handle event method
     /////////////////////////////////////////////////////////////////////////////////////////
 
     /**
@@ -771,6 +787,22 @@ abstract class ServerAbstracter extends WSAbstracter implements ServerInterface,
     /////////////////////////////////////////////////////////////////////////////////////////
     /// getter/setter method
     /////////////////////////////////////////////////////////////////////////////////////////
+
+    /**
+     * @return string
+     */
+    public function getName()
+    {
+        return $this->config['name'];
+    }
+
+    /**
+     * @return string
+     */
+    public function getShowName()
+    {
+        return $this->config['name'] ? "({$this->config['name']})" : '';
+    }
 
     /**
      * @return bool

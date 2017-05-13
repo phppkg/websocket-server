@@ -17,7 +17,28 @@ use inhere\console\io\Output;
  */
 interface ServerInterface
 {
+
+    /**
+     * some default values
+     */
+    const WORKER_NUM   = 1;
     const MAX_CONNECT = 200;
+    const MAX_LIFETIME = 3600;
+    const MAX_REQUEST  = 2000;
+    const RESTART_SPLAY = 600;
+    const WATCH_INTERVAL = 300;
+    const MAX_DATA_LEN = 2048;
+    const SLEEP_TIME = 100; // 100 ms
+    const TIMEOUT = 3.2;
+
+    /**
+     * process exit status code.
+     */
+    const CODE_MANUAL_KILLED = -500;
+    const CODE_NORMAL_EXITED = 0;
+    const CODE_CONNECT_ERROR = 170;
+    const CODE_FORK_FAILED   = 171;
+    const CODE_UNKNOWN_ERROR = 180;
 
     /**
      * @return bool

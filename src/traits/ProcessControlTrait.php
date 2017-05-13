@@ -24,6 +24,11 @@ trait ProcessControlTrait
     protected $supportPC = true;
 
     /**
+     * @var int
+     */
+    protected $id = 0;
+
+    /**
      * The PID of the current running process. Set for parent and child processes
      * @var int
      */
@@ -45,10 +50,6 @@ trait ProcessControlTrait
      */
     protected $isWorker = false;
 
-    /**
-     * @var string
-     */
-    protected $pidFile;
 
     /**
      * When true, workers will stop and the parent process will kill off all running workers
@@ -57,14 +58,11 @@ trait ProcessControlTrait
     protected $stopWork = false;
 
     /**
-     * The statistics info for server/worker
-     * @var array
+     * Workers will only live for 1 hour
+     * @var integer
      */
-    protected $stat = [
-        'start_time' => 0,
-        'stop_time'  => 0,
-        'start_times' => 0,
-    ];
+    protected $maxLifetime = 3600;
+
 
     /**
      * workers
@@ -92,31 +90,154 @@ trait ProcessControlTrait
     $ws->start();
      */
 
+    protected function doStart()
+    {
+        // Register signal listeners `pcntl_signal_dispatch()`
+        $this->installSignals();
+
+        // before Start Workers
+        $this->beforeStartWorkers();
+
+        // start workers and set up a running environment
+        $this->startWorkers();
+
+        // start worker monitor
+        $this->startWorkerMonitor();
+    }
+
     /**
      * fork multi process
-     * @return array|int
      */
     public function startWorkers()
     {
-        $num = (int)$number >= 0 ? $number : 0;
+        if ($this->supportPC) {
+            $num = $this->config['worker_num'];
 
-        if ($num < 2) {
-            return posix_getpid();
-        }
-
-        $pids = array();
-
-        for ($i = 0; $i < $num; $i++) {
-            $pid = pcntl_fork();
-
-            if ($pid > 0) {
-                $pids[] = $pid;
-            } else {
-                break;
+            for ($i = 0; $i < $num; $i++) {
+                $this->startWorker($i+1);
             }
+
+            $this->log('Workers stopped', self::LOG_PROC_INFO);
+        } else {
+            $this->startDriverWorker();
+        }
+    }
+
+    /**
+     * Start a worker do there are assign jobs. If is in the parent, record worker info.
+     *
+     * @param int $id
+     * @param bool $isFirst True: Is first start by manager. False: is restart by monitor `startWorkerMonitor()`
+     */
+    protected function startWorker(int $id, $isFirst = true)
+    {
+        if (!$isFirst) {
+            // clear file info
+            clearstatcache();
         }
 
-        return $pids;
+        // fork process
+        $pid = pcntl_fork();
+
+        switch ($pid) {
+            case 0: // at workers
+                $this->isWorker = true;
+                $this->isMaster = false;
+                $this->masterPid = $this->pid;
+                $this->id = $id;
+                $this->pid = getmypid();
+                $this->stat['start_time'] = time();
+
+                $this->installSignals(false);
+                $this->setProcessTitle(sprintf("php-gwm: worker process %s", $this->getShowName()));
+
+                if (($splay = $this->get('restart_splay')) > 0) {
+                    $this->maxLifetime += mt_rand(0, $splay);
+                    $this->log("The worker adjusted max run time to {$this->maxLifetime} seconds", self::LOG_DEBUG);
+                }
+
+                $code = $this->startDriverWorker();
+
+                $this->log("Worker exiting(PID:{$this->pid} Code:$code)", self::LOG_WORKER_INFO);
+                $this->quit($code);
+                break;
+
+            case -1: // fork failed.
+                $this->stderr('Could not fork workers process! exiting', true, false);
+                $this->stopWork = true;
+                $this->stopWorkers();
+                break;
+
+            default: // at parent
+                $text = $isFirst ? 'First' : 'Restart';
+                $this->log("Started worker(PID:$pid) ($text)", self::LOG_PROC_INFO);
+                $this->workers[$pid] = [
+                    'id' => $id,
+                    'start_time' => time(),
+                ];
+        }
+    }
+
+    /**
+     * Begin monitor workers
+     *  - will monitoring workers process running status
+     *
+     * @notice run in the parent main process, workers process will exited in the `startWorkers()`
+     */
+    protected function startWorkerMonitor()
+    {
+        $this->log('Now, Begin monitor runtime status for all workers', self::LOG_DEBUG);
+
+        $maxLifetime = $this->config['max_lifetime'];
+
+        // Main processing loop for the parent process
+        while (!$this->stopWork || count($this->workers)) {
+            // receive and dispatch sig
+            pcntl_signal_dispatch();
+
+            $status = null;
+
+            // Check for exited workers
+            $exitedPid = pcntl_wait($status, WNOHANG);
+
+            // We run other workers, make sure this is a worker
+            if (isset($this->workers[$exitedPid])) {
+                /*
+                 * If they have exited, remove them from the workers array
+                 * If we are not stopping work, start another in its place
+                 */
+                if ($exitedPid) {
+                    $exitCode = pcntl_wexitstatus($status);
+                    $info = $this->workers[$exitedPid];
+                    unset($this->workers[$exitedPid]);
+
+                    $this->logWorkerStatus($exitedPid, $exitCode);
+
+                    if (!$this->stopWork) {
+                        $this->startWorker($info['id'], false);
+                    }
+                }
+            }
+
+            if ($this->stopWork && time() - $this->stat['stop_time'] > 30) {
+                $this->log('Workers have not exited, force killing.', self::LOG_PROC_INFO);
+                $this->stopWorkers(SIGKILL);
+                // $this->killProcess($pid, SIGKILL);
+            } else {
+                // If any workers have been running 150% of max run time, forcibly terminate them
+                foreach ($this->workers as $pid => $worker) {
+                    $startTime = $worker['start_time'];
+
+                    if ($startTime > 0 && $maxLifetime > 0 && time() - $startTime > $maxLifetime * 1.5) {
+                        $this->logWorkerStatus($pid, self::CODE_MANUAL_KILLED);
+                        $this->sendSignal($pid, SIGKILL);
+                    }
+                }
+            }
+
+            // php will eat up your cpu if you don't have this
+            usleep(10000);
+        }
     }
 
     /**
@@ -330,7 +451,7 @@ trait ProcessControlTrait
      * @param int $pid
      * @param int $signal
      */
-    protected function sendSignal($pid, $signal)
+    protected function sendSignal(int $pid, int $signal)
     {
         if ($this->supportPC) {
             ProcessHelper::sendSignal($pid, $signal);
@@ -345,6 +466,43 @@ trait ProcessControlTrait
         if ($this->supportPC) {
             pcntl_signal_dispatch();
         }
+    }
+
+    /**
+     * set Process Title
+     * @param string $title
+     */
+    protected function setProcessTitle(string $title)
+    {
+        if ($this->supportPC) {
+            ProcessHelper::setProcessTitle($title);
+        }
+    }
+
+    /**
+     * @param int $pid
+     * @param int $statusCode
+     */
+    protected function logWorkerStatus($pid, $statusCode)
+    {
+        switch ((int)$statusCode) {
+            case self::CODE_MANUAL_KILLED:
+                $message = "Worker (PID:$pid) has been running too long. Forcibly killing process.";
+                break;
+            case self::CODE_NORMAL_EXITED:
+                unset($this->workers[$pid]);
+                $message = "Worker (PID:$pid) normally exited.";
+                break;
+            case self::CODE_CONNECT_ERROR:
+                $message = "Worker (PID:$pid) connect to job server failed. exiting";
+                $this->stopWork = true;
+                break;
+            default:
+                $message = "Worker (PID:$pid) died unexpectedly with exit code $statusCode.";
+                break;
+        }
+
+        $this->log($message, self::LOG_PROC_INFO);
     }
 
     /**
