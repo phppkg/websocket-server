@@ -8,7 +8,7 @@
 
 namespace inhere\webSocket\server;
 
-use inhere\webSocket\traits\CustomProcessControlTrait;
+use inhere\webSocket\traits\ProcessControlTrait;
 use inhere\webSocket\traits\SocketsTrait;
 
 /**
@@ -18,7 +18,7 @@ use inhere\webSocket\traits\SocketsTrait;
  */
 class SocketsServer extends ServerAbstracter
 {
-    use CustomProcessControlTrait;
+    use ProcessControlTrait;
     use SocketsTrait;
 
     /**
@@ -42,6 +42,16 @@ class SocketsServer extends ServerAbstracter
     public static function isSupported()
     {
         return extension_loaded('sockets');
+    }
+
+    /**
+     * {@inheritDoc}
+     */
+    protected function init()
+    {
+        parent::init();
+
+        $this->checkEnvironment();
     }
 
     /**
@@ -72,6 +82,12 @@ class SocketsServer extends ServerAbstracter
         // 设置IP和端口重用,在重启服务器后能重新使用此端口;
         $this->setSocketOption($this->socket, SO_REUSEADDR, TRUE);
 
+        // 设置超时
+        $this->setTimeout($this->socket, $this->config['timeout']);
+
+        // 设置缓冲区大小
+        $this->setBufferSize($this->socket, $this->config['write_buffer_size'], $this->config['read_buffer_size']);
+
         // 给套接字绑定名字
         socket_bind($this->socket, $this->getHost(), $this->getPort());
 
@@ -80,32 +96,15 @@ class SocketsServer extends ServerAbstracter
     }
 
     /**
-     * {@inheritDoc}
-     */
-    protected function doStart()
-    {
-        $this->log("Started server with pid {$this->pid}, Current script owner: " . get_current_user(), self::LOG_PROC_INFO);
-
-        $this->isMaster = true;
-        $this->stat['start_time'] = time();
-        $this->setProcessTitle(sprintf("php-ws: master process%s (%s)", $this->getShowName(), $this->fullScript));
-
-
-    }
-
-    /**
      * startDriverWorker
      */
     protected function startDriverWorker()
     {
-        $maxLen = (int)$this->get('max_data_len', self::MAX_DATA_LEN);
-
         // interval time
-        $setTime = (int)$this->get('sleep_time', self::SLEEP_TIME);
-        $sleepTime = $setTime >= 10 ? $setTime : 50;
-        $sleepTime *= 1000; // ms -> us
+        $sleepTime = $this->config['sleep_time'] * 1000; // ms -> us
+        $maxLen = $this->config['max_data_len'];
 
-        while (true) {
+        while (!$this->stopWork) {
             $this->dispatchSignals();
 
             $write = $except = null;
@@ -131,7 +130,6 @@ class SocketsServer extends ServerAbstracter
             usleep($sleepTime);
         }
     }
-
 
     /**
      * @param resource $sock

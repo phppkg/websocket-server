@@ -17,6 +17,15 @@ use inhere\console\io\Output;
  */
 interface ServerInterface
 {
+
+    /**
+     * some MIN values
+     */
+    const MIN_LIFETIME = 1800;
+    const MIN_REQUEST = 1000;
+    const MIN_TIMEOUT = 1;
+    const MIN_WATCH_INTERVAL = 120;
+
     /**
      * some default values
      */
@@ -43,6 +52,8 @@ interface ServerInterface
      * @return bool
      */
     public static function isSupported();
+
+    public function reset();
 
     public function start();
 

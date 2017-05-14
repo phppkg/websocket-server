@@ -20,9 +20,9 @@ interface WSInterface
     /**
      * version
      */
-    const VERSION = '0.5.1';
+    const VERSION = '0.6.1';
 
-    const UPDATE_TIME = '2017-04-14';
+    const UPDATE_TIME = '2017-05-14';
 
     const HEADER_END = "\r\n\r\n";
 
@@ -80,7 +80,5 @@ interface WSInterface
      * Websocket array buffer type.
      */
     const BINARY_TYPE_ARRAY_BUFFER = "\x82";
-
-
 
 }

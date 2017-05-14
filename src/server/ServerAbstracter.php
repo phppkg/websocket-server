@@ -25,12 +25,6 @@ abstract class ServerAbstracter extends WSAbstracter implements ServerInterface,
     use LogTrait;
 
     /**
-     * the callback on the before start server
-     * @var \Closure
-     */
-    private $beforeStartCb;
-
-    /**
      * The PID of the current running process. Set for parent and child processes
      * @var int
      */
@@ -51,8 +45,19 @@ abstract class ServerAbstracter extends WSAbstracter implements ServerInterface,
         'start_times' => 0,
     ];
 
-    ////////////////////
+    /**
+     * max connect client numbers of each worker
+     * @var integer
+     */
+    protected $maxConnect = 200;
 
+    /**
+     * Workers will only live for 1 hour
+     * @var integer
+     */
+    protected $maxLifetime = 3600;
+
+    ////////////////////
 
     /**
      * if you setting name, will display on the process name.
@@ -72,11 +77,6 @@ abstract class ServerAbstracter extends WSAbstracter implements ServerInterface,
      */
     private $clientNumber = 0;
 
-    /**
-     * max connect client numbers of each worker
-     * @var integer
-     */
-    protected $maxConnect = 200;
 
     /**
      * 连接的客户端列表
@@ -152,7 +152,7 @@ abstract class ServerAbstracter extends WSAbstracter implements ServerInterface,
         // enable ssl
         'enable_ssl' => false,
 
-        'buffer_size' => 8192, // 8kb
+        // 'buffer_size' => 8192, // 8kb
 
         // 设置写(发送)缓冲区 最大2m @see `StreamsServer::setBufferSize()`
         'write_buffer_size' => 2097152,
@@ -356,12 +356,77 @@ abstract class ServerAbstracter extends WSAbstracter implements ServerInterface,
     }
 
     /**
-     * initConfigAndProperties
      * @param array $config
      */
     protected function initConfigAndProperties(array $config)
     {
+        // init config attributes
 
+        $this->config['daemon'] = (bool)$config['daemon'];
+        $this->config['pid_file'] = trim($config['pid_file']);
+        $this->config['enable_ssl'] = (bool)$config['enable_ssl'];
+        $this->config['worker_num'] = (int)$config['worker_num'];
+        $this->config['log_level'] = (int)$config['log_level'];
+
+        $logFile = trim($config['log_file']);
+
+        if ($logFile === 'syslog') {
+            $this->config['log_syslog'] = true;
+            $this->config['log_file'] = '';
+        } else {
+            $this->config['log_file'] = $logFile;
+        }
+
+        $this->config['timeout'] = (int)$config['timeout'];
+        $this->config['max_connect'] = (int)$config['max_connect'];
+        $this->config['max_lifetime'] = (int)$config['max_lifetime'];
+        $this->config['max_request'] = (int)$config['max_request'];
+        $this->config['restart_splay'] = (int)$config['restart_splay'];
+        $this->config['max_data_len'] = (int)$config['max_data_len'];
+
+        $this->config['watch_modify'] = (bool)$config['watch_modify'];
+        $this->config['watch_modify_interval'] = (int)$config['watch_modify_interval'];
+
+        $this->config['write_buffer_size'] = (int)$config['write_buffer_size'];
+        $this->config['read_buffer_size'] = (int)$config['read_buffer_size'];
+
+        // config value fix ... ...
+
+        if ($this->config['worker_num'] <= 0) {
+            $this->config['worker_num'] = self::WORKER_NUM;
+        }
+
+        if ($this->config['max_lifetime'] < self::MIN_LIFETIME) {
+            $this->config['max_lifetime'] = self::MAX_LIFETIME;
+        }
+
+        if ($this->config['max_request'] < self::MIN_REQUEST) {
+            $this->config['max_request'] = self::MAX_REQUEST;
+        }
+
+        if ($this->config['restart_splay'] <= 100) {
+            $this->config['restart_splay'] = self::RESTART_SPLAY;
+        }
+
+        if ($this->config['timeout'] <= self::MIN_TIMEOUT) {
+            $this->config['timeout'] = self::TIMEOUT;
+        }
+
+        if ($this->config['watch_modify_interval'] <= self::MIN_WATCH_INTERVAL) {
+            $this->config['watch_modify_interval'] = self::WATCH_INTERVAL;
+        }
+
+        $setTime = (int)$config['sleep_time'];
+        $this->config['sleep_time'] = $setTime >= 10 ? $setTime : 50;
+
+        // init properties
+
+        $this->name = trim($config['name']);
+        $this->maxLifetime = $this->config['max_lifetime'];
+        $this->logLevel = $this->config['log_level'];
+        $this->pidFile = $this->config['pid_file'];
+
+        unset($config);
     }
 
     /**
@@ -400,6 +465,7 @@ abstract class ServerAbstracter extends WSAbstracter implements ServerInterface,
 
   -r NUMBER          Maximum run job iterations per worker
   -x SECONDS         Maximum seconds for a worker to live
+  -t SECONDS         Number of seconds server should wait for a worker to complete connection before timing out
 
   -v [LEVEL]         Increase verbosity level by one. eg: -v vv | -v vvv
 
@@ -541,6 +607,16 @@ abstract class ServerAbstracter extends WSAbstracter implements ServerInterface,
     public function stopWorker(int $pid)
     {
         ProcessHelper::killAndWait($pid, SIGTERM, 'worker');
+    }
+
+    public function reset()
+    {
+        $this->metas = $this->clients = [];
+    }
+
+    public function __destruct()
+    {
+        $this->reset();
     }
 
     /////////////////////////////////////////////////////////////////////////////////////////

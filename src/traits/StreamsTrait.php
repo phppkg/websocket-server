@@ -120,4 +120,17 @@ trait StreamsTrait
 
         return $data;
     }
+
+
+    public function close(bool $force = false)
+    {
+        if ($this->socket) {
+            if (get_resource_type($this->socket) === 'stream') {
+                stream_socket_shutdown($this->socket, STREAM_SHUT_WR);
+                fclose($this->socket);
+            }
+
+            $this->socket = null;
+        }
+    }
 }

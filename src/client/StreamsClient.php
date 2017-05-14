@@ -38,7 +38,7 @@ class StreamsClient extends ClientAbstracter
      * @param int $flag
      * @throws ConnectException
      */
-    protected function doConnect($timeout = self::TIMEOUT_FLOAT, $flag = 0)
+    protected function doConnect($timeout = self::TIMEOUT, $flag = 0)
     {
         $uri = $this->getUri();
         $scheme = $uri->getScheme() ?: self::PROTOCOL_WS;
@@ -59,7 +59,7 @@ class StreamsClient extends ClientAbstracter
             $context = stream_context_create();
         }
 
-        $timeout = $timeout ?: $this->get('timeout', self::TIMEOUT_FLOAT);
+        $timeout = $timeout ?: $this->get('timeout');
 
         $host = $this->getHost();
         $port = $this->getPort();
@@ -71,7 +71,7 @@ class StreamsClient extends ClientAbstracter
             $remote,
             $errNo,
             $errStr,
-            (int)$timeout < 1 ? self::TIMEOUT_INT : (int)$timeout,
+            (int)$timeout,
             STREAM_CLIENT_CONNECT,
             $context
         );
@@ -140,6 +140,9 @@ class StreamsClient extends ClientAbstracter
         return $data;
     }
 
+    /**
+     * {@inheritDoc}
+     */
     protected function readLength($length)
     {
         $data = '';
@@ -165,26 +168,18 @@ class StreamsClient extends ClientAbstracter
         return $data;
     }
 
-    public function close(bool $force = false)
-    {
-        if ($this->socket) {
-            if (get_resource_type($this->socket) === 'stream') {
-                stream_socket_shutdown($this->socket, STREAM_SHUT_WR);
-                fclose($this->socket);
-            }
 
-            $this->socket = null;
-        }
-
-        $this->setConnected(false);
-    }
-
-
+    /**
+     * {@inheritDoc}
+     */
     public function getErrorNo()
     {
         return 0;
     }
 
+    /**
+     * {@inheritDoc}
+     */
     public function getErrorMsg()
     {
         // TODO: Implement getErrorNo() method.

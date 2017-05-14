@@ -15,7 +15,7 @@ use inhere\library\helpers\ProcessHelper;
  * @package inhere\webSocket\traits
  *
  */
-trait CustomProcessControlTrait
+trait ProcessControlTrait
 {
     /**
      * current support process control
@@ -50,13 +50,6 @@ trait CustomProcessControlTrait
      * @var boolean
      */
     protected $stopWork = false;
-
-    /**
-     * Workers will only live for 1 hour
-     * @var integer
-     */
-    protected $maxLifetime = 3600;
-
 
     /**
      * workers
@@ -99,8 +92,19 @@ trait CustomProcessControlTrait
     $ws->start();
      */
 
+    /**
+     * doStart
+     */
     protected function doStart()
     {
+        $this->log("Started server with pid {$this->pid}, Current script owner: " . get_current_user(), self::LOG_PROC_INFO);
+
+        $this->isMaster = true;
+        $this->stat['start_time'] = time();
+
+        $fullScript = implode(' ', $GLOBALS['argv']);
+        $this->setProcessTitle(sprintf("php-ws: master process%s (%s)", $this->getShowName(), $fullScript));
+
         // Register signal listeners `pcntl_signal_dispatch()`
         $this->installSignals();
 
@@ -111,7 +115,9 @@ trait CustomProcessControlTrait
         $this->startWorkers();
 
         // start worker monitor
-        $this->startWorkerMonitor();
+        if ($this->supportPC) {
+            $this->startWorkerMonitor();
+        }
     }
 
     /**
@@ -202,16 +208,15 @@ trait CustomProcessControlTrait
     {
         $this->log('Now, Begin monitor runtime status for all workers', self::LOG_DEBUG);
 
-        $maxLifetime = $this->config['max_lifetime'];
+        $maxLifetime = $this->maxLifetime;
 
         // Main processing loop for the parent process
         while (!$this->stopWork || count($this->workers)) {
             // receive and dispatch sig
-            pcntl_signal_dispatch();
-
-            $status = null;
+            $this->dispatchSignals();
 
             // Check for exited workers
+            $status = null;
             $exitedPid = pcntl_wait($status, WNOHANG);
 
             // We run other workers, make sure this is a worker

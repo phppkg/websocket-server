@@ -8,7 +8,7 @@
 
 namespace inhere\webSocket\server;
 
-use inhere\webSocket\traits\CustomProcessControlTrait;
+use inhere\webSocket\traits\ProcessControlTrait;
 use inhere\webSocket\traits\StreamsTrait;
 
 /**
@@ -18,7 +18,7 @@ use inhere\webSocket\traits\StreamsTrait;
  */
 class StreamsServer extends ServerAbstracter
 {
-    use CustomProcessControlTrait;
+    use ProcessControlTrait;
     use StreamsTrait;
 
     /**
@@ -45,9 +45,19 @@ class StreamsServer extends ServerAbstracter
     }
 
     /**
+     * {@inheritDoc}
+     */
+    protected function appendDefaultConfig()
+    {
+        return [
+            'context' => null,
+        ];
+    }
+
+    /**
      * @inheritdoc
      */
-    protected function prepare(int $maxConnect)
+    protected function prepare()
     {
         // Set the stream context options if they're already set in the config
         if ($context = $this->get('context')) {
@@ -55,19 +65,17 @@ class StreamsServer extends ServerAbstracter
             if (is_resource($context) && get_resource_type($context) !== 'stream-context') {
                 throw new \InvalidArgumentException("Stream context in options[context] isn't a valid context resource");
             }
-        } else if ($this->get('enable_ssl')) {
+        } elseif ($this->get('enable_ssl')) {
             $context = $this->enableSSL();
         } else {
             $context = stream_context_create();
         }
 
-        $opts = [
+        stream_context_set_option($context, [
             'socket' => [
-                'backlog' => $maxConnect
+                'backlog' => $this->config['max_connect']
             ]
-        ];
-
-        stream_context_set_option($context, $opts);
+        ]);
 
         $host = $this->getHost();
         $port = $this->getPort();
@@ -83,30 +91,25 @@ class StreamsServer extends ServerAbstracter
             $this->cliOut->error('Could not listen on socket: ' . $errStr, $errNo);
         }
 
-        $this->setTimeout($this->socket, $this->get('timeout', self::TIMEOUT));
+        // 设置超时
+        $this->setTimeout($this->socket, $this->config['timeout']);
 
         // 设置缓冲区大小
-        $this->setBufferSize(
-            $this->socket,
-            (int)$this->get('write_buffer_size'),
-            (int)$this->get('read_buffer_size')
-        );
+        $this->setBufferSize($this->socket, $this->config['write_buffer_size'], $this->config['read_buffer_size']);
+
         // $this->listening = true;
     }
 
     /**
      * {@inheritDoc}
      */
-    protected function doStart()
+    protected function startDriverWorker()
     {
-        $maxLen = (int)$this->get('max_data_len', 2048);
-
         // interval time
-        $setTime = (int)$this->get('sleep_ms', 800);
-        $sleepTime = $setTime > 50 ? $setTime : 800;
-        $sleepTime *= 1000; // ms -> us
+        $sleepTime = $this->config['sleep_time'] * 1000; // ms -> us
+        $maxLen = $this->config['max_data_len'];
 
-        while (true) {
+        while (!$this->stopWork) {
             $write = $except = null;
             // copy， 防止 $this->clients 的变动被 socket_select() 接收到
             $read = $this->clients;

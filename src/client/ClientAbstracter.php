@@ -142,11 +142,11 @@ abstract class ClientAbstracter extends WSAbstracter implements ClientInterface
 
         $this->request->setHeaders($headers);
 
-        if ($csHeaders = $this->getOption('headers')) {
+        if ($csHeaders = $this->get('headers')) {
             $this->request->setHeaders($csHeaders);
         }
 
-        if ($csCookies = $this->getOption('cookies')) {
+        if ($csCookies = $this->get('cookies')) {
             $this->request->setCookies($csCookies);
         }
     }
@@ -162,7 +162,7 @@ abstract class ClientAbstracter extends WSAbstracter implements ClientInterface
         $msgHandler = $this->getCallback(self::ON_MESSAGE);
 
         // interval time
-        $setTime = (int)$this->getOption('sleep_ms', 500);
+        $setTime = (int)$this->get('sleep_ms', 500);
         $sleepTime = ($setTime > 50 ? $setTime : 500) * 1000; // ms -> us
 
         while (true) {
@@ -268,7 +268,7 @@ abstract class ClientAbstracter extends WSAbstracter implements ClientInterface
         }
 
         $data = '';
-        $fragmentSize = $this->getOption('fragment_size') ?: self::DEFAULT_FRAGMENT_SIZE;
+        $fragmentSize = $this->get('fragment_size') ?: self::DEFAULT_FRAGMENT_SIZE;
 
         do {
             $buff = fread($this->socket, $fragmentSize);
@@ -356,7 +356,7 @@ abstract class ClientAbstracter extends WSAbstracter implements ClientInterface
         // record the length of the payload
         $payloadLength = strlen($payload);
         $fragmentCursor = 0;
-        $fragmentSize = $this->getOption('fragment_size') ?: self::DEFAULT_FRAGMENT_SIZE;
+        $fragmentSize = $this->get('fragment_size') ?: self::DEFAULT_FRAGMENT_SIZE;
 
         // while we have data to send
         while ($payloadLength > $fragmentCursor) {
@@ -556,7 +556,7 @@ abstract class ClientAbstracter extends WSAbstracter implements ClientInterface
         }
 
         if ($length > 0) {
-            $fragmentSize = $this->getOption('fragment_size');
+            $fragmentSize = $this->get('fragment_size');
             $temp = '';
             do {
                 $buff = fread($this->socket, min($length, $fragmentSize));

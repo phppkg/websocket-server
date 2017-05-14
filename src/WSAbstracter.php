@@ -80,6 +80,11 @@ abstract class WSAbstracter implements WSInterface
         // enable ssl
         'enable_ssl' => false,
 
+        // 数据块大小 byte 发送数据时将会按这个大小拆分发送
+        'fragment_size' => 1024,
+
+        // 'buffer_size' => 8192, // 8kb
+
         // 设置写(发送)缓冲区 最大2m @see `StreamsServer::setBufferSize()`
         'write_buffer_size' => 2097152,
 
@@ -94,11 +99,6 @@ abstract class WSAbstracter implements WSInterface
 
         // 最大数据接收长度 1024 / 2048 byte
         'max_data_len' => 2048,
-
-        'buffer_size' => 8192, // 8kb
-
-        // 数据块大小 byte 发送数据时将会按这个大小拆分发送
-        'fragment_size' => 1024,
 
         // 日志配置
         'log_service' => [
@@ -151,10 +151,11 @@ abstract class WSAbstracter implements WSInterface
         $this->handleCommandAndConfig();
     }
 
+    /**
+     * handleCommandAndConfig
+     */
     protected function handleCommandAndConfig()
-    {
-
-    }
+    {}
 
     /**
      * @return array
