@@ -1,0 +1,28 @@
+#!/usr/bin/env php
+<?php
+
+require __DIR__ . '/../../../autoload.php';
+
+use inhere\webSocket\WSInterface;
+use inhere\webSocket\server\ServerFactory;
+use inhere\webSocket\server\ServerInterface;
+
+define('PROJECT_PATH', __DIR__);
+
+$options = [
+    'debug' => true,
+    'driver' => '',
+];
+
+$svr = ServerFactory::make('', 9501, $options);
+//$svr = ServerFactory::parseOptMake($options);
+
+$svr->on('open', function (ServerInterface $svr) {
+    $svr->send('OPEN: welcome!');
+});
+
+$svr->on(WSInterface::ON_MESSAGE, function (ServerInterface $svr, $data) {
+    $svr->send("You input: $data");
+});
+
+$svr->start();

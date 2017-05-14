@@ -14,6 +14,8 @@ namespace inhere\webSocket\client;
  */
 interface ClientInterface
 {
+    const TIMEOUT = 3.2;
+
     /**
      * @return bool
      */

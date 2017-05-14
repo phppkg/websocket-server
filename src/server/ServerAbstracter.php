@@ -8,6 +8,8 @@
 
 namespace inhere\webSocket\server;
 
+use inhere\console\utils\Show;
+use inhere\library\helpers\PhpHelper;
 use inhere\library\helpers\ProcessHelper;
 use inhere\webSocket\WSAbstracter;
 use inhere\webSocket\http\Request;
@@ -27,6 +29,36 @@ abstract class ServerAbstracter extends WSAbstracter implements ServerInterface,
      * @var \Closure
      */
     private $beforeStartCb;
+
+    /**
+     * The PID of the current running process. Set for parent and child processes
+     * @var int
+     */
+    protected $pid = 0;
+
+    /**
+     * @var string
+     */
+    protected $pidFile;
+
+    /**
+     * The statistics info for server/worker
+     * @var array
+     */
+    protected $stat = [
+        'start_time' => 0,
+        'stop_time'  => 0,
+        'start_times' => 0,
+    ];
+
+    ////////////////////
+
+
+    /**
+     * if you setting name, will display on the process name.
+     * @var string
+     */
+    protected $name;
 
     /**
      * the master socket
@@ -74,21 +106,6 @@ abstract class ServerAbstracter extends WSAbstracter implements ServerInterface,
         'handshake' => false,
         'path' => '/',
         'connect_time' => 0,
-    ];
-
-    /**
-     * @var string
-     */
-    protected $pidFile;
-
-    /**
-     * The statistics info for server/worker
-     * @var array
-     */
-    protected $stat = [
-        'start_time' => 0,
-        'stop_time'  => 0,
-        'start_times' => 0,
     ];
 
     protected $config = [
@@ -188,7 +205,7 @@ abstract class ServerAbstracter extends WSAbstracter implements ServerInterface,
      */
     protected function handleCommandAndConfig()
     {
-        $command = $this->cliIn->getCommand();
+        $command = $this->cliIn->getCommand() ?: 'start';
         $supported = ['start', 'stop', 'restart', 'reload', 'status'];
 
         if (!in_array($command, $supported, true)) {
@@ -232,7 +249,7 @@ abstract class ServerAbstracter extends WSAbstracter implements ServerInterface,
             case 'stop':
             case 'restart':
                 // stop: stop and exit. restart: stop and start
-                $this->stopMaster($masterPid, $command === 'stop');
+                $this->stopServer($masterPid, $command === 'stop');
                 break;
             case 'reload':
                 // reload workers
@@ -266,7 +283,7 @@ abstract class ServerAbstracter extends WSAbstracter implements ServerInterface,
             'l' => 'log_file',
             'p' => 'pid_file',
 
-            'r' => 'max_run_jobs', // max run jobs for a worker
+            'r' => 'max_request', // max request for a worker
             'x' => 'max_lifetime',// max lifetime for a worker
             't' => 'timeout',
         ];
@@ -338,20 +355,97 @@ abstract class ServerAbstracter extends WSAbstracter implements ServerInterface,
         }
     }
 
-    protected function showHelp($error = '')
+    /**
+     * initConfigAndProperties
+     * @param array $config
+     */
+    protected function initConfigAndProperties(array $config)
     {
 
     }
 
+    /**
+     * showHelp
+     * @param string $error
+     */
+    protected function showHelp($error = '')
+    {
+        if ($error) {
+            $this->cliOut->error($error);
+        }
+
+        $vs = self::VERSION;
+        $script = $this->cliIn->getScript();
+
+        $this->cliOut->helpPanel([
+            Show::HELP_DES => "WebSocket server, Version <comment>$vs</comment>",
+            Show::HELP_USAGE => [
+                "$script {COMMAND} [OPTIONS]",
+                "$script -h|--help"
+            ],
+            Show::HELP_COMMANDS => [
+                'start' => 'Start webSocket server(default)',
+                'stop' => 'Stop running webSocket server',
+                'restart' => 'Restart running webSocket server',
+                'reload' => 'Reload all running workers of the server',
+                'status' => 'Get server runtime status information',
+            ],
+            Show::HELP_OPTIONS => '  -c CONFIG          Load a custom worker manager configuration file
+  -s HOST[:PORT]     Connect to server HOST and optional PORT, multi server separated by commas(\',\')
+
+  -n NUMBER          Start NUMBER workers that do all jobs
+
+  -l LOG_FILE        Log output to LOG_FILE or use keyword \'syslog\' for syslog support
+  -p PID_FILE        File to write master process ID out to
+
+  -r NUMBER          Maximum run job iterations per worker
+  -x SECONDS         Maximum seconds for a worker to live
+
+  -v [LEVEL]         Increase verbosity level by one. eg: -v vv | -v vvv
+
+  -d,--daemon        Daemon, detach and run in the background
+
+  -h,--help          Shows this help information
+  -V,--version       Display the version of the manager
+  -D,--dump [all]    Parse the command line and config file then dump it to the screen and exit.',
+        ]);
+    }
+
+    /**
+     * show Version
+     */
     protected function showVersion()
     {
-
+        $this->cliOut->write(
+            printf("Gearman worker manager script tool. Version <info>%s</info>\n", self::VERSION),
+            true,
+            0
+        );
     }
 
     protected function showStatus($cmd = 'status', $watch = false)
     {
 
     }
+
+    /**
+     * dumpInfo
+     * @param bool $allInfo
+     */
+    protected function dumpInfo($allInfo = false)
+    {
+        if ($allInfo) {
+            $this->stdout("There are all information of the manager:\n" . PhpHelper::printR($this));
+        } else {
+            $this->stdout("There are configure information:\n" . PhpHelper::printR($this->config));
+        }
+
+        $this->quit();
+    }
+
+    /////////////////////////////////////////////////////////////////////////////////////////
+    /// start methods
+    /////////////////////////////////////////////////////////////////////////////////////////
 
     protected function beforeStart()
     {}
@@ -395,7 +489,62 @@ abstract class ServerAbstracter extends WSAbstracter implements ServerInterface,
     abstract protected function doStart();
 
     /////////////////////////////////////////////////////////////////////////////////////////
-    /// handle event method
+    /// process method
+    /////////////////////////////////////////////////////////////////////////////////////////
+
+    /**
+     * do Reload Workers
+     * @param  int $masterPid
+     * @param  boolean $onlyTaskWorker
+     */
+    public function reloadWorkers($masterPid, $onlyTaskWorker = false)
+    {
+        // SIGUSR1: 向管理进程发送信号，将平稳地重启所有worker进程; 也可在PHP代码中调用`$server->reload()`完成此操作
+        $sig = SIGUSR1;
+
+        // SIGUSR2: only reload task worker
+        if ($onlyTaskWorker) {
+            $sig = SIGUSR2;
+            $this->cliOut->notice("Will only reload task worker(send: SIGUSR2)");
+        }
+
+        if (!posix_kill($masterPid, $sig)) {
+            $this->cliOut->error("The swoole server({$this->name}) worker process reload fail!", -1);
+        }
+
+        $this->cliOut->success("The swoole server({$this->name}) worker process reload success.", 0);
+    }
+
+    /**
+     * Do shutdown server
+     * @param  int $masterPid Master Pid
+     * @param  boolean $quit Quit, When stop success?
+     */
+    protected function stopServer(int $masterPid, $quit = false)
+    {
+        ProcessHelper::killAndWait($masterPid, SIGTERM, 'server');
+
+        if ($quit) {
+            $this->quit();
+        }
+
+        // clear file info
+        clearstatcache();
+
+        $this->stdout('Begin restart server ...');
+    }
+
+    /**
+     * 使当前worker进程停止运行，并立即触发onWorkerStop回调函数
+     * @param int $pid
+     */
+    public function stopWorker(int $pid)
+    {
+        ProcessHelper::killAndWait($pid, SIGTERM, 'worker');
+    }
+
+    /////////////////////////////////////////////////////////////////////////////////////////
+    /// handle ws events method
     /////////////////////////////////////////////////////////////////////////////////////////
 
     /**
@@ -719,6 +868,26 @@ abstract class ServerAbstracter extends WSAbstracter implements ServerInterface,
     /////////////////////////////////////////////////////////////////////////////////////////
 
     /**
+     * savePidFile
+     */
+    protected function savePidFile()
+    {
+        if ($this->pidFile && !file_put_contents($this->pidFile, $this->pid)) {
+            $this->showHelp("Unable to write PID to the file {$this->pidFile}");
+        }
+    }
+
+    /**
+     * delete pidFile
+     */
+    protected function delPidFile()
+    {
+        if ($this->pidFile && file_exists($this->pidFile) && !unlink($this->pidFile)) {
+            $this->log("Could not delete PID file: {$this->pidFile}", self::LOG_WARN);
+        }
+    }
+
+    /**
      * packData encode
      * @param string $s
      * @return string
@@ -793,7 +962,7 @@ abstract class ServerAbstracter extends WSAbstracter implements ServerInterface,
      */
     public function getName()
     {
-        return $this->config['name'];
+        return $this->name;
     }
 
     /**
@@ -801,7 +970,7 @@ abstract class ServerAbstracter extends WSAbstracter implements ServerInterface,
      */
     public function getShowName()
     {
-        return $this->config['name'] ? "({$this->config['name']})" : '';
+        return $this->name ? "({$this->name})" : '';
     }
 
     /**

@@ -7,15 +7,15 @@
  */
 
 namespace inhere\webSocket\traits;
-use inhere\library\helpers\ProcessHelper;
 
+use inhere\library\helpers\ProcessHelper;
 
 /**
  * Class ProcessControlTrait
  * @package inhere\webSocket\traits
  *
  */
-trait ProcessControlTrait
+trait CustomProcessControlTrait
 {
     /**
      * current support process control
@@ -27,12 +27,6 @@ trait ProcessControlTrait
      * @var int
      */
     protected $id = 0;
-
-    /**
-     * The PID of the current running process. Set for parent and child processes
-     * @var int
-     */
-    protected $pid = 0;
 
     /**
      * The PID of the parent(master) process, when running in the forked helper,worker.
@@ -80,6 +74,21 @@ trait ProcessControlTrait
     /// process method
     /////////////////////////////////////////////////////////////////////////////////////////
 
+    /**
+     * run as daemon process
+     */
+    public function runAsDaemon()
+    {
+        if (!$this->supportPC) {
+            $this->log("Want to run process as daemon, require 'pcntl','posix' extension!", self::LOG_DEBUG);
+        } else {
+            ProcessHelper::runAsDaemon();
+
+            // set pid
+            $this->pid = getmypid(); // can also use: posix_getpid()
+        }
+    }
+
     /*
     $ws = new WebSocketServer;
     $ws->asDaemon();
@@ -115,9 +124,14 @@ trait ProcessControlTrait
 
             for ($i = 0; $i < $num; $i++) {
                 $this->startWorker($i+1);
+
+                // Don't start workers too fast.
+                usleep(500000);
             }
 
             $this->log('Workers stopped', self::LOG_PROC_INFO);
+
+        // if not support multi process
         } else {
             $this->startDriverWorker();
         }
@@ -241,53 +255,6 @@ trait ProcessControlTrait
     }
 
     /**
-     * run as daemon process
-     */
-    public function runAsDaemon()
-    {
-        if (!$this->supportPC) {
-            $this->log("Want to run process as daemon, require 'pcntl','posix' extension!", self::LOG_DEBUG);
-        } else {
-            ProcessHelper::runAsDaemon();
-
-            // set pid
-            $this->pid = getmypid(); // can also use: posix_getpid()
-        }
-    }
-
-    /**
-     * Do shutdown server
-     * @param  int $masterPid Master Pid
-     * @param  boolean $quit Quit, When stop success?
-     */
-    protected function stopServer(int $masterPid, $quit = false)
-    {
-        ProcessHelper::killAndWait($masterPid, SIGTERM, 'server');
-
-        if ($quit) {
-            $this->quit();
-        }
-
-        // clear file info
-        clearstatcache();
-
-        $this->stdout('Begin restart server ...');
-    }
-
-    /**
-     * reloadWorkers
-     * @param $masterPid
-     */
-    protected function reloadWorkers($masterPid)
-    {
-        $this->stdout("Workers reloading ...");
-
-        $this->sendSignal($masterPid, SIGHUP);
-
-        $this->quit();
-    }
-
-    /**
      * Stops all running workers
      * @param int $signal
      * @return bool
@@ -299,30 +266,16 @@ trait ProcessControlTrait
             return false;
         }
 
-        static $stopping = false;
-
-        if ($stopping) {
-            $this->log('Workers stopping ...', self::LOG_PROC_INFO);
-            return true;
-        }
-
         $signals = [
             SIGINT => 'SIGINT',
             SIGTERM => 'SIGTERM',
             SIGKILL => 'SIGKILL',
         ];
 
-        $this->log("Stopping workers(signal:{$signals[$signal]}) ...", self::LOG_PROC_INFO);
+        $this->log("Stopping workers(send:{$signals[$signal]}) ...", self::LOG_PROC_INFO);
 
         foreach ($this->workers as $pid => $worker) {
-            $this->log("Stopping worker (PID:$pid) (Jobs:".implode(",", $worker['jobs']).")", self::LOG_PROC_INFO);
-
-            // send exit signal.
-            $this->killProcess($pid, $signal);
-        }
-
-        if ($signal === SIGKILL) {
-            $stopping = true;
+            $this->stopWorker($pid);
         }
 
         return true;

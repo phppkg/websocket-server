@@ -82,6 +82,5 @@ interface WSInterface
     const BINARY_TYPE_ARRAY_BUFFER = "\x82";
 
 
-    const TIMEOUT = 3.2;
 
 }

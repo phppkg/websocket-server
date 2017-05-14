@@ -8,7 +8,6 @@
 
 namespace inhere\webSocket\traits;
 
-use inhere\console\color\LiteColor;
 use inhere\library\helpers\CliHelper;
 
 /**

@@ -8,7 +8,7 @@
 
 namespace inhere\webSocket\server;
 
-use inhere\webSocket\traits\ProcessControlTrait;
+use inhere\webSocket\traits\CustomProcessControlTrait;
 use inhere\webSocket\traits\StreamsTrait;
 
 /**
@@ -18,7 +18,7 @@ use inhere\webSocket\traits\StreamsTrait;
  */
 class StreamsServer extends ServerAbstracter
 {
-    use ProcessControlTrait;
+    use CustomProcessControlTrait;
     use StreamsTrait;
 
     /**

@@ -121,6 +121,15 @@ class SwooleServer extends ServerAbstracter
     }
 
     /**
+     * 使当前worker进程停止运行，并立即触发onWorkerStop回调函数
+     * @param int $wid
+     */
+    public function stopWorker(int $wid)
+    {
+        $this->swoole->stop($wid);
+    }
+
+    /**
      * @param Server $server
      * @param int $fd
      * @param int $fromId
