@@ -77,6 +77,9 @@ abstract class WSAbstracter implements WSInterface
      * @var array
      */
     protected $config = [
+        // server address HOST:PORT
+        'server' => '',
+
         // enable ssl
         'enable_ssl' => false,
 

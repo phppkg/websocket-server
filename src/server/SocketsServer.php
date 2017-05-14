@@ -188,7 +188,7 @@ class SocketsServer extends ServerAbstracter
      * @param resource $socket
      * @return bool
      */
-    protected function doClose(int $cid, $socket = null)
+    protected function doDisconnect(int $cid, $socket = null)
     {
         if (!is_resource($socket) && !($socket = $this->clients[$cid] ?? null)) {
             $this->log("Close the client socket connection failed! #$cid client socket not exists", 'error');

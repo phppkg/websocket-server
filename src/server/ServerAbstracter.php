@@ -25,6 +25,21 @@ abstract class ServerAbstracter extends WSAbstracter implements ServerInterface,
     use LogTrait;
 
     /**
+     * Logging levels
+     * @var array $levels Logging levels
+     */
+    protected static $levels = [
+        self::LOG_EMERG => 'EMERGENCY',
+        self::LOG_ERROR => 'ERROR',
+        self::LOG_WARN => 'WARNING',
+        self::LOG_INFO => 'INFO',
+        self::LOG_PROC_INFO => 'PROC_INFO',
+        self::LOG_WORKER_INFO => 'WORKER_INFO',
+        self::LOG_DEBUG => 'DEBUG',
+        self::LOG_CRAZY => 'CRAZY',
+    ];
+
+    /**
      * The PID of the current running process. Set for parent and child processes
      * @var int
      */
@@ -111,6 +126,9 @@ abstract class ServerAbstracter extends WSAbstracter implements ServerInterface,
     protected $config = [
         // if you setting name, will display on the process name.
         'name' => '',
+
+        // server address HOST:PORT
+        'server' => '',
 
         'conf_file' => '',
 
@@ -315,18 +333,13 @@ abstract class ServerAbstracter extends WSAbstracter implements ServerInterface,
         }
 
         // watch modify
-        if (isset($opts['w']) || isset($opts['watch'])) {
-            $this->config['watch_modify'] = $opts['w'];
-        }
+//        if (isset($opts['w']) || isset($opts['watch'])) {
+//            $this->config['watch_modify'] = $opts['w'];
+//        }
 
         // run as daemon
         if (isset($opts['d']) || isset($opts['daemon'])) {
             $this->config['daemon'] = true;
-        }
-
-        // no test
-        if (isset($opts['no-test'])) {
-            $this->config['no_test'] = true;
         }
 
         if (isset($opts['v'])) {
@@ -384,8 +397,8 @@ abstract class ServerAbstracter extends WSAbstracter implements ServerInterface,
         $this->config['restart_splay'] = (int)$config['restart_splay'];
         $this->config['max_data_len'] = (int)$config['max_data_len'];
 
-        $this->config['watch_modify'] = (bool)$config['watch_modify'];
-        $this->config['watch_modify_interval'] = (int)$config['watch_modify_interval'];
+//        $this->config['watch_modify'] = (bool)$config['watch_modify'];
+//        $this->config['watch_modify_interval'] = (int)$config['watch_modify_interval'];
 
         $this->config['write_buffer_size'] = (int)$config['write_buffer_size'];
         $this->config['read_buffer_size'] = (int)$config['read_buffer_size'];
@@ -412,14 +425,32 @@ abstract class ServerAbstracter extends WSAbstracter implements ServerInterface,
             $this->config['timeout'] = self::TIMEOUT;
         }
 
-        if ($this->config['watch_modify_interval'] <= self::MIN_WATCH_INTERVAL) {
-            $this->config['watch_modify_interval'] = self::WATCH_INTERVAL;
-        }
+//        if ($this->config['watch_modify_interval'] <= self::MIN_WATCH_INTERVAL) {
+//            $this->config['watch_modify_interval'] = self::WATCH_INTERVAL;
+//        }
 
         $setTime = (int)$config['sleep_time'];
         $this->config['sleep_time'] = $setTime >= 10 ? $setTime : 50;
 
         // init properties
+
+        if ($server = trim($config['server'])) {
+            if (strpos($server, ':')) {
+                [$this->host, $this->port] = explode(':', $server, 2);
+            } else {
+                $this->host = $server;
+            }
+        }
+
+        if (!$this->host) {
+            $this->host = self::DEFAULT_HOST;
+        }
+
+        if (!$this->port || $this->port <= 0) {
+            $this->port = self::DEFAULT_PORT;
+        }
+
+        $this->config['server'] = "{$this->host}:{$this->port}";
 
         $this->name = trim($config['name']);
         $this->maxLifetime = $this->config['max_lifetime'];
@@ -489,9 +520,14 @@ abstract class ServerAbstracter extends WSAbstracter implements ServerInterface,
         );
     }
 
+    /**
+     * show Status
+     * @param string $cmd
+     * @param bool $watch
+     */
     protected function showStatus($cmd = 'status', $watch = false)
     {
-
+        $this->cliOut->warning('Un-completed ...', 0);
     }
 
     /**
@@ -674,7 +710,7 @@ abstract class ServerAbstracter extends WSAbstracter implements ServerInterface,
 
             $this->writeTo($socket, $response->toString());
 
-            return $this->close($cid, $socket, false);
+            return $this->disconnect($cid, $socket, false);
         }
 
         // 解析请求头信息
@@ -686,7 +722,7 @@ abstract class ServerAbstracter extends WSAbstracter implements ServerInterface,
             $this->log("The #$cid client handshake's callback return false, will close the connection", 'notice');
             $this->writeTo($socket, $response->toString());
 
-            return $this->close($cid, $socket, false);
+            return $this->disconnect($cid, $socket, false);
         }
 
         /**
@@ -741,8 +777,7 @@ abstract class ServerAbstracter extends WSAbstracter implements ServerInterface,
     }
 
     /**
-     * Closing a connection
-     * `disconnect()` is alias method of the `close()`
+     * disconnect a connection
      * @param int $cid
      * @param null|resource $socket
      * @param bool $triggerEvent
@@ -750,16 +785,11 @@ abstract class ServerAbstracter extends WSAbstracter implements ServerInterface,
      */
     public function disconnect(int $cid, $socket = null, bool $triggerEvent = true)
     {
-        return $this->close($cid, $socket, $triggerEvent);
-    }
-
-    public function close(int $cid, $socket = null, bool $triggerEvent = true)
-    {
         $this->log("Close: Will close the #$cid client connection");
 
-        $ret = $this->doClose($cid, $socket);
+        $ret = $this->doDisconnect($cid, $socket);
 
-        $this->afterClose($cid, $triggerEvent);
+        $this->afterDisconnect($cid, $triggerEvent);
 
         return $ret;
     }
@@ -770,13 +800,13 @@ abstract class ServerAbstracter extends WSAbstracter implements ServerInterface,
      * @param resource|null $socket
      * @return bool
      */
-    abstract protected function doClose(int $cid, $socket = null);
+    abstract protected function doDisconnect(int $cid, $socket = null);
 
     /**
      * @param int $cid
      * @param bool $triggerEvent
      */
-    protected function afterClose(int $cid, bool $triggerEvent = true)
+    protected function afterDisconnect(int $cid, bool $triggerEvent = true)
     {
         $meta = $this->metas[$cid];
         $this->clientNumber--;
@@ -942,6 +972,13 @@ abstract class ServerAbstracter extends WSAbstracter implements ServerInterface,
     /////////////////////////////////////////////////////////////////////////////////////////
     /// helper method
     /////////////////////////////////////////////////////////////////////////////////////////
+    /**
+     * @return string
+     */
+    public function getPidRole()
+    {
+        return '';
+    }
 
     /**
      * savePidFile

@@ -10,8 +10,9 @@ use inhere\webSocket\server\ServerInterface;
 define('PROJECT_PATH', __DIR__);
 
 $options = [
-    'debug' => true,
-    'driver' => '',
+    // 'debug' => true,
+    'name' => 'ws',
+    'driver' => 'streams',
 ];
 
 $svr = ServerFactory::make('', 9501, $options);

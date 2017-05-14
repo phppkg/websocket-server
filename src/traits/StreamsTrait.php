@@ -121,7 +121,9 @@ trait StreamsTrait
         return $data;
     }
 
-
+    /**
+     * @param bool $force
+     */
     public function close(bool $force = false)
     {
         if ($this->socket) {

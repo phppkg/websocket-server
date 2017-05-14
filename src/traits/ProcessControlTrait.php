@@ -438,6 +438,14 @@ trait ProcessControlTrait
     }
 
     /**
+     * @return string
+     */
+    public function getPidRole()
+    {
+        return $this->isMaster ? 'Master' : 'Worker';
+    }
+
+    /**
      * @param int $pid
      * @param int $statusCode
      */
