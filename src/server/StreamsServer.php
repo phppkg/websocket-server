@@ -197,7 +197,7 @@ class StreamsServer extends ServerAbstracter
      * @param resource|null $socket
      * @return bool
      */
-    protected function doDisconnect(int $cid, $socket = null)
+    protected function doClose(int $cid, $socket = null)
     {
         if (!is_resource($socket) && !($socket = $this->clients[$cid] ?? null)) {
             $this->log("Close the client socket connection failed! #$cid client socket not exists", 'error');

@@ -243,6 +243,18 @@ class SocketsClient extends ClientAbstracter
     }
 
     /**
+     * @param bool $force
+     */
+    public function close(bool $force = false)
+    {
+        if ($this->socket) {
+            socket_close($this->socket);
+
+            $this->socket = null;
+        }
+    }
+
+    /**
      * @return int
      */
     public function getErrorNo()

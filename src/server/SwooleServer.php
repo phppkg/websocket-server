@@ -285,7 +285,7 @@ class SwooleServer extends ServerAbstracter
     {
         $this->debug("onClose: A client connection #$cid has been lost");
 
-        $this->afterDisconnect($cid);
+        $this->afterClose($cid);
     }
 
     ////////////////////// Task Event //////////////////////
@@ -340,7 +340,7 @@ class SwooleServer extends ServerAbstracter
      * @param null|resource $socket
      * @return bool
      */
-    protected function doDisconnect(int $cid, $socket = null)
+    protected function doClose(int $cid, $socket = null)
     {
         return $this->swoole->close($cid);
     }

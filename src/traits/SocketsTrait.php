@@ -120,15 +120,4 @@ trait SocketsTrait
         socket_clear_error($this->socket);
     }
 
-    /**
-     * @param bool $force
-     */
-    public function close(bool $force = false)
-    {
-        if ($this->socket) {
-            socket_close($this->socket);
-
-            $this->socket = null;
-        }
-    }
 }

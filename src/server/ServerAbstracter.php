@@ -710,7 +710,7 @@ abstract class ServerAbstracter extends WSAbstracter implements ServerInterface,
 
             $this->writeTo($socket, $response->toString());
 
-            return $this->disconnect($cid, $socket, false);
+            return $this->close($cid, $socket, false);
         }
 
         // 解析请求头信息
@@ -722,7 +722,7 @@ abstract class ServerAbstracter extends WSAbstracter implements ServerInterface,
             $this->log("The #$cid client handshake's callback return false, will close the connection", 'notice');
             $this->writeTo($socket, $response->toString());
 
-            return $this->disconnect($cid, $socket, false);
+            return $this->close($cid, $socket, false);
         }
 
         /**
@@ -783,13 +783,13 @@ abstract class ServerAbstracter extends WSAbstracter implements ServerInterface,
      * @param bool $triggerEvent
      * @return bool
      */
-    public function disconnect(int $cid, $socket = null, bool $triggerEvent = true)
+    public function close(int $cid, $socket = null, bool $triggerEvent = true)
     {
         $this->log("Close: Will close the #$cid client connection");
 
-        $ret = $this->doDisconnect($cid, $socket);
+        $ret = $this->doClose($cid, $socket);
 
-        $this->afterDisconnect($cid, $triggerEvent);
+        $this->afterClose($cid, $triggerEvent);
 
         return $ret;
     }
@@ -800,13 +800,13 @@ abstract class ServerAbstracter extends WSAbstracter implements ServerInterface,
      * @param resource|null $socket
      * @return bool
      */
-    abstract protected function doDisconnect(int $cid, $socket = null);
+    abstract protected function doClose(int $cid, $socket = null);
 
     /**
      * @param int $cid
      * @param bool $triggerEvent
      */
-    protected function afterDisconnect(int $cid, bool $triggerEvent = true)
+    protected function afterClose(int $cid, bool $triggerEvent = true)
     {
         $meta = $this->metas[$cid];
         $this->clientNumber--;

@@ -184,7 +184,7 @@ trait ProcessControlTrait
 
             case -1: // fork failed.
                 $this->stderr('Could not fork workers process! exiting', true, false);
-                $this->stopWork = true;
+                $this->stopWork();
                 $this->stopWorkers();
                 break;
 
@@ -238,10 +238,12 @@ trait ProcessControlTrait
                 }
             }
 
-            if ($this->stopWork && time() - $this->stat['stop_time'] > 30) {
-                $this->log('Workers have not exited, force killing.', self::LOG_PROC_INFO);
-                $this->stopWorkers(SIGKILL);
-                // $this->killProcess($pid, SIGKILL);
+            if ($this->stopWork) {
+                if (time() - $this->stat['stop_time'] > 30) {
+                    $this->log('Workers have not exited, force killing.', self::LOG_PROC_INFO);
+                    $this->stopWorkers(SIGKILL);
+                    // $this->killProcess($pid, SIGKILL);
+                }
             } else {
                 // If any workers have been running 150% of max run time, forcibly terminate them
                 foreach ($this->workers as $pid => $worker) {
@@ -344,8 +346,7 @@ trait ProcessControlTrait
                 case SIGTERM:
                     $sigText = $sigNo === SIGINT ? 'SIGINT' : 'SIGTERM';
                     $this->log("Shutting down(signal:$sigText)...", self::LOG_PROC_INFO);
-                    $this->stopWork = true;
-                    $this->stat['stop_time'] = time();
+                    $this->stopWork();
                     $stopCount++;
 
                     if ($stopCount < 5) {
@@ -362,7 +363,7 @@ trait ProcessControlTrait
                     break;
                 case SIGUSR1: // reload workers and reload handlers
                     $this->log('Reloading workers and handlers(signal:SIGUSR1)', self::LOG_PROC_INFO);
-                    $this->stopWork = true;
+                    $this->stopWork();
                     $this->start();
                     break;
                 case SIGUSR2:
@@ -372,8 +373,7 @@ trait ProcessControlTrait
             }
 
         } else {
-            $this->stopWork = true;
-            $this->stat['stop_time'] = time();
+            $this->stopWork();
             $this->log("Received 'stopWork' signal(signal:SIGTERM), will be exiting.", self::LOG_PROC_INFO);
         }
     }
@@ -461,7 +461,7 @@ trait ProcessControlTrait
                 break;
             case self::CODE_CONNECT_ERROR:
                 $message = "Worker (PID:$pid) connect to job server failed. exiting";
-                $this->stopWork = true;
+                $this->stopWork();
                 break;
             default:
                 $message = "Worker (PID:$pid) died unexpectedly with exit code $statusCode.";
@@ -497,4 +497,12 @@ trait ProcessControlTrait
         return $this->supportPC;
     }
 
+    /**
+     * stopWork
+     */
+    protected function stopWork()
+    {
+        $this->stopWork = true;
+        $this->stat['stop_time'] = time();
+    }
 }
