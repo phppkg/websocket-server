@@ -75,10 +75,8 @@ trait ProcessControlTrait
         if (!$this->supportPC) {
             $this->log("Want to run process as daemon, require 'pcntl','posix' extension!", self::LOG_DEBUG);
         } else {
-            ProcessHelper::runAsDaemon();
-
             // set pid
-            $this->pid = getmypid(); // can also use: posix_getpid()
+            $this->pid = ProcessHelper::runAsDaemon();
         }
     }
 
