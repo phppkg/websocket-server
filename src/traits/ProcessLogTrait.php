@@ -11,11 +11,26 @@ namespace inhere\webSocket\traits;
 use inhere\library\helpers\CliHelper;
 
 /**
- * Trait LogTrait
+ * Trait ProcessLogTrait
  * @package inhere\webSocket\traits
  */
-trait LogTrait
+trait ProcessLogTrait
 {
+    /**
+     * Logging levels
+     * @var array $levels Logging levels
+     */
+    protected static $levels = [
+        self::LOG_EMERG => 'EMERGENCY',
+        self::LOG_ERROR => 'ERROR',
+        self::LOG_WARN => 'WARNING',
+        self::LOG_INFO => 'INFO',
+        self::LOG_PROC_INFO => 'PROC_INFO',
+        self::LOG_WORKER_INFO => 'WORKER_INFO',
+        self::LOG_DEBUG => 'DEBUG',
+        self::LOG_CRAZY => 'CRAZY',
+    ];
+
     /**
      * @var int
      */

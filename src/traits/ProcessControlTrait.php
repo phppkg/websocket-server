@@ -8,7 +8,7 @@
 
 namespace inhere\webSocket\traits;
 
-use inhere\library\helpers\ProcessHelper;
+use inhere\library\process\ProcessUtil;
 
 /**
  * Class ProcessControlTrait
@@ -44,7 +44,6 @@ trait ProcessControlTrait
      */
     protected $isWorker = false;
 
-
     /**
      * When true, workers will stop and the parent process will kill off all running workers
      * @var boolean
@@ -67,20 +66,6 @@ trait ProcessControlTrait
     /// process method
     /////////////////////////////////////////////////////////////////////////////////////////
 
-    /**
-     * run as daemon process
-     */
-    public function runAsDaemon()
-    {
-        if (!$this->supportPC) {
-            $this->log("Want to run process as daemon, require 'pcntl','posix' extension!", self::LOG_DEBUG);
-        } else {
-            ProcessHelper::runAsDaemon();
-
-            // set pid
-            $this->pid = getmypid(); // can also use: posix_getpid()
-        }
-    }
 
     /*
     $ws = new WebSocketServer;
@@ -120,83 +105,6 @@ trait ProcessControlTrait
         }
     }
 
-    /**
-     * fork multi process
-     */
-    public function startWorkers()
-    {
-        if ($this->supportPC) {
-            $num = $this->config['worker_num'];
-
-            for ($i = 0; $i < $num; $i++) {
-                $this->startWorker($i+1);
-
-                // Don't start workers too fast.
-                usleep(500000);
-            }
-
-            $this->log('Workers stopped', self::LOG_PROC_INFO);
-
-        // if not support multi process
-        } else {
-            $this->startDriverWorker();
-        }
-    }
-
-    /**
-     * Start a worker do there are assign jobs. If is in the parent, record worker info.
-     *
-     * @param int $id
-     * @param bool $isFirst True: Is first start by manager. False: is restart by monitor `startWorkerMonitor()`
-     */
-    protected function startWorker(int $id, $isFirst = true)
-    {
-        if (!$isFirst) {
-            // clear file info
-            clearstatcache();
-        }
-
-        // fork process
-        $pid = pcntl_fork();
-
-        switch ($pid) {
-            case 0: // at workers
-                $this->isWorker = true;
-                $this->isMaster = false;
-                $this->masterPid = $this->pid;
-                $this->id = $id;
-                $this->pid = getmypid();
-                $this->stat['start_time'] = time();
-
-                $this->installSignals(false);
-                $this->setProcessTitle(sprintf("php-gwm: worker process %s", $this->getShowName()));
-
-                if (($splay = $this->get('restart_splay')) > 0) {
-                    $this->maxLifetime += mt_rand(0, $splay);
-                    $this->log("The worker adjusted max run time to {$this->maxLifetime} seconds", self::LOG_DEBUG);
-                }
-
-                $code = $this->startDriverWorker();
-
-                $this->log("Worker exiting(PID:{$this->pid} Code:$code)", self::LOG_WORKER_INFO);
-                $this->quit($code);
-                break;
-
-            case -1: // fork failed.
-                $this->stderr('Could not fork workers process! exiting', true, false);
-                $this->stopWork();
-                $this->stopWorkers();
-                break;
-
-            default: // at parent
-                $text = $isFirst ? 'First' : 'Restart';
-                $this->log("Started worker(PID:$pid) ($text)", self::LOG_PROC_INFO);
-                $this->workers[$pid] = [
-                    'id' => $id,
-                    'start_time' => time(),
-                ];
-        }
-    }
 
     /**
      * Begin monitor workers
@@ -273,19 +181,14 @@ trait ProcessControlTrait
             return false;
         }
 
-        $signals = [
-            SIGINT => 'SIGINT',
-            SIGTERM => 'SIGTERM',
-            SIGKILL => 'SIGKILL',
-        ];
-
-        $this->log("Stopping workers(send:{$signals[$signal]}) ...", self::LOG_PROC_INFO);
-
-        foreach ($this->workers as $pid => $worker) {
-            $this->stopWorker($pid);
-        }
-
-        return true;
+        return ProcessUtil::stopChildren($this->workers, $signal, [
+            'beforeStops' => function ($sigText) {
+                $this->log("Stopping workers({$sigText}) ...", self::LOG_PROC_INFO);
+            },
+            'beforeStop' => function ($pid, $info) {
+                $this->log("Stopping worker #{$info['id']}(PID:$pid)", self::LOG_PROC_INFO);
+            },
+        ]);
     }
 
     public function installSignals($isMaster = true)
@@ -412,7 +315,7 @@ trait ProcessControlTrait
     protected function sendSignal(int $pid, int $signal)
     {
         if ($this->supportPC) {
-            ProcessHelper::sendSignal($pid, $signal);
+            ProcessUtil::sendSignal($pid, $signal);
         }
     }
 
@@ -433,7 +336,7 @@ trait ProcessControlTrait
     protected function setProcessTitle(string $title)
     {
         if ($this->supportPC) {
-            ProcessHelper::setProcessTitle($title);
+            ProcessUtil::setTitle($title);
         }
     }
 

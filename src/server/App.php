@@ -219,7 +219,7 @@ class App
         $masterIsStarted = false;
 
         if (!PhpHelper::isWin()) {
-            $masterPid = ProcessHelper::getPidByPidFile($this->getPidFIle());
+            $masterPid = ProcessHelper::getPidFromFile($this->getPidFIle());
             $masterIsStarted = ($masterPid > 0) && @posix_kill($masterPid, 0);
         }
 
