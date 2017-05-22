@@ -66,7 +66,6 @@ trait ProcessControlTrait
     /// process method
     /////////////////////////////////////////////////////////////////////////////////////////
 
-
     /*
     $ws = new WebSocketServer;
     $ws->asDaemon();
