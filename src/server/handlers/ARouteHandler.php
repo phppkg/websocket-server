@@ -8,8 +8,8 @@
 
 namespace inhere\webSocket\server\handlers;
 
-use inhere\library\traits\TraitSimpleOption;
-use inhere\webSocket\server\App;
+use inhere\library\traits\OptionsTrait;
+use inhere\webSocket\server\Application;
 use inhere\webSocket\server\dataParser\ComplexDataParser;
 use inhere\webSocket\server\dataParser\IDataParser;
 use inhere\webSocket\http\Request;
@@ -22,7 +22,7 @@ use inhere\webSocket\parts\MessageBag;
  */
 abstract class ARouteHandler implements IRouteHandler
 {
-    use TraitSimpleOption;
+    use OptionsTrait;
 
     // custom ws handler position
     const OPEN_HANDLER = 0;
@@ -31,7 +31,7 @@ abstract class ARouteHandler implements IRouteHandler
     const ERROR_HANDLER = 3;
 
     /**
-     * @var App
+     * @var Application
      */
     private $app;
 
@@ -118,7 +118,7 @@ abstract class ARouteHandler implements IRouteHandler
     /**
      * @inheritdoc
      */
-    public function onError(App $app, string $msg)
+    public function onError(Application $app, string $msg)
     {
         $this->log('Accepts a connection on a socket error, when request : ' . $msg, 'error');
     }
@@ -368,17 +368,17 @@ abstract class ARouteHandler implements IRouteHandler
     }
 
     /**
-     * @return App
+     * @return Application
      */
-    public function getApp(): App
+    public function getApp(): Application
     {
         return $this->app;
     }
 
     /**
-     * @param App $app
+     * @param Application $app
      */
-    public function setApp(App $app)
+    public function setApp(Application $app)
     {
         $this->app = $app;
     }

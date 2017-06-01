@@ -11,8 +11,8 @@ namespace inhere\webSocket;
 use inhere\console\io\Input;
 use inhere\console\io\Output;
 use inhere\library\helpers\PhpHelper;
-use inhere\library\traits\TraitSimpleFixedEvent;
-use inhere\library\traits\TraitSimpleConfig;
+use inhere\library\traits\FixedEventTrait;
+use inhere\library\traits\ConfigTrait;
 
 /**
  * Class WSAbstracter
@@ -20,8 +20,8 @@ use inhere\library\traits\TraitSimpleConfig;
  */
 abstract class WSAbstracter implements WSInterface
 {
-    use TraitSimpleFixedEvent;
-    use TraitSimpleConfig {
+    use FixedEventTrait;
+    use ConfigTrait {
         setConfig as tSetConfig;
     }
 

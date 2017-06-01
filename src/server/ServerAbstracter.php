@@ -265,9 +265,9 @@ abstract class ServerAbstracter extends WSAbstracter implements ServerInterface,
     protected function dumpInfo($allInfo = false)
     {
         if ($allInfo) {
-            $this->stdout("There are all information of the manager:\n" . PhpHelper::printR($this));
+            $this->stdout("There are all information of the manager:\n" . PhpHelper::printVar($this));
         } else {
-            $this->stdout("There are configure information:\n" . PhpHelper::printR($this->config));
+            $this->stdout("There are configure information:\n" . PhpHelper::printVar($this->config));
         }
 
         $this->quit();
@@ -360,7 +360,7 @@ abstract class ServerAbstracter extends WSAbstracter implements ServerInterface,
         $this->log("Connect: A new client connected, ID: $cid, From {$meta['host']}:{$meta['port']}. Count: {$this->clientNumber}");
 
         // 触发 connect 事件回调
-        $this->trigger(self::ON_CONNECT, [$this, $cid]);
+        $this->fire(self::ON_CONNECT, [$this, $cid]);
     }
 
     /**
@@ -395,7 +395,7 @@ abstract class ServerAbstracter extends WSAbstracter implements ServerInterface,
 
         // 触发 handshake 事件回调，如果返回 false -- 拒绝连接，比如需要认证，限定路由，限定ip，限定domain等
         // 就停止继续处理。并返回信息给客户端
-        if (false === $this->trigger(self::ON_HANDSHAKE, [$request, $response, $cid])) {
+        if (false === $this->fire(self::ON_HANDSHAKE, [$request, $response, $cid])) {
             $this->log("The #$cid client handshake's callback return false, will close the connection", 'notice');
             $this->writeTo($socket, $response->toString());
 
@@ -432,7 +432,7 @@ abstract class ServerAbstracter extends WSAbstracter implements ServerInterface,
         $this->log("The #$cid client connection handshake successful! Info:", 'info', $meta);
 
         // 握手成功 触发 open 事件
-        return $this->trigger(self::ON_OPEN, [$this, $request, $cid]);
+        return $this->fire(self::ON_OPEN, [$this, $request, $cid]);
     }
 
     /**
@@ -450,7 +450,7 @@ abstract class ServerAbstracter extends WSAbstracter implements ServerInterface,
         $this->log("Message: Received $bytes bytes message from #$cid, Data: $data");
 
         // call on message handler
-        $this->trigger(self::ON_MESSAGE, [$this, $data, $cid, $meta]);
+        $this->fire(self::ON_MESSAGE, [$this, $data, $cid, $meta]);
     }
 
     /**
@@ -492,7 +492,7 @@ abstract class ServerAbstracter extends WSAbstracter implements ServerInterface,
 
         // call on close callback
         if ($triggerEvent) {
-            $this->trigger(self::ON_CLOSE, [$this, $cid, $meta]);
+            $this->fire(self::ON_CLOSE, [$this, $cid, $meta]);
         }
 
         $this->log("Close: The #$cid client connection has been closed! From {$meta['host']}:{$meta['port']}. Count: {$this->clientNumber}");
@@ -505,7 +505,7 @@ abstract class ServerAbstracter extends WSAbstracter implements ServerInterface,
     {
         $this->log("An error occurred! Error: $msg", 'error');
 
-        $this->trigger(self::ON_ERROR, [$msg, $this]);
+        $this->fire(self::ON_ERROR, [$msg, $this]);
     }
 
     /////////////////////////////////////////////////////////////////////////////////////////

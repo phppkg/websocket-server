@@ -59,7 +59,7 @@ class SocketsServer extends ServerAbstracter
      */
     protected function prepare()
     {
-        if (count($this->callbacks) < 1) {
+        if ($this->getEventCount() < 1) {
             $sup = implode(',', $this->getSupportedEvents());
             $this->cliOut->error('Please register event handle callback before start. supported events: ' . $sup, -500);
         }

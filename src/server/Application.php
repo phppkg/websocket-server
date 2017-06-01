@@ -12,7 +12,7 @@ use inhere\console\io\Input;
 use inhere\console\io\Output;
 use inhere\library\helpers\PhpHelper;
 use inhere\library\helpers\ProcessHelper;
-use inhere\library\traits\TraitSimpleOption;
+use inhere\library\traits\OptionsTrait;
 use inhere\library\utils\LiteLogger;
 use inhere\webSocket\server\handlers\IRouteHandler;
 use inhere\webSocket\server\handlers\RootHandler;
@@ -52,9 +52,9 @@ use inhere\webSocket\WSInterface;
  * $app->parseOptRun();
  * ```
  */
-class App
+class Application
 {
-    use TraitSimpleOption;
+    use OptionsTrait;
 
     // custom ws handler position
     const OPEN_HANDLER = 0;
@@ -276,8 +276,8 @@ class App
         $opts = $this->getOption('server', []);
 
         // append some options
-        $opts['debug'] = $this->cliIn->boolOpt('debug', $this->getOption('debug', false));
-        $opts['driver'] = $this->cliIn->getOpt('driver') ?: $this->getOption('driver');
+        $opts['debug'] = $this->cliIn->lBoolOpt('debug', $this->getOption('debug', false));
+        $opts['driver'] = $this->cliIn->lOpt('driver') ?: $this->getOption('driver');
 
         $this->ws = ServerFactory::make($this->host, $this->port, $opts);
 

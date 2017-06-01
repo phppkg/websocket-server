@@ -180,7 +180,7 @@ class SwooleServer extends ServerAbstracter
 
         // 触发 handshake 事件回调，如果返回 false -- 拒绝连接，比如需要认证，限定路由，限定ip，限定domain等
         // 就停止继续处理。并返回信息给客户端
-        if (false === $this->trigger(self::ON_HANDSHAKE, [$request, $response, $cid])) {
+        if (false === $this->fire(self::ON_HANDSHAKE, [$request, $response, $cid])) {
             $this->log("The #$cid client handshake's callback return false, will close the connection", 'notice');
 
             $swResponse->status($response->getStatusCode());
@@ -227,7 +227,7 @@ class SwooleServer extends ServerAbstracter
 
         // 握手成功 触发 open 事件
         $this->swoole->defer(function () use ($request, $cid) {
-            $this->trigger(self::ON_OPEN, [$this, $request, $cid]);
+            $this->fire(self::ON_OPEN, [$this, $request, $cid]);
         });
 
         //var_dump($this);
@@ -263,7 +263,7 @@ class SwooleServer extends ServerAbstracter
 
         $this->log("Open: The #$cid client connection open successful! Meta:", 'info', $meta);
 
-        $this->trigger(self::ON_OPEN, [$this, $request, $cid]);
+        $this->fire(self::ON_OPEN, [$this, $request, $cid]);
     }
 
     /**
@@ -331,7 +331,7 @@ class SwooleServer extends ServerAbstracter
         $this->log("Message: Received $bytes bytes message from #$cid, Data: $data");
 
         // call on message handler
-        $this->trigger(self::ON_MESSAGE, [$this, $data, $cid, $meta]);
+        $this->fire(self::ON_MESSAGE, [$this, $data, $cid, $meta]);
     }
 
     /**

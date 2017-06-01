@@ -8,8 +8,8 @@
 
 namespace inhere\webSocket\server\deprecated;
 
-use inhere\library\traits\TraitSimpleFixedEvent;
-use inhere\library\traits\TraitSimpleOption;
+use inhere\library\traits\FixedEventTrait;
+use inhere\library\traits\OptionsTrait;
 
 /**
  * Class BaseWebSocket
@@ -17,8 +17,8 @@ use inhere\library\traits\TraitSimpleOption;
  */
 abstract class BaseWebSocket
 {
-    use TraitSimpleOption;
-    use TraitSimpleFixedEvent;
+    use OptionsTrait;
+    use FixedEventTrait;
 
     /**
      * version

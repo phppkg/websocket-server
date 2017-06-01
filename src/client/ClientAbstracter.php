@@ -158,8 +158,8 @@ abstract class ClientAbstracter extends WSAbstracter implements ClientInterface
             $this->connect();
         }
 
-        $tickHandler = $this->getCallback(self::ON_TICK);
-        $msgHandler = $this->getCallback(self::ON_MESSAGE);
+        $tickHandler = $this->getEventHandler(self::ON_TICK);
+        $msgHandler = $this->getEventHandler(self::ON_MESSAGE);
 
         // interval time
         $setTime = (int)$this->get('sleep_ms', 500);
