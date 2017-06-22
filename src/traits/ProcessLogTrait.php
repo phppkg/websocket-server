@@ -132,7 +132,7 @@ trait ProcessLogTrait
             }
 
             $this->logFile = $logFile;
-            $this->logFileHandle = @fopen($logFile, 'a');
+            $this->logFileHandle = @fopen($logFile, 'ab');
 
             if (!$this->logFileHandle) {
                 $this->showHelp("Could not open the log file {$logFile}");
@@ -153,7 +153,7 @@ trait ProcessLogTrait
             }
 
             $this->logFile = $logFile;
-            $this->logFileHandle = @fopen($logFile, 'a');
+            $this->logFileHandle = @fopen($logFile, 'ab');
 
             if (!$this->logFileHandle) {
                 $this->showHelp("Could not open the log file {$logFile}");
@@ -189,7 +189,7 @@ trait ProcessLogTrait
         }
 
         if ($createDir && !is_dir($dir)) {
-            @mkdir($dir, 0755, true);
+            mkdir($dir, 0755, true);
         }
 
         return "{$dir}/{$name}_{$str}.{$ext}";

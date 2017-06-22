@@ -127,21 +127,19 @@ trait ProcessControlTrait
             $exitedPid = pcntl_wait($status, WNOHANG);
 
             // We run other workers, make sure this is a worker
-            if (isset($this->workers[$exitedPid])) {
+            if ($exitedPid && isset($this->workers[$exitedPid])) {
                 /*
                  * If they have exited, remove them from the workers array
                  * If we are not stopping work, start another in its place
                  */
-                if ($exitedPid) {
-                    $exitCode = pcntl_wexitstatus($status);
-                    $info = $this->workers[$exitedPid];
-                    unset($this->workers[$exitedPid]);
+                $exitCode = pcntl_wexitstatus($status);
+                $info = $this->workers[$exitedPid];
+                unset($this->workers[$exitedPid]);
 
-                    $this->logWorkerStatus($exitedPid, $exitCode);
+                $this->logWorkerStatus($exitedPid, $exitCode);
 
-                    if (!$this->stopWork) {
-                        $this->startWorker($info['id'], false);
-                    }
+                if (!$this->stopWork) {
+                    $this->startWorker($info['id'], false);
                 }
             }
 

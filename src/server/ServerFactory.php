@@ -22,7 +22,7 @@ final class ServerFactory
     /**
      * @var array
      */
-    protected static $availableDrivers = [
+    private static $availableDrivers = [
         'swoole' => SwooleServer::class,
         'sockets' => SocketsServer::class,
         'streams' => StreamsServer::class,
