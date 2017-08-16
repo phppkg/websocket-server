@@ -183,7 +183,7 @@ abstract class ServerAbstracter extends WSAbstracter implements ServerInterface,
 
         parent::__construct($options);
 
-        $this->cliOut->write("The webSocket server power by [<info>{$this->driver}</info>], driver class: <default>" . static::class . '</default>', 'info');
+        $this->cliOut->write("The webSocket server power by [<info>{$this->driver}</info>], driver class: <cyan>" . static::class . '</cyan>', 'info');
     }
 
     /**

@@ -168,7 +168,7 @@ abstract class RouteHandlerAbstracter implements RouteHandlerInterface
 
         // parse: get command and real data
         if ($results = $this->getDataParser()->parse($data, $cid, $this)) {
-            [$command, $data] = $results;
+            list($command, $data) = $results;
             $command = $command ?: $this->getOption('defaultCmd') ?? self::DEFAULT_CMD;
             $this->log("The #{$cid} request command is: $command, in route: $route, handler: " . static::class);
         } else {
@@ -181,6 +181,7 @@ abstract class RouteHandlerAbstracter implements RouteHandlerInterface
         // is a outside command `by add()`
         if ($this->isCommandName($command)) {
             $handler = $this->getCmdHandler($command);
+
             return call_user_func_array($handler, [$data, $cid, $this]);
         }
 

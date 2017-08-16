@@ -196,7 +196,7 @@ class SocketsServer extends ServerAbstracter
 
         // close socket connection
         if ($socket && is_resource($socket)) {
-            $result = socket_shutdown($socket, 2);
+            $result = socket_shutdown($socket);
             socket_close($socket);
 
             return $result;

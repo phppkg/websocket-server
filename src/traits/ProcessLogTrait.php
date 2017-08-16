@@ -71,20 +71,26 @@ trait ProcessLogTrait
             return true;
         }
 
-        $data = $data ? json_encode($data) : '';
+        $dataStr = $data ? json_encode($data) : '';
 
         if ($this->get('log_syslog')) {
-            return $this->sysLog($msg . ' ' . $data, $level);
+            return $this->sysLog($msg . ' ' . $dataStr, $level);
         }
 
-        $label = isset(self::$levels[$level]) ? self::$levels[$level] : self::LOG_INFO;
+        $label = self::$levels[$level] ?? self::LOG_INFO;
 
         list($ts, $ms) = explode('.', sprintf('%.4f', microtime(true)));
         $ds = date('Y/m/d H:i:s', $ts) . '.' . $ms;
 
+        $ps = '';
+
+        if ($this->isDebug() && ($info = debug_backtrace(DEBUG_BACKTRACE_IGNORE_ARGS, 1))) {
+            $ps = sprintf(' [%s:%d]', isset($info['class']) ?? 'UNKNOWN', isset($info['line']) ?? -1);
+        }
+
         $logString = sprintf(
-            '[%s] [%s:%d] [%s] %s %s' . PHP_EOL,
-            $ds, $this->getPidRole(), $this->pid, $label, trim($msg), $data
+            '[%s] [%s:%d] [%s] %s%s %s' . PHP_EOL,
+            $ds, $this->getPidRole(), $this->pid, $label, $ps, trim($msg), $dataStr
         );
 
         // if not in daemon, print log to \STDOUT
@@ -173,14 +179,14 @@ trait ProcessLogTrait
             return $this->config['log_file'];
         }
 
-        if (!in_array($type, [self::LOG_SPLIT_DAY, self::LOG_SPLIT_HOUR])) {
+        if (!in_array($type, [self::LOG_SPLIT_DAY, self::LOG_SPLIT_HOUR], true)) {
             $type = self::LOG_SPLIT_DAY;
         }
 
         $info = pathinfo($file);
         $dir = $info['dirname'];
-        $name = isset($info['filename']) ? $info['filename'] : 'gw_manager';
-        $ext = isset($info['extension']) ? $info['extension'] : 'log';
+        $name = $info['filename'] ?? 'gw_manager';
+        $ext = $info['extension'] ?? 'log';
 
         if ($type === self::LOG_SPLIT_DAY) {
             $str = date('Y-m-d');
@@ -203,7 +209,8 @@ trait ProcessLogTrait
      */
     protected function stdout($text, $nl = true, $quit = false)
     {
-        CliHelper::stdout($text, $nl, $quit);
+        // CliHelper::stdout($text, $nl, $quit);
+        $this->getCliOut()->write($text, $nl = true, $quit = false);
     }
 
     /**

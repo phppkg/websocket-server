@@ -40,9 +40,9 @@ class SwooleClient extends ClientAbstracter
     /**
      * @return array
      */
-    public function getDefaultOptions()
+    public function appendDefaultConfig()
     {
-        return array_merge(parent::getDefaultOptions(), [
+        return array_merge(parent::appendDefaultConfig(), [
             'swoole' => [
                 // 结束符检测
                 'open_eof_check' => true,
@@ -69,16 +69,16 @@ class SwooleClient extends ClientAbstracter
     {
         $type = SWOOLE_SOCK_TCP;
 
-        if ($this->getOption('enable_ssl')) {
+        if ($this->getValue('enable_ssl')) {
             $type |= SWOOLE_SSL;
         }
 
         $this->swClient = new Client($type);
 
-        if ($keyFile = $this->getOption('ssl_key_file')) {
+        if ($keyFile = $this->getValue('ssl_key_file')) {
             $this->swClient->set([
                 'ssl_key_file' => $keyFile,
-                'ssl_cert_file' => $this->getOption('ssl_cert_file')
+                'ssl_cert_file' => $this->getValue('ssl_cert_file')
             ]);
         }
 

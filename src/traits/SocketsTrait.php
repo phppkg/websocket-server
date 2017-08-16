@@ -22,7 +22,7 @@ trait SocketsTrait
     public function setTimeout($socket, $timeout = 2.2)
     {
         if (strpos($timeout, '.')) {
-            [$s, $us] = explode('.', $timeout);
+            list($s, $us) = explode('.', $timeout);
             $s = $s < 1 ? 3 : (int)$s;
             $us = (int)($us * 1000 * 1000);
         } else {
@@ -82,11 +82,12 @@ trait SocketsTrait
 
     /**
      * 用于获取客户端socket的本地host:port，必须在连接之后才可以使用
+     * @param $socket
      * @return array
      */
-    public function getSockName()
+    public function getSockName($socket)
     {
-        socket_getsockname($this->socket, $host, $port);
+        socket_getsockname($socket, $host, $port);
 
         return [
             'host' => $host,
@@ -96,11 +97,12 @@ trait SocketsTrait
 
     /**
      * 获取对端(远端)socket的IP地址和端口
+     * @param $socket
      * @return array
      */
-    public function getPeerName()
+    public function getPeerName($socket)
     {
-        socket_getpeername($this->socket, $host, $port);
+        socket_getpeername($socket, $host, $port);
 
         return [
             'host' => $host,

@@ -164,7 +164,7 @@ class Application
         $this->cliIn = new Input();
         $this->cliOut = new Output();
 
-        $this->setOptions($options, true);
+        $this->setOptions($options);
 
         $this->init();
     }

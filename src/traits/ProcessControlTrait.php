@@ -8,7 +8,7 @@
 
 namespace inhere\webSocket\traits;
 
-use inhere\library\process\ProcessUtil;
+use inhere\library\helpers\ProcessHelper;
 
 /**
  * Class ProcessControlTrait
@@ -21,7 +21,7 @@ trait ProcessControlTrait
      * current support process control
      * @var bool
      */
-    protected $supportPC = true;
+    protected $canProcessControl = true;
 
     /**
      * @var int
@@ -99,7 +99,7 @@ trait ProcessControlTrait
         $this->startWorkers();
 
         // start worker monitor
-        if ($this->supportPC) {
+        if ($this->canProcessControl) {
             $this->startWorkerMonitor();
         }
     }
@@ -178,7 +178,7 @@ trait ProcessControlTrait
             return false;
         }
 
-        return ProcessUtil::stopChildren($this->workers, $signal, [
+        return ProcessHelper::stopChildren($this->workers, $signal, [
             'beforeStops' => function ($sigText) {
                 $this->log("Stopping workers({$sigText}) ...", self::LOG_PROC_INFO);
             },
@@ -190,7 +190,7 @@ trait ProcessControlTrait
 
     public function installSignals($isMaster = true)
     {
-        if (!$this->supportPC) {
+        if (!$this->canProcessControl) {
             return false;
         }
 
@@ -311,8 +311,8 @@ trait ProcessControlTrait
      */
     protected function sendSignal(int $pid, int $signal)
     {
-        if ($this->supportPC) {
-            ProcessUtil::sendSignal($pid, $signal);
+        if ($this->canProcessControl) {
+            ProcessHelper::sendSignal($pid, $signal);
         }
     }
 
@@ -321,7 +321,7 @@ trait ProcessControlTrait
      */
     protected function dispatchSignals()
     {
-        if ($this->supportPC) {
+        if ($this->canProcessControl) {
             pcntl_signal_dispatch();
         }
     }
@@ -332,8 +332,8 @@ trait ProcessControlTrait
      */
     protected function setProcessTitle(string $title)
     {
-        if ($this->supportPC) {
-            ProcessUtil::setTitle($title);
+        if ($this->canProcessControl) {
+            ProcessHelper::setTitle($title);
         }
     }
 
@@ -380,7 +380,7 @@ trait ProcessControlTrait
         $e2 = function_exists('pcntl_fork');
 
         if (!$e1 || !$e2) {
-            $this->supportPC = false;
+            $this->canProcessControl = false;
 
             $e1t = $e1 ? 'yes' : 'no';
             $e2t = $e2 ? 'yes' : 'no';
@@ -392,9 +392,9 @@ trait ProcessControlTrait
     /**
      * @return bool
      */
-    public function isSupportPC(): bool
+    public function isCanProcessControl(): bool
     {
-        return $this->supportPC;
+        return $this->canProcessControl;
     }
 
     /**
