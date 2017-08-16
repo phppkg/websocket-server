@@ -8,14 +8,14 @@
 
 namespace inhere\webSocket\server\dataParser;
 
-use inhere\webSocket\server\handlers\IRouteHandler;
+use inhere\webSocket\server\handlers\RouteHandlerInterface;
 
 /**
- * Interface IDataParser
+ * Interface DataParserInterface
  * @package inhere\webSocket\server\dataParser
  *
  */
-interface IDataParser
+interface DataParserInterface
 {
     //
     const JSON_TO_RAW = 1;
@@ -25,8 +25,8 @@ interface IDataParser
     /**
      * @param string $data
      * @param int $index
-     * @param IRouteHandler $handler
+     * @param RouteHandlerInterface $handler
      * @return array|false
      */
-    public function parse(string $data, int $index, IRouteHandler $handler);
+    public function parse(string $data, int $index, RouteHandlerInterface $handler);
 }

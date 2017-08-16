@@ -8,9 +8,13 @@
 
 namespace inhere\webSocket\traits;
 
+use inhere\library\helpers\ProcessHelper;
+
 /**
  * Class OptionsConfigTrait
  * @package inhere\webSocket\traits
+ *
+ * @property \inhere\console\io\Input $cliIn
  */
 trait OptionsConfigTrait
 {
@@ -26,8 +30,8 @@ trait OptionsConfigTrait
      */
     protected function handleCommandAndConfig()
     {
-        $command = $this->cliIn->getCommand() ?: 'start';
-        $supported = ['start', 'stop', 'restart', 'reload', 'status'];
+        $command = $this->cliIn->getCommand('start');
+        $supported = ['start', 'stop', 'restart', 'reload', 'info', 'status'];
 
         if (!in_array($command, $supported, true)) {
             $this->showHelp("The command [{$command}] is don't supported!");
@@ -47,8 +51,8 @@ trait OptionsConfigTrait
             $this->dumpInfo($val === 'all');
         }
 
-        $masterPid = ProcessUtil::getPidFromFile($this->pidFile);
-        $isRunning = ProcessUtil::isRunning($masterPid);
+        $masterPid = ProcessHelper::getPidFromFile($this->pidFile);
+        $isRunning = ProcessHelper::isRunning($masterPid);
 
         // start: do Start Server
         if ($command === 'start') {
@@ -240,7 +244,7 @@ trait OptionsConfigTrait
 
         if ($server = trim($config['server'])) {
             if (strpos($server, ':')) {
-                [$this->host, $this->port] = explode(':', $server, 2);
+                list($this->host, $this->port) = explode(':', $server, 2);
             } else {
                 $this->host = $server;
             }
@@ -260,8 +264,6 @@ trait OptionsConfigTrait
         $this->maxLifetime = $this->config['max_lifetime'];
         $this->logLevel = $this->config['log_level'];
         $this->pidFile = $this->config['pid_file'];
-
-        unset($config);
     }
 
     /**

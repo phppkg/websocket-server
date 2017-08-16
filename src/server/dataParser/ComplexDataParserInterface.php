@@ -8,21 +8,21 @@
 
 namespace inhere\webSocket\server\dataParser;
 
-use inhere\webSocket\server\handlers\IRouteHandler;
+use inhere\webSocket\server\handlers\RouteHandlerInterface;
 
 /**
  * Class ComplexDataParser
  * @package inhere\webSocket\server\dataParser
  */
-class ComplexDataParser implements IDataParser
+class ComplexDataParserInterface implements DataParserInterface
 {
     /**
      * @param string $data
      * @param int $index
-     * @param IRouteHandler $handler
+     * @param RouteHandlerInterface $handler
      * @return array|false
      */
-    public function parse(string $data, int $index, IRouteHandler $handler)
+    public function parse(string $data, int $index, RouteHandlerInterface $handler)
     {
         // default format: [@command]data
         // eg:

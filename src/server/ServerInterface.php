@@ -17,7 +17,6 @@ use inhere\console\io\Output;
  */
 interface ServerInterface
 {
-
     /**
      * some MIN values
      */

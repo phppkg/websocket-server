@@ -14,7 +14,7 @@ use inhere\library\helpers\PhpHelper;
 use inhere\library\helpers\ProcessHelper;
 use inhere\library\traits\OptionsTrait;
 use inhere\library\utils\LiteLogger;
-use inhere\webSocket\server\handlers\IRouteHandler;
+use inhere\webSocket\server\handlers\RouteHandlerInterface;
 use inhere\webSocket\server\handlers\RootHandler;
 use inhere\webSocket\parts\MessageBag;
 use inhere\webSocket\http\Request;
@@ -140,7 +140,7 @@ class Application
     ];
 
     /**
-     * @var IRouteHandler[]
+     * @var RouteHandlerInterface[]
      * [
      *  // path => IRouteHandler,
      *  '/'  => RootHandler,
@@ -231,7 +231,7 @@ class Application
             }
 
             // run as daemon
-            $asDaemon = (bool)$this->cliIn->boolOpt('d', $this->isDaemon());
+            $asDaemon = $this->cliIn->boolOpt('d', $this->isDaemon());
             $this->setOption('daemon', $asDaemon);
 
             return true;
@@ -297,8 +297,7 @@ class Application
             // command equal to 'help'
             $command === 'help' ||
             // has option -h|--help
-            $this->cliIn->boolOpt('h', false) ||
-            $this->cliIn->boolOpt('help', false)
+            $this->cliIn->sameOpt(['h','help'])
         ) {
             $this->showHelpInfo();
         }
@@ -518,11 +517,11 @@ class Application
     /**
      * register a route and it's handler
      * @param string $path route path
-     * @param IRouteHandler $routeHandler the route path handler
+     * @param RouteHandlerInterface $routeHandler the route path handler
      * @param bool $replace replace exists's route
-     * @return IRouteHandler
+     * @return RouteHandlerInterface
      */
-    public function route(string $path, IRouteHandler $routeHandler, $replace = false)
+    public function route(string $path, RouteHandlerInterface $routeHandler, $replace = false)
     {
         $path = trim($path) ?: '/';
         $pattern = '/^\/[a-zA-Z][\w-]+$/';
@@ -531,7 +530,7 @@ class Application
             throw new \InvalidArgumentException("The route path format must be match: $pattern");
         }
 
-        if ($this->hasRoute($path) && !$replace) {
+        if (!$replace && $this->hasRoute($path)) {
             throw new \InvalidArgumentException("The route path [$path] have been registered!");
         }
 
@@ -551,9 +550,9 @@ class Application
 
     /**
      * @param string $path
-     * @return IRouteHandler
+     * @return RouteHandlerInterface
      */
-    public function getRouteHandler(string $path = '/'): IRouteHandler
+    public function getRouteHandler(string $path = '/'): RouteHandlerInterface
     {
         if (!$this->hasRoute($path)) {
             throw new \RuntimeException("The route handler not exists for the path: $path");
@@ -603,7 +602,7 @@ class Application
         return json_encode([
             'data' => $data,
             'msg' => $msg,
-            'code' => (int)$code,
+            'code' => $code,
             'time' => time(),
         ]);
     }
@@ -662,7 +661,7 @@ class Application
         $mr = MessageBag::make($data)->setWs($this->ws);
 
         if ($doSend) {
-            $mr->send(true);
+            $mr->send();
         }
 
         return $mr;
@@ -787,9 +786,9 @@ class Application
     public function log(string $msg, string $type = 'info', array $data = [])
     {
         // if close debug, don't output debug log.
-        if ($this->isDebug() || $type !== 'debug') {
+        if ($type !== 'debug' || $this->isDebug()) {
             if (!$this->isDaemon()) {
-                [$time, $micro] = explode('.', microtime(1));
+                list($time, $micro) = explode('.', microtime(1));
                 $time = date('Y-m-d H:i:s', $time);
                 $json = $data ? json_encode($data) : '';
                 $type = strtoupper($type);

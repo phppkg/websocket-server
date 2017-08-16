@@ -19,7 +19,6 @@ class WSHelper
 
     }
 
-
     /**
      * @param $s
      * @return string

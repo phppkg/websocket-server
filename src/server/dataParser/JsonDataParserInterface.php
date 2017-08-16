@@ -8,13 +8,13 @@
 
 namespace inhere\webSocket\server\dataParser;
 
-use inhere\webSocket\server\handlers\IRouteHandler;
+use inhere\webSocket\server\handlers\RouteHandlerInterface;
 
 /**
  * Class JsonDataParser
  * @package inhere\webSocket\server\dataParser
  */
-class JsonDataParser implements IDataParser
+class JsonDataParserInterface implements DataParserInterface
 {
     // default cmd key in the request json data.
     const DEFAULT_CMD_KEY = 'cmd';
@@ -27,10 +27,10 @@ class JsonDataParser implements IDataParser
     /**
      * @param string $data
      * @param int $index
-     * @param IRouteHandler $handler
+     * @param RouteHandlerInterface $handler
      * @return array|false
      */
-    public function parse(string $data, int $index, IRouteHandler $handler)
+    public function parse(string $data, int $index, RouteHandlerInterface $handler)
     {
         // json parser
         // format: {"cmd": "value", ... ...}

@@ -18,7 +18,7 @@ use inhere\webSocket\http\Response;
  *
  * @package inhere\webSocket\server\handlers
  */
-class RootHandler extends ARouteHandler
+class RootHandler extends RouteHandlerAbstracter
 {
     /**
      * @param Request $request

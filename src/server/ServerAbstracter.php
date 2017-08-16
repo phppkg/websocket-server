@@ -9,9 +9,7 @@
 namespace inhere\webSocket\server;
 
 use inhere\console\utils\Show;
-use inhere\library\helpers\CliHelper;
 use inhere\library\helpers\PhpHelper;
-use inhere\library\process\ProcessUtil;
 use inhere\webSocket\WSAbstracter;
 use inhere\webSocket\http\Request;
 use inhere\webSocket\http\Response;
@@ -265,9 +263,9 @@ abstract class ServerAbstracter extends WSAbstracter implements ServerInterface,
     protected function dumpInfo($allInfo = false)
     {
         if ($allInfo) {
-            $this->stdout("There are all information of the manager:\n" . PhpHelper::printVar($this));
+            $this->stdout("There are all information of the manager:\n" . PhpHelper::printVars($this));
         } else {
-            $this->stdout("There are configure information:\n" . PhpHelper::printVar($this->config));
+            $this->stdout("There are configure information:\n" . PhpHelper::printVars($this->config));
         }
 
         $this->quit();
@@ -710,6 +708,7 @@ abstract class ServerAbstracter extends WSAbstracter implements ServerInterface,
         }
 
         $dataLen = strlen($data);
+
         for ($index = 0; $index < $dataLen; $index++) {
             $decoded .= $data[$index] ^ $masks[$index % 4];
         }

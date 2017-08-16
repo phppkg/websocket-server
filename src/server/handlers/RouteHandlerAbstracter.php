@@ -10,8 +10,8 @@ namespace inhere\webSocket\server\handlers;
 
 use inhere\library\traits\OptionsTrait;
 use inhere\webSocket\server\Application;
-use inhere\webSocket\server\dataParser\ComplexDataParser;
-use inhere\webSocket\server\dataParser\IDataParser;
+use inhere\webSocket\server\dataParser\ComplexDataParserInterface;
+use inhere\webSocket\server\dataParser\DataParserInterface;
 use inhere\webSocket\http\Request;
 use inhere\webSocket\http\Response;
 use inhere\webSocket\parts\MessageBag;
@@ -20,7 +20,7 @@ use inhere\webSocket\parts\MessageBag;
  * Class ARouteHandler
  * @package inhere\webSocket\server\handlers
  */
-abstract class ARouteHandler implements IRouteHandler
+abstract class RouteHandlerAbstracter implements RouteHandlerInterface
 {
     use OptionsTrait;
 
@@ -41,7 +41,7 @@ abstract class ARouteHandler implements IRouteHandler
     private $request;
 
     /**
-     * @var IDataParser
+     * @var DataParserInterface
      */
     private $_dataParser;
 
@@ -68,7 +68,7 @@ abstract class ARouteHandler implements IRouteHandler
         'dataType' => 'json',
 
         // It is valid when `'dataType' => 'json'`, allow: 1 raw 2 array 3 object
-        'jsonParseTo' => IDataParser::JSON_TO_ARRAY,
+        'jsonParseTo' => DataParserInterface::JSON_TO_ARRAY,
 
         // default command name, if request data not define command name.
         'defaultCmd' => self::DEFAULT_CMD,
@@ -82,9 +82,9 @@ abstract class ARouteHandler implements IRouteHandler
     /**
      * ARouteHandler constructor.
      * @param array $options
-     * @param IDataParser|null $dataParser
+     * @param DataParserInterface|null $dataParser
      */
-    public function __construct(array $options = [], IDataParser $dataParser = null)
+    public function __construct(array $options = [], DataParserInterface $dataParser = null)
     {
         $this->setOptions($options, true);
 
@@ -200,7 +200,7 @@ abstract class ARouteHandler implements IRouteHandler
      * register a command handler
      * @param string $command
      * @param callable $handler
-     * @return IRouteHandler
+     * @return RouteHandlerInterface
      */
     public function command(string $command, callable $handler)
     {
@@ -351,18 +351,18 @@ abstract class ARouteHandler implements IRouteHandler
     }
 
     /**
-     * @return IDataParser
+     * @return DataParserInterface
      */
-    public function getDataParser(): IDataParser
+    public function getDataParser(): DataParserInterface
     {
         // if not set, use default parser.
-        return $this->_dataParser ?: new ComplexDataParser();
+        return $this->_dataParser ?: new ComplexDataParserInterface();
     }
 
     /**
-     * @param IDataParser $dataParser
+     * @param DataParserInterface $dataParser
      */
-    public function setDataParser(IDataParser $dataParser)
+    public function setDataParser(DataParserInterface $dataParser)
     {
         $this->_dataParser = $dataParser;
     }

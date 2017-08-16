@@ -17,7 +17,7 @@ use inhere\webSocket\parts\MessageBag;
  * Interface IRouteHandler
  * @package inhere\webSocket\server\handlers
  */
-interface IRouteHandler
+interface RouteHandlerInterface
 {
     const SEND_PING = 'ping';
     const NOT_FOUND = 'notFound';

@@ -283,7 +283,7 @@ class SwooleServer extends ServerAbstracter
      */
     public function onClose(Server $server, $cid)
     {
-        $this->debug("onClose: A client connection #$cid has been lost");
+        $this->debug("onClose: A client connection #$cid has been lost[worker:{$server->worker_id}]");
 
         $this->afterClose($cid);
     }
