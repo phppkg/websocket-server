@@ -8,7 +8,7 @@
 
 namespace inhere\webSocket\server\dataParser;
 
-use inhere\webSocket\server\handlers\RouteHandlerInterface;
+use inhere\webSocket\handlers\RouteHandlerInterface;
 
 /**
  * Class ComplexDataParser

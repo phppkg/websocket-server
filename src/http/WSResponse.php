@@ -6,18 +6,18 @@
  * Time: 21:32
  */
 
-namespace inhere\webSocket\parts;
+namespace inhere\webSocket\http;
 
 use inhere\library\traits\TraitArrayAccess;
 use inhere\library\traits\TraitGetterSetterAccess;
 use inhere\webSocket\server\ServerInterface;
 
 /**
- * Class MessageResponse
+ * Class WSResponse
  * webSocket message response
  * @package inhere\webSocket\parts
  */
-class MessageBag implements \ArrayAccess
+class WSResponse implements \ArrayAccess
 {
     use TraitArrayAccess;
     use TraitGetterSetterAccess;

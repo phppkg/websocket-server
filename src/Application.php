@@ -6,7 +6,7 @@
  * Time: 23:13
  */
 
-namespace inhere\webSocket\server;
+namespace inhere\webSocket;
 
 use inhere\console\io\Input;
 use inhere\console\io\Output;
@@ -14,12 +14,14 @@ use inhere\library\helpers\PhpHelper;
 use inhere\library\helpers\ProcessHelper;
 use inhere\library\traits\OptionsTrait;
 use inhere\library\utils\LiteLogger;
-use inhere\webSocket\server\handlers\RouteHandlerInterface;
-use inhere\webSocket\server\handlers\RootHandler;
-use inhere\webSocket\parts\MessageBag;
+use inhere\webSocket\handlers\RouteHandlerInterface;
+use inhere\webSocket\handlers\RootHandler;
+use inhere\webSocket\http\WSResponse;
 use inhere\webSocket\http\Request;
 use inhere\webSocket\http\Response;
-use inhere\webSocket\WSInterface;
+use inhere\webSocket\server\ServerAbstracter;
+use inhere\webSocket\server\ServerFactory;
+use inhere\webSocket\server\ServerInterface;
 
 /**
  * Class Application
@@ -637,7 +639,7 @@ class Application
      * @param string $msg
      * @param int $code
      * @param bool $doSend
-     * @return int|MessageBag
+     * @return int|WSResponse
      */
     public function respond($data, string $msg = '', int $code = 0, bool $doSend = true)
     {
@@ -650,7 +652,7 @@ class Application
      * response text data to client
      * @param $data
      * @param bool $doSend
-     * @return int|MessageBag
+     * @return int|WSResponse
      */
     public function respondText($data, bool $doSend = true)
     {
@@ -658,7 +660,7 @@ class Application
             $data = implode('', $data);
         }
 
-        $mr = MessageBag::make($data)->setWs($this->ws);
+        $mr = WSResponse::make($data)->setWs($this->ws);
 
         if ($doSend) {
             $mr->send();
@@ -695,7 +697,7 @@ class Application
             $data = implode('', $data);
         }
 
-        $mr = MessageBag::make($data)->setWs($this->ws);
+        $mr = WSResponse::make($data)->setWs($this->ws);
 
         if ($afterMakeMR) {
             $status = $afterMakeMR($mr);

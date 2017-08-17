@@ -10,9 +10,9 @@
 
 require __DIR__ . '/../../../autoload.php';
 
-use inhere\webSocket\server\Application;
+use inhere\webSocket\Application;
 use inhere\webSocket\http\Request;
-use inhere\webSocket\server\handlers\RouteHandlerInterface;
+use inhere\webSocket\handlers\RouteHandlerInterface;
 
 define('PROJECT_PATH', __DIR__);
 
@@ -34,7 +34,7 @@ $app->onClose(function (Application $app, int $id, array $client) {
     ]);
 });
 
-$rootHandler = $app->route('/', new \inhere\webSocket\server\handlers\RootHandler());
+$rootHandler = $app->route('/', new \inhere\webSocket\handlers\RootHandler());
 
 // commands
 $rootHandler->add('test', function ($data, $index, RouteHandlerInterface $handler) {

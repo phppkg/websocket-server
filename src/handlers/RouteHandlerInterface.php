@@ -6,16 +6,16 @@
  * Time: 15:35
  */
 
-namespace inhere\webSocket\server\handlers;
+namespace inhere\webSocket\handlers;
 
-use inhere\webSocket\server\Application;
+use inhere\webSocket\Application;
 use inhere\webSocket\http\Request;
 use inhere\webSocket\http\Response;
-use inhere\webSocket\parts\MessageBag;
+use inhere\webSocket\http\WSResponse;
 
 /**
  * Interface IRouteHandler
- * @package inhere\webSocket\server\handlers
+ * @package inhere\webSocket\handlers
  */
 interface RouteHandlerInterface
 {
@@ -75,7 +75,7 @@ interface RouteHandlerInterface
      * @param string $msg
      * @param int $code
      * @param bool $doSend
-     * @return int|MessageBag
+     * @return int|WSResponse
      */
     public function respond($data, string $msg = 'success', int $code = 0, bool $doSend = true);
 

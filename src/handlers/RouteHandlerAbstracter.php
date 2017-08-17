@@ -6,19 +6,19 @@
  * Time: 22:51
  */
 
-namespace inhere\webSocket\server\handlers;
+namespace inhere\webSocket\handlers;
 
 use inhere\library\traits\OptionsTrait;
-use inhere\webSocket\server\Application;
+use inhere\webSocket\Application;
 use inhere\webSocket\server\dataParser\ComplexDataParserInterface;
 use inhere\webSocket\server\dataParser\DataParserInterface;
 use inhere\webSocket\http\Request;
 use inhere\webSocket\http\Response;
-use inhere\webSocket\parts\MessageBag;
+use inhere\webSocket\http\WSResponse;
 
 /**
  * Class ARouteHandler
- * @package inhere\webSocket\server\handlers
+ * @package inhere\webSocket\handlers
  */
 abstract class RouteHandlerAbstracter implements RouteHandlerInterface
 {
@@ -299,7 +299,7 @@ abstract class RouteHandlerAbstracter implements RouteHandlerInterface
      * @param string $msg
      * @param int $code
      * @param bool $doSend
-     * @return int|MessageBag
+     * @return int|WSResponse
      */
     public function respond($data, string $msg = 'success', int $code = 0, bool $doSend = true)
     {
@@ -309,7 +309,7 @@ abstract class RouteHandlerAbstracter implements RouteHandlerInterface
     /**
      * @param $data
      * @param bool $doSend
-     * @return MessageBag|int
+     * @return WSResponse|int
      */
     public function respondText($data, bool $doSend = true)
     {

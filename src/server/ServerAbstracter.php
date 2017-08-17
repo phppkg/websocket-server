@@ -374,9 +374,12 @@ abstract class ServerAbstracter extends WSAbstracter implements ServerInterface,
         $this->log("Handshake: Ready to shake hands with the #$cid client connection. request:\n$data");
         $meta = $this->metas[$cid];
         $response = new Response();
+        // 解析请求头信息
+        $request = Request::makeByParseRawData($data);
+        $secKey = $request->getHeader('Sec-WebSocket-Key');
 
         // 解析请求头信息错误
-        if (!preg_match("/Sec-WebSocket-Key: (.*)\r\n/i", $data, $match)) {
+        if ($this->isInvalidSecWSKey($secKey)) {
             $this->log("handle handshake failed! [Sec-WebSocket-Key] not found in header. Data: \n $data", 'error');
 
             $response
@@ -387,9 +390,6 @@ abstract class ServerAbstracter extends WSAbstracter implements ServerInterface,
 
             return $this->close($cid, $socket, false);
         }
-
-        // 解析请求头信息
-        $request = Request::makeByParseRawData($data);
 
         // 触发 handshake 事件回调，如果返回 false -- 拒绝连接，比如需要认证，限定路由，限定ip，限定domain等
         // 就停止继续处理。并返回信息给客户端
@@ -413,7 +413,7 @@ abstract class ServerAbstracter extends WSAbstracter implements ServerInterface,
             ->setHeaders([
                 'Upgrade' => 'websocket',
                 'Connection' => 'Upgrade',
-                'Sec-WebSocket-Accept' => $this->genSign($match[1]),
+                'Sec-WebSocket-Accept' => $this->genSign($secKey),
                 'Sec-WebSocket-Version' => self::WS_VERSION,
             ]);
 
@@ -648,6 +648,14 @@ abstract class ServerAbstracter extends WSAbstracter implements ServerInterface,
     /// helper method
     /////////////////////////////////////////////////////////////////////////////////////////
 
+    /**
+     * @param string $secWSKey 'sec-websocket-key: xxxx'
+     * @return bool
+     */
+    public function isInvalidSecWSKey($secWSKey)
+    {
+        return 0 === preg_match(self::WS_KEY_PATTEN, $secWSKey) || 16 !== strlen(base64_decode($secWSKey));
+    }
 
     /**
      * packData encode

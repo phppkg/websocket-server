@@ -10,7 +10,7 @@ Websocket协议通过序列化的数据帧传输数据。数据封包协议中�
 
 针对上情况，发现错误的一方可向对方发送close帧（状态码是1002，表示协议错误），以关闭连接。
 
-![](examples/assets/images/ws-data-framing.png)
+![](images/ws-data-framing.png)
 
 详细说明：
 

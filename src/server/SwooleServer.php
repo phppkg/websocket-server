@@ -165,14 +165,15 @@ class SwooleServer extends ServerAbstracter
         $this->log("Handshake: Ready to shake hands with the #$cid client connection. request:\n" . $request->toString());
 
         $response = new Response();
+        $secKey = $swRequest->header['sec-websocket-key'];
 
-        // 解析请求头信息错误
-        if (!$secKey = $swRequest->header['sec-websocket-key']) {
-            $this->log("handshake failed with client #{$cid}! [Sec-WebSocket-Key] not found in header. request: \n" . $request->toString(), 'error');
+        // sec-websocket-key 错误
+        if ($this->isInvalidSecWSKey($secKey)) {
+            $this->log("handshake failed with client #{$cid}! [Sec-WebSocket-Key] not found OR is error in header. request: \n" . $request->toString(), 'error');
 
             $swResponse->status(404);
             $swResponse->write('<b>400 Bad Request</b><br>[Sec-WebSocket-Key] not found in request header.');
-            //$swResponse->end();
+            $swResponse->end();
 
             // $this->close($cid, $socket, false);
             return false;

@@ -17,6 +17,8 @@ use inhere\console\io\Output;
  */
 interface ServerInterface
 {
+    const WS_KEY_PATTEN  = '#^[+/0-9A-Za-z]{21}[AQgw]==$#';
+
     /**
      * some MIN values
      */
