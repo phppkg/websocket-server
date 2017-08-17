@@ -245,7 +245,7 @@ abstract class ServerAbstracter extends WSAbstracter implements ServerInterface,
     protected function showVersion()
     {
         $this->cliOut->write(
-            printf("Gearman worker manager script tool. Version <info>%s</info>\n", self::VERSION),
+            printf("WebSocket server tool. Version <info>%s</info>\n", self::VERSION),
             true,
             0
         );
@@ -258,7 +258,7 @@ abstract class ServerAbstracter extends WSAbstracter implements ServerInterface,
      */
     protected function showStatus($cmd = 'status', $watch = false)
     {
-        $this->cliOut->warning('Un-completed ...', 0);
+        $this->cliOut->warning('Un-completed ...' . $cmd . $watch, 0);
     }
 
     /**
