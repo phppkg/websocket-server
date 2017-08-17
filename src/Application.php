@@ -13,7 +13,7 @@ use inhere\console\io\Output;
 use inhere\library\helpers\PhpHelper;
 use inhere\library\helpers\ProcessHelper;
 use inhere\library\traits\OptionsTrait;
-use inhere\library\utils\LiteLogger;
+use inhere\library\log\FileLogger;
 use inhere\webSocket\handlers\RouteHandlerInterface;
 use inhere\webSocket\handlers\RootHandler;
 use inhere\webSocket\http\WSResponse;
@@ -95,7 +95,7 @@ class Application
     protected $cliIn;
 
     /**
-     * @var LiteLogger
+     * @var FileLogger
      */
     private $logger;
 
@@ -175,7 +175,7 @@ class Application
     {
         // create log service instance
         if ($config = $this->getOption('log_service')) {
-            $this->logger = LiteLogger::make($config);
+            $this->logger = FileLogger::make($config);
         }
     }
 
@@ -796,7 +796,9 @@ class Application
                 $type = strtoupper($type);
 
                 $this->cliOut->write("[{$time}.{$micro}] [$type] $msg {$json}");
-            } else if ($logger = $this->getLogger()) {
+            }
+
+            if ($logger = $this->getLogger()) {
                 $logger->$type(strip_tags($msg), $data);
             }
         }
@@ -828,7 +830,7 @@ class Application
 
     /**
      * get Logger service
-     * @return LiteLogger
+     * @return FileLogger
      */
     public function getLogger()
     {

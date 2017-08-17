@@ -16,6 +16,8 @@ use inhere\webSocket\handlers\RouteHandlerInterface;
 
 define('PROJECT_PATH', __DIR__);
 
+$di = require __DIR__ . '/bootstrap.php';
+
 $options = [
     'debug' => true,
     'driver' => '',

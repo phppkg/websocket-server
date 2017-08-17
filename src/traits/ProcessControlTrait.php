@@ -210,7 +210,7 @@ trait ProcessControlTrait
             pcntl_signal(SIGCHLD, [$this, 'signalHandler'], false);
 
         } else {
-            $this->log("Registering signal handlers for current worker process", self::LOG_DEBUG);
+            $this->log('Registering signal handlers for current worker process', self::LOG_DEBUG);
 
             if (!pcntl_signal(SIGTERM, [$this, 'signalHandler'], false)) {
                 $this->quit(-170);

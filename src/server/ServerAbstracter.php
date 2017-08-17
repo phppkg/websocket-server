@@ -10,6 +10,7 @@ namespace inhere\webSocket\server;
 
 use inhere\console\utils\Show;
 use inhere\library\helpers\PhpHelper;
+use inhere\library\log\ProcessLogInterface;
 use inhere\webSocket\WSAbstracter;
 use inhere\webSocket\http\Request;
 use inhere\webSocket\http\Response;
@@ -22,7 +23,7 @@ use inhere\webSocket\traits;
 abstract class ServerAbstracter extends WSAbstracter implements ServerInterface, LogInterface
 {
     use traits\OptionsConfigTrait;
-    use traits\ProcessLogTrait;
+    // use traits\ProcessLogTrait;
     use traits\ProcessManageTrait;
 
     /**
@@ -173,6 +174,10 @@ abstract class ServerAbstracter extends WSAbstracter implements ServerInterface,
      */
     public function __construct(string $host = '0.0.0.0', int $port = 8080, array $options = [])
     {
+        if (!PhpHelper::isCli()) {
+            throw new \RuntimeException('The script must run in the CLI mode.');
+        }
+
         if (!static::isSupported()) {
             // throw new \InvalidArgumentException("The extension [$this->name] is required for run the server.");
             $this->cliOut->error("Your system is not supported the driver: {$this->driver}, by " . static::class, -200);
@@ -647,6 +652,47 @@ abstract class ServerAbstracter extends WSAbstracter implements ServerInterface,
     /////////////////////////////////////////////////////////////////////////////////////////
     /// helper method
     /////////////////////////////////////////////////////////////////////////////////////////
+
+    /**
+     * Logs data to disk or stdout
+     * @param string $msg
+     * @param int $level
+     * @param array $data
+     * @return bool
+     */
+    public function log(string $msg, $level = ProcessLogInterface::INFO, array $data = [])
+    {
+        if ($this->isDebug() && ($info = debug_backtrace(DEBUG_BACKTRACE_IGNORE_ARGS, 1))) {
+            $info = $info[0];
+            $msg = sprintf('[%s:%d] ', $info['class'] ?? 'UNKNOWN', $info['line'] ?? -1) . $msg;
+        }
+
+        // if not in daemon, print log to \STDOUT
+//        if (!$this->isDaemon()) {
+//            list($ts, $ms) = explode('.', sprintf('%.4f', microtime(true)));
+//            $ds = date('Y/m/d H:i:s', $ts) . '.' . $ms;
+//
+//            $logString = sprintf(
+//                '[%s] [%s] %s %s' . PHP_EOL,
+//                $ds, $this->logger::getLevelName($level), trim($msg), json_encode($data)
+//            );
+//
+//            $this->stdout($logString, false);
+//        }
+
+        $msg = $this->getCliOut()->getStyle()->format($msg);
+
+        return $this->logger->log($msg, $level, $data);
+    }
+
+    /**
+     * @param string $msg
+     * @param array $data
+     */
+    public function debug(string $msg, array $data = [])
+    {
+        $this->log($msg, ProcessLogInterface::DEBUG, $data);
+    }
 
     /**
      * @param string $secWSKey 'sec-websocket-key: xxxx'

@@ -99,7 +99,7 @@ trait StreamsTrait
             'port' => 0,
         ];
 
-        [$data['host'], $data['port']] = explode(':', $name);
+        list($data['host'], $data['port']) = explode(':', $name);
 
         return $data;
     }
@@ -116,7 +116,7 @@ trait StreamsTrait
             'port' => 0,
         ];
 
-        [$data['host'], $data['port']] = explode(':', $name);
+        list($data['host'], $data['port']) = explode(':', $name);
 
         return $data;
     }

@@ -10,7 +10,9 @@ namespace inhere\webSocket;
 
 use inhere\console\io\Input;
 use inhere\console\io\Output;
-use inhere\library\helpers\PhpHelper;
+use inhere\library\helpers\CliHelper;
+use inhere\library\log\ProcessLogger;
+use inhere\library\log\ProcessLogInterface;
 use inhere\library\traits\FixedEventTrait;
 use inhere\library\traits\ConfigTrait;
 
@@ -26,7 +28,6 @@ abstract class WSAbstracter implements WSInterface
     }
 
     const DEFAULT_HOST = '0.0.0.0';
-
     const DEFAULT_PORT = 8080;
 
     /**
@@ -47,6 +48,12 @@ abstract class WSAbstracter implements WSInterface
      * @var string
      */
     protected $driver = '';
+
+    /**
+     * the driver name
+     * @var ProcessLogInterface
+     */
+    protected $logger;
 
     /**
      * @var string
@@ -71,7 +78,7 @@ abstract class WSAbstracter implements WSInterface
     /**
      * @var bool
      */
-    private $initialized = false;
+    private $initialized;
 
     /**
      * @var array
@@ -128,10 +135,6 @@ abstract class WSAbstracter implements WSInterface
      */
     public function __construct(array $config = [])
     {
-        if (!PhpHelper::isCli()) {
-            throw new \RuntimeException('Server must run in the CLI mode.');
-        }
-
         $this->cliIn = new Input();
         $this->cliOut = new Output();
 
@@ -143,6 +146,9 @@ abstract class WSAbstracter implements WSInterface
 
         $this->init();
 
+        $this->logger = new ProcessLogger([
+//            'toConsole' => false,
+        ]);
         $this->initialized = true;
     }
 
@@ -159,6 +165,45 @@ abstract class WSAbstracter implements WSInterface
      */
     protected function handleCommandAndConfig()
     {}
+
+    /**
+     * Logs data to disk or stdout
+     * @param string $msg
+     * @param int $level
+     * @param array $data
+     * @return bool
+     */
+    public function log(string $msg, $level = ProcessLogInterface::INFO, array $data = [])
+    {
+        if ($this->isDebug() && ($info = debug_backtrace(DEBUG_BACKTRACE_IGNORE_ARGS, 1))) {
+            $msg = sprintf(' [%s:%d] ', $info['class'] ?? 'UNKNOWN', $info['line'] ?? -1) . $msg;
+        }
+
+        return $this->logger->log($msg, $level, $data);
+    }
+
+    /**
+     * Logs data to stdout
+     * @param string $text
+     * @param bool $nl
+     * @param bool|int $quit
+     */
+    protected function stdout($text, $nl = true, $quit = false)
+    {
+        // CliHelper::stdout($text, $nl, $quit);
+        $this->getCliOut()->write($text, $nl, $quit);
+    }
+
+    /**
+     * Logs data to stderr
+     * @param string $text
+     * @param bool $nl
+     * @param bool|int $quit
+     */
+    protected function stderr($text, $nl = true, $quit = -200)
+    {
+        CliHelper::stderr($text, $nl, $quit);
+    }
 
     /**
      * @return array
@@ -188,6 +233,22 @@ abstract class WSAbstracter implements WSInterface
     public function get($name, $default = null)
     {
         return $this->getValue($name, $default);
+    }
+
+    /**
+     * @return ProcessLogInterface
+     */
+    public function getLogger(): ProcessLogInterface
+    {
+        return $this->logger;
+    }
+
+    /**
+     * @param ProcessLogInterface $logger
+     */
+    public function setLogger(ProcessLogInterface $logger)
+    {
+        $this->logger = $logger;
     }
 
     /**

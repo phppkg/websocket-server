@@ -589,13 +589,14 @@ abstract class ClientAbstracter extends WSAbstracter implements ClientInterface
      * @param  string $msg
      * @param  array $data
      * @param string $type
+     * @return bool|void
      */
-    public function log(string $msg, string $type = 'debug', array $data = [])
+    public function log(string $msg, $type = 'debug', array $data = [])
     {
         // if close debug, don't output debug log.
         if ($this->isDebug() || $type !== 'debug') {
 
-            [$time, $micro] = explode('.', microtime(1));
+            list($time, $micro) = explode('.', microtime(1));
 
             $time = date('Y-m-d H:i:s', $time);
             $json = $data ? json_encode($data) : '';
@@ -612,15 +613,6 @@ abstract class ClientAbstracter extends WSAbstracter implements ClientInterface
     /////////////////////////////////////////////////////////////////////////////////////////
     /// getter/setter method
     /////////////////////////////////////////////////////////////////////////////////////////
-
-    /**
-     * get Logger service
-     * @return LiteLogger
-     */
-    public function getLogger()
-    {
-        return $this->logger;
-    }
 
     /**
      * @return int
