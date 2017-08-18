@@ -10,6 +10,7 @@ namespace inhere\webSocket\handlers;
 
 use inhere\library\traits\OptionsTrait;
 use inhere\webSocket\Application;
+use inhere\webSocket\server\ClientMetadata;
 use inhere\webSocket\server\dataParser\ComplexDataParserInterface;
 use inhere\webSocket\server\dataParser\DataParserInterface;
 use inhere\webSocket\http\Request;
@@ -110,7 +111,7 @@ abstract class RouteHandlerAbstracter implements RouteHandlerInterface
     /**
      * @inheritdoc
      */
-    public function onClose(int $cid, array $client)
+    public function onClose(int $cid, ClientMetadata $client)
     {
         $this->log('A user has been disconnected. Path: ' . $client['path']);
     }

@@ -24,7 +24,7 @@ abstract class ServerAbstracter extends WSAbstracter implements ServerInterface,
 {
     use traits\OptionsConfigTrait;
     // use traits\ProcessLogTrait;
-    use traits\ProcessManageTrait;
+    //use traits\ProcessManageTrait;
 
     /**
      * The statistics info for server/worker
@@ -74,24 +74,12 @@ abstract class ServerAbstracter extends WSAbstracter implements ServerInterface,
 
     /**
      * 连接的客户端信息列表
-     * @var array
+     * @var ClientMetadata[]
      * [
      *  cid => [ ip=> string , port => int, handshake => bool ], // bool: handshake status.
      * ]
      */
     protected $metas = [];
-
-    /**
-     * default client meta info
-     * @var array
-     */
-    protected $defaultMeta = [
-        'host' => '',
-        'port' => 0,
-        'handshake' => false,
-        'path' => '/',
-        'connect_time' => 0,
-    ];
 
     protected $config = [
         // if you setting name, will display on the process name.
@@ -188,7 +176,7 @@ abstract class ServerAbstracter extends WSAbstracter implements ServerInterface,
 
         parent::__construct($options);
 
-        $this->cliOut->write("The webSocket server power by [<info>{$this->driver}</info>], driver class: <cyan>" . static::class . '</cyan>', 'info');
+        $this->cliOut->write("The webSocket server power by extension: <info>{$this->driver}</info>, driver class: <cyan>" . static::class . '</cyan>', 'info');
     }
 
     /**
@@ -345,25 +333,32 @@ abstract class ServerAbstracter extends WSAbstracter implements ServerInterface,
      */
     protected function connect($socket)
     {
-        $cid = (int)$socket;
+        $cid = $this->resourceId($socket);
         $data = $this->getPeerName($socket);
-
-        // 初始化客户端信息
-        $this->metas[$cid] = $meta = [
-            'host' => $data['host'],
+        $meta = [
+            'ip' => $data['ip'],
             'port' => $data['port'],
             'handshake' => false,
             'path' => '/',
-            'connect_time' => time(),
+            'connectTime' => time(),
+            'resourceId' => $cid,
         ];
+
+        // 初始化客户端信息
+        $this->metas[$cid] = new ClientMetadata($meta);
         // 客户端连接单独保存
         $this->clients[$cid] = $socket;
         $this->clientNumber++;
 
-        $this->log("Connect: A new client connected, ID: $cid, From {$meta['host']}:{$meta['port']}. Count: {$this->clientNumber}");
+        $this->log("Connect: A new client connected, ID: $cid, From {$meta['ip']}:{$meta['port']}. Count: {$this->clientNumber}");
 
         // 触发 connect 事件回调
         $this->fire(self::ON_CONNECT, [$this, $cid]);
+    }
+
+    protected function resourceId($resource): int
+    {
+        return (int)$resource;
     }
 
     /**
@@ -428,11 +423,11 @@ abstract class ServerAbstracter extends WSAbstracter implements ServerInterface,
         $this->writeTo($socket, $respData);
 
         // 标记已经握手 更新路由 path
-        $meta['handshake'] = true;
-        $meta['path'] = $request->getPath();
-        $this->metas[$cid] = $meta;
+        $meta->handshake();
+        $meta->setPath($request->getPath());
+        // $this->metas[$cid] = $meta;
 
-        $this->log("The #$cid client connection handshake successful! Info:", 'info', $meta);
+        $this->log("The #$cid client connection handshake successful! Info:", 'info', $meta->all());
 
         // 握手成功 触发 open 事件
         return $this->fire(self::ON_OPEN, [$this, $request, $cid]);
@@ -443,9 +438,9 @@ abstract class ServerAbstracter extends WSAbstracter implements ServerInterface,
      * @param int $cid
      * @param string $data
      * @param int $bytes
-     * @param array $meta The client info [@see $defaultMeta]
+     * @param ClientMetadata $meta The client info
      */
-    protected function message(int $cid, string $data, int $bytes, array $meta = [])
+    protected function message(int $cid, string $data, int $bytes, ClientMetadata $meta = null)
     {
         $meta = $meta ?: $this->getMeta($cid);
         $data = $this->decode($data);
@@ -498,7 +493,7 @@ abstract class ServerAbstracter extends WSAbstracter implements ServerInterface,
             $this->fire(self::ON_CLOSE, [$this, $cid, $meta]);
         }
 
-        $this->log("Close: The #$cid client connection has been closed! From {$meta['host']}:{$meta['port']}. Count: {$this->clientNumber}");
+        $this->log("Close: The #$cid client connection has been closed! From {$meta['ip']}:{$meta['port']}. Count: {$this->clientNumber}");
     }
 
     /**
@@ -788,17 +783,17 @@ abstract class ServerAbstracter extends WSAbstracter implements ServerInterface,
     /**
      * get client info data
      * @param int $cid
-     * @return array
+     * @return ClientMetadata
      */
     public function getMeta(int $cid)
     {
-        return $this->metas[$cid] ?? [];
+        return $this->metas[$cid] ?? null;
     }
 
     /**
      * get client info data
      * @param int $cid
-     * @return array
+     * @return ClientMetadata
      */
     public function getClientInfo(int $cid)
     {

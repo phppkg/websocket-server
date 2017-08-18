@@ -156,10 +156,12 @@ class StreamsServer extends ServerAbstracter
                 (int)$this->get('read_buffer_size')
             );
 
-            $name = stream_socket_get_name($this->socket, false);
-            $name1 = stream_socket_get_name($newSock, true);
+            socket_set_option(socket_import_stream($newSock), SOL_TCP, TCP_NODELAY, 1);
 
-            $this->log("Local name: $name, Accepted name: $name1");
+            $this->log(sprintf('Local name: %s, Accepted name: %s',
+                stream_socket_get_name($this->socket, false),
+                stream_socket_get_name($newSock, true)
+            ));
 
             $this->connect($newSock);
             return true;

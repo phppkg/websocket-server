@@ -8,8 +8,8 @@
 
 namespace inhere\webSocket\http;
 
-use inhere\library\traits\TraitArrayAccess;
-use inhere\library\traits\TraitGetterSetterAccess;
+use inhere\library\traits\ArrayAccessByPropertyTrait;
+use inhere\library\traits\PropertyAccessByGetterSetterTrait;
 use inhere\webSocket\server\ServerInterface;
 
 /**
@@ -19,8 +19,8 @@ use inhere\webSocket\server\ServerInterface;
  */
 class WSResponse implements \ArrayAccess
 {
-    use TraitArrayAccess;
-    use TraitGetterSetterAccess;
+    use ArrayAccessByPropertyTrait;
+    use PropertyAccessByGetterSetterTrait;
 
     /**
      * @var ServerInterface

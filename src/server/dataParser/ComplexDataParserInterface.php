@@ -33,7 +33,7 @@ class ComplexDataParserInterface implements DataParserInterface
 
         if (preg_match('/^\[@([\w-]+)\](.+)/', $data, $matches)) {
             array_shift($matches);
-            [$command, $realData] = $matches;
+            list($command, $realData) = $matches;
 
             // access default command
         } else {
@@ -43,7 +43,7 @@ class ComplexDataParserInterface implements DataParserInterface
         $to = $handler->getOption('jsonParseTo') ?: self::JSON_TO_RAW;
         $handler->log("The #{$index} request Command: $command, To-format: $to, Data: $realData");
 
-        if ($handler->isJsonType() && $to !== self::JSON_TO_RAW) {
+        if ($to !== self::JSON_TO_RAW && $handler->isJsonType()) {
             $realData = json_decode(trim($realData), $to === self::JSON_TO_ARRAY);
 
             // parse error

@@ -95,11 +95,11 @@ trait StreamsTrait
     {
         $name = stream_socket_get_name($socket, true);
         $data = [
-            'host' => '',
+            'ip' => '',
             'port' => 0,
         ];
 
-        list($data['host'], $data['port']) = explode(':', $name);
+        list($data['ip'], $data['port']) = explode(':', $name);
 
         return $data;
     }
@@ -112,11 +112,11 @@ trait StreamsTrait
     {
         $name = stream_socket_get_name($this->socket, false);
         $data = [
-            'host' => '',
+            'ip' => '',
             'port' => 0,
         ];
 
-        list($data['host'], $data['port']) = explode(':', $name);
+        list($data['ip'], $data['port']) = explode(':', $name);
 
         return $data;
     }

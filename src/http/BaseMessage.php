@@ -8,7 +8,7 @@
 
 namespace inhere\webSocket\http;
 
-use inhere\library\traits\TraitGetterSetterAccess;
+use inhere\library\traits\PropertyAccessByGetterSetterTrait;
 
 /**
  * Class BaseRequestResponse
@@ -24,7 +24,7 @@ use inhere\library\traits\TraitGetterSetterAccess;
  */
 abstract class BaseMessage
 {
-    use TraitGetterSetterAccess;
+    use PropertyAccessByGetterSetterTrait;
 
     /**
      * the connection header line data end char

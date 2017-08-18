@@ -79,7 +79,6 @@ trait SocketsTrait
         return socket_get_option($socket, SOL_SOCKET, $opt);
     }
 
-
     /**
      * 用于获取客户端socket的本地host:port，必须在连接之后才可以使用
      * @param $socket
@@ -90,7 +89,7 @@ trait SocketsTrait
         socket_getsockname($socket, $host, $port);
 
         return [
-            'host' => $host,
+            'ip' => $host,
             'port' => $port,
         ];
     }
@@ -105,7 +104,7 @@ trait SocketsTrait
         socket_getpeername($socket, $host, $port);
 
         return [
-            'host' => $host,
+            'ip' => $host,
             'port' => $port,
         ];
     }
@@ -121,5 +120,4 @@ trait SocketsTrait
         // clear error
         socket_clear_error($this->socket);
     }
-
 }

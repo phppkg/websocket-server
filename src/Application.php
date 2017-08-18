@@ -19,6 +19,7 @@ use inhere\webSocket\handlers\RootHandler;
 use inhere\webSocket\http\WSResponse;
 use inhere\webSocket\http\Request;
 use inhere\webSocket\http\Response;
+use inhere\webSocket\server\ClientMetadata;
 use inhere\webSocket\server\ServerAbstracter;
 use inhere\webSocket\server\ServerFactory;
 use inhere\webSocket\server\ServerInterface;
@@ -311,6 +312,26 @@ class Application
         }
     }
 
+    public function start($daemon = null)
+    {
+
+    }
+
+    public function restart($daemon = null)
+    {
+
+    }
+
+    public function reload($onlyTask = false)
+    {
+
+    }
+
+    public function stop()
+    {
+        ProcessHelper::kill(1);
+    }
+
     /**
      * Show help
      * @param  boolean $showHelpAfterQuit
@@ -430,11 +451,11 @@ class Application
      * @param ServerInterface $ws
      * @param string $data
      * @param int $cid
-     * @param array $meta
+     * @param ClientMetadata $meta
      */
-    public function handleMessage(ServerInterface $ws, string $data, int $cid, array $meta)
+    public function handleMessage(ServerInterface $ws, string $data, int $cid, ClientMetadata $meta)
     {
-        $this->log("Received user #$cid sent message. MESSAGE: $data, LENGTH: " . mb_strlen($data) . ', Meta: ', 'info', $meta);
+        $this->log("Received user #$cid sent message. MESSAGE: $data, LENGTH: " . mb_strlen($data) . ', Meta: ', 'info', $meta->all());
 
         // call custom message handler
         if ($msgHandler = $this->wsHandlers[self::MESSAGE_HANDLER]) {
@@ -454,9 +475,9 @@ class Application
     /**
      * @param ServerInterface $ws
      * @param int $cid
-     * @param array $client
+     * @param ClientMetadata $client
      */
-    public function handleClose(ServerInterface $ws, int $cid, array $client)
+    public function handleClose(ServerInterface $ws, int $cid, ClientMetadata $client)
     {
         $this->log("The #$cid user disconnected. Now, connected user count: " . $ws->count());
 

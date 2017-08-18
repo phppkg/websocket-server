@@ -13,6 +13,7 @@ require __DIR__ . '/../../../autoload.php';
 use inhere\webSocket\Application;
 use inhere\webSocket\http\Request;
 use inhere\webSocket\handlers\RouteHandlerInterface;
+use inhere\webSocket\server\ClientMetadata;
 
 define('PROJECT_PATH', __DIR__);
 
@@ -30,7 +31,7 @@ $app->onOpen(function (Application $app, Request $request, int $id) {
     ], 'welcome!');
 });
 
-$app->onClose(function (Application $app, int $id, array $client) {
+$app->onClose(function (Application $app, int $id, ClientMetadata $client) {
     $app->respond([
         'total' => $app->getWs()->count()
     ]);

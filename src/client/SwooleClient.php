@@ -171,17 +171,19 @@ class SwooleClient extends ClientAbstracter
     }
 
     /**
+     * @param resource $socket
      * @return array
      */
-    public function getSockName()
+    public function getSockName($socket)
     {
         return $this->swClient->getsockname();
     }
 
     /**
+     * @param resource $socket
      * @return mixed
      */
-    public function getPeerName()
+    public function getPeerName($socket)
     {
         return $this->swClient->getpeername();
     }

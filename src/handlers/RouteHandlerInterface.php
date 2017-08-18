@@ -12,6 +12,7 @@ use inhere\webSocket\Application;
 use inhere\webSocket\http\Request;
 use inhere\webSocket\http\Response;
 use inhere\webSocket\http\WSResponse;
+use inhere\webSocket\server\ClientMetadata;
 
 /**
  * Interface IRouteHandler
@@ -39,10 +40,10 @@ interface RouteHandlerInterface
 
     /**
      * @param int $id
-     * @param array $client
+     * @param ClientMetadata $client
      * @return
      */
-    public function onClose(int $id, array $client);
+    public function onClose(int $id, ClientMetadata $client);
 
     /**
      * @param Application $app

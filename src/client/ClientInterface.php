@@ -50,16 +50,18 @@ interface ClientInterface
 
     /**
      * 用于获取客户端socket的本地host:port，必须在连接之后才可以使用
+     * @param resource $socket
      * @return array
      */
-    public function getSockName();
+    public function getSockName($socket);
 
     /**
      * 获取对端(远端)socket的IP地址和端口
      * 函数必须在$client->receive() 之后调用
+     * @param resource $socket
      * @return mixed
      */
-    public function getPeerName();
+    public function getPeerName($socket);
 
     /**
      * 获取服务器端证书信息

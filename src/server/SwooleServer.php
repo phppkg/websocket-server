@@ -317,22 +317,11 @@ class SwooleServer extends ServerAbstracter
     }
 
     /**
-     * handle client message
-     * @param int $cid
-     * @param string $data
-     * @param int $bytes
-     * @param array $meta The client info [@see $defaultMeta]
+     * {@inheritdoc}
      */
-    protected function message(int $cid, string $data, int $bytes, array $meta = [])
+    public function decode($buffer)
     {
-        $meta = $meta ?: $this->getMeta($cid);
-        // Notice: don't decode
-        // $data = $this->decode($data);
-
-        $this->log("Message: Received $bytes bytes message from #$cid, Data: $data");
-
-        // call on message handler
-        $this->fire(self::ON_MESSAGE, [$this, $data, $cid, $meta]);
+        return $buffer;
     }
 
     /**
@@ -536,7 +525,7 @@ class SwooleServer extends ServerAbstracter
         $data = $this->getClientInfo($cid);
 
         return [
-            'host' => $data['remote_ip'] ?? '',
+            'ip' => $data['remote_ip'] ?? '',
             'port' => $data['remote_port'] ?? 0,
         ];
     }
