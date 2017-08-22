@@ -8,20 +8,37 @@
  * RUN  `server/ws_server`
  */
 
-require __DIR__ . '/../../../autoload.php';
-
 use inhere\webSocket\Application;
 use inhere\webSocket\http\Request;
-use inhere\webSocket\handlers\RouteHandlerInterface;
 use inhere\webSocket\server\ClientMetadata;
 
 define('PROJECT_PATH', __DIR__);
+
+class Sws {
+    /** @var Application */
+    public static $app;
+
+    /**
+     * @return Application
+     */
+    public static function app()
+    {
+        return self::$app;
+    }
+}
+
+$loader = require __DIR__ . '/../../../autoload.php';
+//var_dump(class_exists('\inhere\sroute\ORouter', 1));
 
 $di = require __DIR__ . '/bootstrap.php';
 
 $options = [
     'debug' => true,
     'driver' => '',
+    'enableHttp' => true,
+    'http' => [
+        'docRoot' => __DIR__,
+    ]
 ];
 $app = new Application('', 9501, $options);
 
@@ -37,42 +54,11 @@ $app->onClose(function (Application $app, int $id, ClientMetadata $client) {
     ]);
 });
 
-$rootHandler = $app->route('/', new \inhere\webSocket\handlers\RootHandler());
+// websocket module
+require __DIR__ . '/modules.php';
 
-// commands
-$rootHandler->add('test', function ($data, $index, RouteHandlerInterface $handler) {
-
-    return 'hello';
-});
-
-// if use `$app->jsonDataParser()` client send: {"cmd":"login","name":"john","pwd":123456}
-// if use `$app->complexDataParser()` client send: [@login]{"name":"john","pwd":123456}
-$rootHandler->add('login', function ($data, $cid, RouteHandlerInterface $handler) {
-
-    $name = $data['name'] ?? 'Please input your name.';
-
-    $handler->respond("hello, $name. you login success, welcome!", '', 0, false)
-        ->to($cid)
-        ->send();
-
-    // 1. will return text
-    // return "hello, $name";
-
-    // 2. will return formatted json
-    // return $app->fmtJson("hello, $name");
-
-    // 3. will return data type by `Application::isJsonType()`.
-    // `Application::isJsonType() === true`  return formatted json.
-    // `Application::isJsonType() === false` return raw text.
-    // **it is recommended**
-    $handler->respond("welcome new friend: $name join us.");
-});
-
-$rootHandler->add('logout', function ($data, $id, Application $app) {
-    $user = $app->getUser($id);
-
-    return $app->respond("goodbye, {$user['name']}");
-});
+// http routes
+require __DIR__ . '/routes.php';
 
 // start
 $app->run();

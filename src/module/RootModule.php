@@ -6,7 +6,7 @@
  * Time: 15:34
  */
 
-namespace inhere\webSocket\handlers;
+namespace inhere\webSocket\module;
 
 use inhere\webSocket\http\Request;
 use inhere\webSocket\http\Response;
@@ -16,9 +16,9 @@ use inhere\webSocket\http\Response;
  *
  * handle the root '/' webSocket request
  *
- * @package inhere\webSocket\handlers
+ * @package inhere\webSocket\module
  */
-class RootHandler extends RouteHandlerAbstracter
+class RootModule extends ModuleAbstracter
 {
     /**
      * @param Request $request
@@ -32,8 +32,12 @@ class RootHandler extends RouteHandlerAbstracter
         $response->setCookie('test1', 'test-value1');
     }
 
+    /**
+     * index command
+     * the default command
+     */
     public function indexCommand()
     {
-        $this->respond('hello, this is [/index]');
+        $this->respond('hello, welcome to here!');
     }
 }

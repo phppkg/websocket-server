@@ -6,7 +6,7 @@
  * Time: 15:35
  */
 
-namespace inhere\webSocket\handlers;
+namespace inhere\webSocket\module;
 
 use inhere\webSocket\Application;
 use inhere\webSocket\http\Request;
@@ -15,10 +15,10 @@ use inhere\webSocket\http\WSResponse;
 use inhere\webSocket\server\ClientMetadata;
 
 /**
- * Interface IRouteHandler
- * @package inhere\webSocket\handlers
+ * Interface ModuleInterface
+ * @package inhere\webSocket\module
  */
-interface RouteHandlerInterface
+interface ModuleInterface
 {
     const SEND_PING = 'ping';
     const NOT_FOUND = 'notFound';

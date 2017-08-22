@@ -8,21 +8,21 @@
 
 namespace inhere\webSocket\server\dataParser;
 
-use inhere\webSocket\handlers\RouteHandlerInterface;
+use inhere\webSocket\module\ModuleInterface;
 
 /**
  * Class ComplexDataParser
  * @package inhere\webSocket\server\dataParser
  */
-class ComplexDataParserInterface implements DataParserInterface
+class ComplexDataParser implements DataParserInterface
 {
     /**
      * @param string $data
      * @param int $index
-     * @param RouteHandlerInterface $handler
+     * @param ModuleInterface $module
      * @return array|false
      */
-    public function parse(string $data, int $index, RouteHandlerInterface $handler)
+    public function parse(string $data, int $index, ModuleInterface $module)
     {
         // default format: [@command]data
         // eg:
@@ -40,17 +40,17 @@ class ComplexDataParserInterface implements DataParserInterface
             $realData = $data;
         }
 
-        $to = $handler->getOption('jsonParseTo') ?: self::JSON_TO_RAW;
-        $handler->log("The #{$index} request Command: $command, To-format: $to, Data: $realData");
+        $to = $module->getOption('jsonParseTo') ?: self::JSON_TO_RAW;
+        $module->log("The #{$index} request Command: $command, To-format: $to, Data: $realData");
 
-        if ($to !== self::JSON_TO_RAW && $handler->isJsonType()) {
+        if ($to !== self::JSON_TO_RAW && $module->isJsonType()) {
             $realData = json_decode(trim($realData), $to === self::JSON_TO_ARRAY);
 
             // parse error
             if (json_last_error() > 0) {
                 $errMsg = json_last_error_msg();
 
-                $handler->log("Request data parse to json failed! Error: {$errMsg}, Data: {$realData}", 'error');
+                $module->log("Request data parse to json failed! Error: {$errMsg}, Data: {$realData}", 'error');
 
                 return false;
             }

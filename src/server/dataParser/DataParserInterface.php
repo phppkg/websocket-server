@@ -8,7 +8,7 @@
 
 namespace inhere\webSocket\server\dataParser;
 
-use inhere\webSocket\handlers\RouteHandlerInterface;
+use inhere\webSocket\module\ModuleInterface;
 
 /**
  * Interface DataParserInterface
@@ -25,8 +25,8 @@ interface DataParserInterface
     /**
      * @param string $data
      * @param int $index
-     * @param RouteHandlerInterface $handler
+     * @param ModuleInterface $module
      * @return array|false
      */
-    public function parse(string $data, int $index, RouteHandlerInterface $handler);
+    public function parse(string $data, int $index, ModuleInterface $module);
 }

@@ -8,39 +8,39 @@
 
 namespace inhere\webSocket\server\dataParser;
 
-use inhere\webSocket\handlers\RouteHandlerInterface;
+use inhere\webSocket\module\ModuleInterface;
 
 /**
  * Class JsonDataParser
  * @package inhere\webSocket\server\dataParser
  */
-class JsonDataParserInterface implements DataParserInterface
+class JsonDataParser implements DataParserInterface
 {
     // default cmd key in the request json data.
-    const DEFAULT_CMD_KEY = 'cmd';
+    const DEFAULT_CMD_KEY = '_cmd';
 
     /**
      * @var string
      */
-    public $cmdKey = 'cmd';
+    public $cmdKey = '_cmd';
 
     /**
      * @param string $data
      * @param int $index
-     * @param RouteHandlerInterface $handler
+     * @param ModuleInterface $module
      * @return array|false
      */
-    public function parse(string $data, int $index, RouteHandlerInterface $handler)
+    public function parse(string $data, int $index, ModuleInterface $module)
     {
         // json parser
-        // format: {"cmd": "value", ... ...}
-        // eg: {"cmd": "login", "name":"john","pwd":123456}
+        // format: {"_cmd": "value", ... ...}
+        // eg: {"_cmd": "login", "name":"john","pwd":123456}
         $temp = $data;
         $command = '';
-        $to = $handler->getOption('jsonParseTo') ?: self::JSON_TO_RAW;
+        $to = $module->getOption('jsonParseTo') ?: self::JSON_TO_RAW;
         $cmdKey = $this->cmdKey ?: self::DEFAULT_CMD_KEY;
 
-        $handler->log("The #{$index} request command: $command, data: $data");
+        $module->log("The #{$index} request command: $command, data: $data");
 
         $data = json_decode(trim($data), $toAssoc = $to === self::JSON_TO_ARRAY);
 
@@ -48,7 +48,7 @@ class JsonDataParserInterface implements DataParserInterface
         if (json_last_error() > 0) {
             $errMsg = json_last_error_msg();
 
-            $handler->log("The #{$index} request data parse to json failed! MSG: $errMsg Data: {$temp}", 'error');
+            $module->log("The #{$index} request data parse to json failed! MSG: $errMsg Data: {$temp}", 'error');
 
             return false;
         }

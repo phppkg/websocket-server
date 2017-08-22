@@ -8,7 +8,7 @@
 
 namespace inhere\webSocket\parts;
 
-use inhere\webSocket\handlers\RouteHandlerInterface;
+use inhere\webSocket\module\ModuleInterface;
 
 /**
  * Class RouteBag
@@ -27,7 +27,7 @@ class RouteBag
     public $index;
 
     /**
-     * @var RouteHandlerInterface
+     * @var ModuleInterface
      */
     public $handler;
 }

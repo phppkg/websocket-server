@@ -12,10 +12,11 @@ use inhere\console\io\Input;
 use inhere\console\io\Output;
 use inhere\library\helpers\PhpHelper;
 use inhere\library\helpers\ProcessHelper;
+use inhere\library\traits\EventTrait;
 use inhere\library\traits\OptionsTrait;
 use inhere\library\log\FileLogger;
-use inhere\webSocket\handlers\RouteHandlerInterface;
-use inhere\webSocket\handlers\RootHandler;
+use inhere\webSocket\module\ModuleInterface;
+use inhere\webSocket\module\RootModule;
 use inhere\webSocket\http\WSResponse;
 use inhere\webSocket\http\Request;
 use inhere\webSocket\http\Response;
@@ -58,6 +59,16 @@ use inhere\webSocket\server\ServerInterface;
 class Application
 {
     use OptionsTrait;
+    use EventTrait;
+
+    // some events
+    const ON_WS_CONNECT = 'wsConnect';
+    const ON_WS_OPEN = 'wsOpen';
+    const ON_WS_MESSAGE = 'wsMessage';
+    const ON_WS_CLOSE = 'wsClose';
+    const ON_WS_ERROR = 'wsError';
+    const ON_NO_MODULE = 'noModule';
+    const ON_PARSE_ERROR = 'parseError';
 
     // custom ws handler position
     const OPEN_HANDLER = 0;
@@ -143,13 +154,13 @@ class Application
     ];
 
     /**
-     * @var RouteHandlerInterface[]
+     * @var ModuleInterface[]
      * [
-     *  // path => IRouteHandler,
+     *  // path => ModuleInterface,
      *  '/'  => RootHandler,
      * ]
      */
-    private $routesHandlers;
+    private $modules;
 
     /**
      * Application constructor.
@@ -188,23 +199,6 @@ class Application
         // handle input command
         $this->handleCliCommand();
 
-        // prepare server instance
-        $this->prepareServer();
-
-        // register server events
-        $this->ws->on(WSInterface::ON_HANDSHAKE, [$this, 'handleHandshake']);
-        $this->ws->on(WSInterface::ON_OPEN, [$this, 'handleOpen']);
-        $this->ws->on(WSInterface::ON_MESSAGE, [$this, 'handleMessage']);
-        $this->ws->on(WSInterface::ON_CLOSE, [$this, 'handleClose']);
-        $this->ws->on(WSInterface::ON_ERROR, [$this, 'handleError']);
-
-        // if not register route, add root path route handler
-        if (0 === count($this->routesHandlers)) {
-            $this->route('/', new RootHandler);
-        }
-
-        // start server
-        $this->ws->start();
     }
 
     /**
@@ -314,12 +308,35 @@ class Application
 
     public function start($daemon = null)
     {
+        // prepare server instance
+        $this->prepareServer();
 
+        // register server events
+        $this->ws->on(WSInterface::ON_HANDSHAKE, [$this, 'handleHandshake']);
+        $this->ws->on(WSInterface::ON_OPEN, [$this, 'handleOpen']);
+        $this->ws->on(WSInterface::ON_MESSAGE, [$this, 'handleMessage']);
+        $this->ws->on(WSInterface::ON_CLOSE, [$this, 'handleClose']);
+        $this->ws->on(WSInterface::ON_ERROR, [$this, 'handleError']);
+
+        // if not register route, add root path route handler
+        if (0 === count($this->modules)) {
+            $this->module('/', new RootModule);
+        }
+
+        // start server
+        $this->ws->start();
     }
 
     public function restart($daemon = null)
     {
+        // prepare server instance
+        $this->prepareServer();
 
+        if ($this->ws->isRunning()) {
+            $this->stop();
+        }
+
+        $this->start($daemon);
     }
 
     public function reload($onlyTask = false)
@@ -329,7 +346,11 @@ class Application
 
     public function stop()
     {
-        ProcessHelper::kill(1);
+        if ($this->ws->isRunning()) {
+            $this->cliOut->error('server is not running!');
+        }
+
+        ProcessHelper::kill($this->ws->getPid());
     }
 
     /**
@@ -384,7 +405,7 @@ class Application
         $path = $request->getPath();
 
         // check route. if not exists, response 404 error
-        if (!$this->hasRoute($path)) {
+        if (!$module = $this->getModule($path, false)) {
             $this->log("The #$cid request's path [$path] route handler not exists.", 'error');
 
             // call custom route-not-found handler
@@ -401,11 +422,10 @@ class Application
         }
 
         $origin = $request->getOrigin();
-        $handler = $this->routesHandlers[$path];
 
         // check `Origin`
         // Access-Control-Allow-Origin: *
-        if (!$handler->checkIsAllowedOrigin($origin)) {
+        if (!$module->checkIsAllowedOrigin($origin)) {
             $this->log("The #$cid Origin [$origin] is not in the 'allowedOrigins' list.", 'error');
 
             $response
@@ -421,9 +441,9 @@ class Application
         $response->setHeader('Server', $this->ws->getName() . '-websocket-server');
         // $response->setHeader('Access-Control-Allow-Origin', '*');
 
-        $handler->setApp($this);
-        $handler->setRequest($request);
-        $handler->onHandshake($request, $response);
+        $module->setApp($this);
+        $module->setRequest($request);
+        $module->onHandshake($request, $response);
 
         return true;
     }
@@ -444,7 +464,7 @@ class Application
 
         // $path = $ws->getClient($cid)['path'];
         $path = $request->getPath();
-        $this->getRouteHandler($path)->onOpen($cid);
+        $this->getModule($path)->onOpen($cid);
     }
 
     /**
@@ -465,7 +485,7 @@ class Application
         // dispatch command
 
         // $path = $ws->getClient($cid)['path'];
-        $result = $this->getRouteHandler($meta['path'])->dispatch($data, $cid);
+        $result = $this->getModule($meta['path'])->dispatch($data, $cid);
 
         if ($result && is_string($result)) {
             $ws->send($result);
@@ -485,7 +505,7 @@ class Application
             $closeHandler($this, $cid, $client);
         }
 
-        $this->getRouteHandler($client['path'])->onClose($cid, $client);
+        $this->getModule($client['path'])->onClose($cid, $client);
     }
 
     /**
@@ -533,18 +553,32 @@ class Application
         $this->wsHandlers[self::MESSAGE_HANDLER] = $messageHandler;
     }
 
+    /**
+     * @param $event
+     * @param callable $handler
+     * @param bool $once
+     */
+    public function addListener($event, callable $handler, $once = false)
+    {
+        $this->on($event, $handler, $once);
+    }
+
     /////////////////////////////////////////////////////////////////////////////////////////
-    /// handle request route
+    /// handle request route module
     /////////////////////////////////////////////////////////////////////////////////////////
 
     /**
-     * register a route and it's handler
+     * register a route and it's handler module
      * @param string $path route path
-     * @param RouteHandlerInterface $routeHandler the route path handler
+     * @param ModuleInterface $module the route path module
      * @param bool $replace replace exists's route
-     * @return RouteHandlerInterface
+     * @return ModuleInterface
      */
-    public function route(string $path, RouteHandlerInterface $routeHandler, $replace = false)
+    public function addModule(string $path, ModuleInterface $module, $replace = false)
+    {
+        return $this->module($path, $module, $replace);
+    }
+    public function module(string $path, ModuleInterface $module, $replace = false)
     {
         $path = trim($path) ?: '/';
         $pattern = '/^\/[a-zA-Z][\w-]+$/';
@@ -553,60 +587,65 @@ class Application
             throw new \InvalidArgumentException("The route path format must be match: $pattern");
         }
 
-        if (!$replace && $this->hasRoute($path)) {
+        if (!$replace && $this->hasModule($path)) {
             throw new \InvalidArgumentException("The route path [$path] have been registered!");
         }
 
-        $this->routesHandlers[$path] = $routeHandler;
+        $this->modules[$path] = $module;
 
-        return $routeHandler;
+        return $module;
     }
 
     /**
      * @param $path
      * @return bool
      */
-    public function hasRoute(string $path): bool
+    public function hasModule(string $path): bool
     {
-        return isset($this->routesHandlers[$path]);
+        return isset($this->modules[$path]);
     }
 
     /**
      * @param string $path
-     * @return RouteHandlerInterface
+     * @param bool $throwError
+     * @return ModuleInterface
      */
-    public function getRouteHandler(string $path = '/'): RouteHandlerInterface
+    public function getModule(string $path = '/', $throwError = true): ModuleInterface
     {
-        if (!$this->hasRoute($path)) {
-            throw new \RuntimeException("The route handler not exists for the path: $path");
+        if (!$this->hasModule($path)) {
+            if ($throwError) {
+                throw new \RuntimeException("The route handler not exists for the path: $path");
+            }
+
+            return null;
         }
 
-        return $this->routesHandlers[$path];
+        return $this->modules[$path];
     }
 
     /**
      * @return array
      */
-    public function getRoutes(): array
+    public function getModulePaths(): array
     {
-        return array_keys($this->routesHandlers);
+        return array_keys($this->modules);
     }
 
     /**
      * @return array
      */
-    public function getRoutesHandlers(): array
+    public function getModules(): array
     {
-        return $this->routesHandlers;
+        return $this->modules;
     }
 
     /**
-     * @param array $routesHandlers
+     * @param array $modules
      */
-    public function setRoutesHandlers(array $routesHandlers)
+    public function setModules(array $modules)
     {
-        foreach ($routesHandlers as $route => $handler) {
-            $this->route($route, $handler);
+        foreach ($modules as $route => $module) {
+            $this->module($route, $module);
         }
     }
 

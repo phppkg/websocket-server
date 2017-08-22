@@ -6,12 +6,12 @@
  * Time: 22:51
  */
 
-namespace inhere\webSocket\handlers;
+namespace inhere\webSocket\module;
 
 use inhere\library\traits\OptionsTrait;
 use inhere\webSocket\Application;
 use inhere\webSocket\server\ClientMetadata;
-use inhere\webSocket\server\dataParser\ComplexDataParserInterface;
+use inhere\webSocket\server\dataParser\ComplexDataParser;
 use inhere\webSocket\server\dataParser\DataParserInterface;
 use inhere\webSocket\http\Request;
 use inhere\webSocket\http\Response;
@@ -19,9 +19,9 @@ use inhere\webSocket\http\WSResponse;
 
 /**
  * Class ARouteHandler
- * @package inhere\webSocket\handlers
+ * @package inhere\webSocket\module
  */
-abstract class RouteHandlerAbstracter implements RouteHandlerInterface
+abstract class ModuleAbstracter implements ModuleInterface
 {
     use OptionsTrait;
 
@@ -202,13 +202,12 @@ abstract class RouteHandlerAbstracter implements RouteHandlerInterface
      * register a command handler
      * @param string $command
      * @param callable $handler
-     * @return RouteHandlerInterface
+     * @return ModuleInterface
      */
     public function command(string $command, callable $handler)
     {
         return $this->add($command, $handler);
     }
-
     public function add(string $command, $handler)
     {
         if ($command && preg_match('/^[a-z][\w-]+$/', $command)) {
@@ -358,7 +357,7 @@ abstract class RouteHandlerAbstracter implements RouteHandlerInterface
     public function getDataParser(): DataParserInterface
     {
         // if not set, use default parser.
-        return $this->_dataParser ?: new ComplexDataParserInterface();
+        return $this->_dataParser ?: new ComplexDataParser();
     }
 
     /**
