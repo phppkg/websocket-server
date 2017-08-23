@@ -48,10 +48,16 @@ interface WSInterface
     const OPCODE_PONG = 10;
 
     // websocket 在任何时候都会处于下面4种状态中的其中一种
-    const STATE_WAITING = 0; // 表示还没建立连接；
-    const STATE_CONNECTED = 1; // 已经建立连接，可以进行通讯；// STATE_OPEN
-    const STATE_CLOSING = 2; // 通过关闭握手，正在关闭连接；
-    const STATE_CLOSED = 3; // 连接已经关闭或无法打开；
+    const STATE_WAITING = 0; // 表示还没建立连接
+    const STATE_CONNECTED = 1; // 已经建立连接，可以进行通讯// STATE_OPEN
+    const STATE_CLOSING = 2; // 通过关闭握手，正在关闭连接
+    const STATE_CLOSED = 3; // 连接已经关闭或无法打开
+
+//CONNECTING	0	The connection is not yet open.
+//OPEN	1	The connection is open and ready to communicate.
+//CLOSING	2	The connection is in the process of closing.
+//CLOSED	3	The connection is closed or couldn't be opened.
+
 
     const STATUS_NORMAL_CLOSE = 1000;
     const STATUS_GONE_AWAY = 1001;

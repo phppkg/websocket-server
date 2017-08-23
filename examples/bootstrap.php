@@ -9,7 +9,7 @@
 use inhere\library\di\ContainerManager;
 use inhere\library\log\FileLogger;
 use inhere\library\log\ProcessLogger;
-use inhere\sroute\ORouter;
+//use inhere\sroute\ORouter;
 
 $di = ContainerManager::make();
 
@@ -29,10 +29,10 @@ $di->set('logger', [
     ]
 ]);
 
-$di->set('router', ORouter::make([
-    'ignoreLastSep' => true,
-    'tmpCacheNumber' => 100,
-]));
+//$di->set('router', ORouter::make([
+//    'ignoreLastSep' => true,
+//    'tmpCacheNumber' => 100,
+//]));
 
 //$di->set('request', new inhere\webSocket\http\Request());
 //$di->set('response', new inhere\webSocket\http\Response());

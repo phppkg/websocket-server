@@ -164,9 +164,36 @@ class SocketsServer extends ServerAbstracter
         $bytes = socket_recv($sock, $data, $len, 0);
 
         // 没有发送数据或者小于7字节
-        if (false === $bytes || $bytes < 7 || !$data) {
-            $this->log("Failed to receive data or not received data(client close connection) from #$cid client, will close the socket.");
+        if (false === $bytes) {
+            $this->fetchError();
+            // $this->log("Failed to receive data or not received data(client close connection) from #$cid client, will close the socket.");
+            $errNo = $this->getErrorNo();
+
+            switch ($errNo) {
+                case 102: // ENETRESET    -- Network dropped connection because of reset
+                case 103: // ECONNABORTED -- Software caused connection abort
+                case 104: // ECONNRESET   -- Connection reset by peer
+                case 108: // ESHUTDOWN    -- Cannot send after transport endpoint shutdown -- probably more of an error on our part, if we're trying to write after the socket is closed.  Probably not a critical error, though.
+                case 110: // ETIMEDOUT    -- Connection timed out
+                case 111: // ECONNREFUSED -- Connection refused -- We shouldn't see this one, since we're listening... Still not a critical error.
+                case 112: // EHOSTDOWN    -- Host is down -- Again, we shouldn't see this, and again, not critical because it's just one connection and we still want to listen to/for others.
+                case 113: // EHOSTUNREACH -- No route to host
+                case 121: // EREMOTEIO    -- Rempte I/O error -- Their hard drive just blew up.
+                case 125: // ECANCELED    -- Operation canceled
+
+                    $this->stderr('Unusual disconnect on socket ' . $sock);
+                    break;
+                default:
+                    $this->stderr('Socket error: ' . $this->getErrorMsg());
+            }
+
             return $this->close($cid, $sock);
+        }
+
+        if (0 === $bytes || $bytes < 7) {
+            $this->close($cid, $sock);
+            $this->stderr('Client disconnected. TCP connection lost: ' . $sock);
+            return false;
         }
 
         // 是否已经握手
@@ -226,6 +253,10 @@ class SocketsServer extends ServerAbstracter
      */
     public function getErrorNo($socket = null)
     {
+        if ($socket) {
+            socket_last_error($socket);
+        }
+
         return $this->errNo;
     }
 
@@ -235,6 +266,10 @@ class SocketsServer extends ServerAbstracter
      */
     public function getErrorMsg($socket = null)
     {
+        if ($socket) {
+            return socket_strerror($this->getErrorNo($socket));
+        }
+
         return $this->errMsg;
     }
 }

@@ -58,7 +58,7 @@ $app->onClose(function (Application $app, int $id, ClientMetadata $client) {
 require __DIR__ . '/modules.php';
 
 // http routes
-require __DIR__ . '/routes.php';
+//require __DIR__ . '/routes.php';
 
 // start
 $app->run();
