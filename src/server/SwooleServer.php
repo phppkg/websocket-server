@@ -109,7 +109,7 @@ class SwooleServer extends ServerAbstracter
         $this->swoole->on(self::ON_HANDSHAKE, [$this, 'onHandshake']);
 
         // 设置onHandshake回调函数后不会再触发onOpen事件，需要应用代码自行处理
-//        $this->server->on(self::ON_OPEN, [$this, 'onOpen']);
+        $this->swoole->on(self::ON_OPEN, [$this, 'onOpen']);
 
         $this->swoole->on(self::ON_MESSAGE, [$this, 'onMessage']);
         $this->swoole->on(self::ON_CLOSE, [$this, 'onClose']);

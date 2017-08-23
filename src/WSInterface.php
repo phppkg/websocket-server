@@ -60,6 +60,14 @@ interface WSInterface
     const STATUS_MESSAGE_TOO_BIG = 1004;
     const STATUS_TIMEOUT = 1100;
 
+    // custom ws handler position
+    const CONNECT_HANDLER = 0;
+    const HANDSHAKE_HANDLER = 1;
+    const OPEN_HANDLER = 2;
+    const MESSAGE_HANDLER = 3;
+    const CLOSE_HANDLER = 4;
+    const ERROR_HANDLER = 5;
+
     // 事件的回调函数名
     const ON_CONNECT = 'connect';
     const ON_HANDSHAKE = 'handshake';

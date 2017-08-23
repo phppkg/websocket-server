@@ -78,10 +78,11 @@ class ClientMetadata extends StdObject implements \ArrayAccess, \IteratorAggrega
     public function all()
     {
         return [
+            'id' => $this->id,
             'ip' => $this->ip,
             'port' => $this->port,
-            'handshake' => $this->handshake,
             'path' => $this->path,
+            'handshake' => $this->handshake,
             'connectTime' => $this->connectTime,
             'handshakeTime' => $this->handshakeTime,
             'resourceId' => $this->resourceId,

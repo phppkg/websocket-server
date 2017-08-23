@@ -9,10 +9,10 @@
 namespace inhere\webSocket\parts;
 
 /**
- * Class IPListTable
+ * Class IPLimiter
  * @package inhere\webSocket\parts
  */
-class IPListTable
+class IPLimiter
 {
     /**
      * the IP blacklists

@@ -8,6 +8,8 @@
 
 namespace inhere\webSocket\traits;
 
+use inhere\console\utils\Show;
+use inhere\library\helpers\CliHelper;
 use inhere\library\helpers\ProcessHelper;
 
 /**
@@ -98,7 +100,7 @@ trait ProcessControlTrait
         $this->stat['start_time'] = time();
 
         $fullScript = implode(' ', $GLOBALS['argv']);
-        $this->setProcessTitle(sprintf("php-ws: master process%s (%s)", $this->getShowName(), $fullScript));
+        $this->setProcessTitle(sprintf('php-ws: master process%s (%s)', $this->getShowName(), $fullScript));
 
         // Register signal listeners `pcntl_signal_dispatch()`
         $this->installSignals();
@@ -483,7 +485,7 @@ trait ProcessControlTrait
                 $this->stat['start_time'] = time();
 
                 $this->installSignals(false);
-                $this->setProcessTitle(sprintf("php-gwm: worker process %s", $this->getShowName()));
+                $this->setProcessTitle(sprintf('php-gwm: worker process %s', $this->getShowName()));
 
                 if (($splay = $this->get('restart_splay')) > 0) {
                     $this->maxLifetime += random_int(0, $splay);
@@ -526,14 +528,14 @@ trait ProcessControlTrait
         // SIGUSR2: only reload task worker
         if ($onlyTaskWorker) {
             $sig = SIGUSR2;
-            $this->cliOut->notice('Will only reload task worker(send: SIGUSR2)');
+            Show::notice('Will only reload task worker(send: SIGUSR2)');
         }
 
         if (!ProcessHelper::sendSignal($masterPid, $sig)) {
-            $this->cliOut->error("The server({$this->name}) worker process reload fail!", -1);
+            Show::error("The server({$this->name}) worker process reload fail!", -1);
         }
 
-        $this->cliOut->success("The server({$this->name}) worker process reload success.", 0);
+        Show::success("The server({$this->name}) worker process reload success.", 0);
     }
 
     /**

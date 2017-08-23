@@ -10,6 +10,7 @@ namespace inhere\webSocket;
 
 use inhere\console\io\Input;
 use inhere\console\io\Output;
+use inhere\console\utils\Show;
 use inhere\library\helpers\PhpHelper;
 use inhere\library\helpers\ProcessHelper;
 use inhere\library\traits\EventTrait;
@@ -62,13 +63,16 @@ class Application
     use EventTrait;
 
     // some events
-    const ON_WS_CONNECT = 'wsConnect';
-    const ON_WS_OPEN = 'wsOpen';
-    const ON_WS_MESSAGE = 'wsMessage';
-    const ON_WS_CLOSE = 'wsClose';
-    const ON_WS_ERROR = 'wsError';
-    const ON_NO_MODULE = 'noModule';
-    const ON_PARSE_ERROR = 'parseError';
+    const EVT_WS_CONNECT = 'wsConnect';
+    const EVT_WS_OPEN = 'wsOpen';
+    const EVT_WS_DISCONNECT = 'wsDisconnect';
+    const EVT_HANDSHAKE_REQUEST = 'handshakeRequest';
+    const EVT_HANDSHAKE_SUCCESSFUL = 'handshakeSuccessful';
+    const EVT_WS_MESSAGE = 'wsMessage';
+    const EVT_WS_CLOSE = 'wsClose';
+    const EVT_WS_ERROR = 'wsError';
+    const EVT_NO_MODULE = 'noModule';
+    const EVT_PARSE_ERROR = 'parseError';
 
     // custom ws handler position
     const OPEN_HANDLER = 0;
@@ -161,6 +165,10 @@ class Application
      * ]
      */
     private $modules;
+
+    private $pidFile;
+
+    private $bootstrapped = false;
 
     /**
      * Application constructor.
@@ -258,7 +266,7 @@ class Application
                 break;
             default:
                 $this->cliOut->error("The command [{$command}] is don't supported!");
-                $this->showHelpInfo();
+                $this->help();
                 break;
         }
 
@@ -306,7 +314,7 @@ class Application
         }
     }
 
-    public function start($daemon = null)
+    public function bootstrap()
     {
         // prepare server instance
         $this->prepareServer();
@@ -318,7 +326,7 @@ class Application
         $this->ws->on(WSInterface::ON_CLOSE, [$this, 'handleClose']);
         $this->ws->on(WSInterface::ON_ERROR, [$this, 'handleError']);
 
-        // if not register route, add root path route handler
+        // if not register route, add a default root path module handler
         if (0 === count($this->modules)) {
             $this->module('/', new RootModule);
         }
@@ -327,46 +335,188 @@ class Application
         $this->ws->start();
     }
 
+    /**
+     * @param bool $value
+     * @return $this
+     */
+    public function asDaemon($value = true)
+    {
+        $this->daemon = (bool)$value;
+        $this->config['swoole']['daemonize'] = (bool)$value;
+
+        return $this;
+    }
+
+    /**
+     * Do start server
+     * @param null|bool $daemon
+     */
+    public function start($daemon = null)
+    {
+        if ($pid = $this->getPidFromFile(true)) {
+            Show::error("The swoole server({$this->name}) have been started. (PID:{$pid})", -1);
+        }
+
+        if (null !== $daemon) {
+            $this->asDaemon($daemon);
+        }
+
+        if (!$this->bootstrapped) {
+            $this->bootstrap();
+        }
+
+        self::$_statistics['start_time'] = microtime(1);
+
+        $this->beforeServerStart();
+
+        $this->server->start();
+    }
+
+    /**
+     * before Server Start
+     */
+    public function beforeServerStart()
+    {
+    }
+
+    /**
+     * do Reload Workers
+     * @param  boolean $onlyTaskWorker
+     * @return int
+     */
+    public function reload($onlyTaskWorker = false)
+    {
+        if (!$masterPid = $this->getPidFromFile(true)) {
+            return Show::error("The swoole server({$this->name}) is not started.", true);
+        }
+
+        // SIGUSR1: 向管理进程发送信号，将平稳地重启所有worker进程; 也可在PHP代码中调用`$server->reload()`完成此操作
+        $sig = SIGUSR1;
+
+        // SIGUSR2: only reload task worker
+        if ($onlyTaskWorker) {
+            $sig = SIGUSR2;
+            Show::notice('Will only reload task worker');
+        }
+
+        if (!posix_kill($masterPid, $sig)) {
+            Show::error("The swoole server({$this->name}) worker process reload fail!", -1);
+        }
+
+        return Show::success("The swoole server({$this->name}) worker process reload success.", 0);
+    }
+
+    /**
+     * Do restart server
+     * @param null|bool $daemon
+     */
     public function restart($daemon = null)
     {
-        // prepare server instance
-        $this->prepareServer();
-
-        if ($this->ws->isRunning()) {
-            $this->stop();
+        if ($this->getPidFromFile(true)) {
+            $this->stop(false);
         }
 
         $this->start($daemon);
     }
 
-    public function reload($onlyTask = false)
+    /**
+     * Do stop swoole server
+     * @param  boolean $quit Quit, When stop success?
+     * @return int
+     */
+    public function stop($quit = true)
     {
-
-    }
-
-    public function stop()
-    {
-        if ($this->ws->isRunning()) {
-            $this->cliOut->error('server is not running!');
+        if (!$masterPid = $this->getPidFromFile(true)) {
+            return Show::error("The swoole server({$this->name}) is not running.", true);
         }
 
-        ProcessHelper::kill($this->ws->getPid());
+        Show::write("The swoole server({$this->name}:{$masterPid}) process stopping ", false);
+
+        // do stop
+        // 向主进程发送此信号(SIGTERM)服务器将安全终止；也可在PHP代码中调用`$server->shutdown()` 完成此操作
+        $masterPid && posix_kill($masterPid, SIGTERM);
+
+        $timeout = 10;
+        $startTime = time();
+
+        // retry stop if not stopped.
+        while (true) {
+            Show::write('.', false);
+
+            if (!@posix_kill($masterPid, 0)) {
+                break;
+            }
+
+            // have been timeout
+            if ((time() - $startTime) >= $timeout) {
+                Show::error("The swoole server({$this->name}) process stop fail!", -1);
+            }
+
+            usleep(300000);
+        }
+
+        $this->removePidFile();
+
+        // stop success
+        return Show::write(" <success>Stopped</success>\nThe swoole server({$this->name}) process stop success", $quit);
+    }
+
+    public function help()
+    {
+        $this->showHelpInfo($this->cliIn->getScript());
+    }
+
+    public function info()
+    {
+        $this->showInformation();
+    }
+
+    public function status()
+    {
+        $this->showRuntimeStatus();
+    }
+
+    /**
+     * Show server info
+     */
+    protected function showInformation()
+    {
+//        $swOpts = $this->config['swoole'];
+//        $main = $this->config['main_server'];
+        $panelData = [
+            'System Info' => [
+                'PHP Version' => PHP_VERSION,
+                'Operate System' => PHP_OS,
+            ],
+        ];
+
+
+        // 'Server Information'
+        Show::mList($panelData);
+        // Show::panel($panelData, 'Server Information');
+    }
+
+    /**
+     * show server runtime status information
+     */
+    protected function showRuntimeStatus()
+    {
+        Show::notice('Sorry, The function un-completed!', 0);
     }
 
     /**
      * Show help
+     * @param $scriptName
      * @param  boolean $showHelpAfterQuit
      */
-    public function showHelpInfo($showHelpAfterQuit = true)
+    public function showHelpInfo($scriptName, $showHelpAfterQuit = true)
     {
-        $scriptName = $this->cliIn->getScriptName();
-
         // 'bin/test_server.php'
         if (strpos($scriptName, '.') && 'php' === pathinfo($scriptName, PATHINFO_EXTENSION)) {
             $scriptName = 'php ' . $scriptName;
         }
 
-        $this->cliOut->helpPanel([
+        Show::helpPanel([
             'description' => 'webSocket server tool, Version <comment>' . ServerAbstracter::VERSION .
                 '</comment> Update time ' . ServerAbstracter::UPDATE_TIME,
             'usage' => "$scriptName {start|reload|restart|stop|status} [-d]",
@@ -391,6 +541,40 @@ class Application
                 "<info>$scriptName start --driver={name}</info> custom webSocket driver, allow: sockets, swoole, streams"
             ]
         ], $showHelpAfterQuit);
+    }
+
+    /**
+     * @param bool $checkRunning
+     * @return int
+     */
+    public function getPidFromFile($checkRunning = false)
+    {
+        return ProcessHelper::getPidFromFile($this->pidFile, $checkRunning);
+    }
+
+    /**
+     * @param (int) $masterPid
+     * @return bool|int
+     */
+    protected function createPidFile($masterPid)
+    {
+        if ($this->pidFile) {
+            return file_put_contents($this->pidFile, $masterPid);
+        }
+
+        return false;
+    }
+
+    /**
+     * @return bool
+     */
+    protected function removePidFile()
+    {
+        if ($this->pidFile && file_exists($this->pidFile)) {
+            return unlink($this->pidFile);
+        }
+
+        return false;
     }
 
     /**
