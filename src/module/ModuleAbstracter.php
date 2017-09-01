@@ -8,6 +8,7 @@
 
 namespace inhere\webSocket\module;
 
+use inhere\library\helpers\PhpHelper;
 use inhere\library\traits\OptionsTrait;
 use inhere\webSocket\Application;
 use inhere\webSocket\server\ClientMetadata;
@@ -183,7 +184,7 @@ abstract class ModuleAbstracter implements ModuleInterface
         if ($this->isCommandName($command)) {
             $handler = $this->getCmdHandler($command);
 
-            return call_user_func_array($handler, [$data, $cid, $this]);
+            return PhpHelper::call($handler, [$data, $cid, $this]);
         }
 
         $suffix = 'Command';
