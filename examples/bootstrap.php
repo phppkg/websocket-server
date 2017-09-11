@@ -9,7 +9,7 @@
 use inhere\library\di\ContainerManager;
 use inhere\library\log\FileLogger;
 use inhere\library\log\ProcessLogger;
-//use inhere\sroute\ORouter;
+//use Inhere\Route\ORouter;
 
 $di = ContainerManager::make();
 

@@ -14,7 +14,7 @@ use inhere\webSocket\server\ClientMetadata;
 
 define('PROJECT_PATH', __DIR__);
 
-class Sws {
+class Mgr {
     /** @var Application */
     public static $app;
 
@@ -28,7 +28,7 @@ class Sws {
 }
 
 $loader = require __DIR__ . '/../../../autoload.php';
-//var_dump(class_exists('\inhere\sroute\ORouter', 1));
+//var_dump(class_exists('\Inhere\Route\ORouter', 1));
 
 $di = require __DIR__ . '/bootstrap.php';
 

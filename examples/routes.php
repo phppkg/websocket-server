@@ -6,7 +6,7 @@
  * Time: 17:03
  */
 
-/** @var \inhere\sroute\ORouter $router */
+/** @var \Inhere\Route\ORouter $router */
 $router = $di->get('router');
 
 $router->get('/', function () {
