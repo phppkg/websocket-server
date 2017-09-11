@@ -8,9 +8,9 @@
 
 namespace inhere\webSocket\server;
 
-use inhere\webSocket\http\Request;
-use inhere\webSocket\http\Response;
-use inhere\webSocket\http\Uri;
+use Inhere\Http\Request;
+use Inhere\Http\Response;
+use Inhere\Http\Uri;
 use Swoole\Http\Request as SWRequest;
 use Swoole\Http\Response as SWResponse;
 use Swoole\Websocket\Frame;

@@ -34,8 +34,8 @@ $di->set('logger', [
 //    'tmpCacheNumber' => 100,
 //]));
 
-//$di->set('request', new inhere\webSocket\http\Request());
-//$di->set('response', new inhere\webSocket\http\Response());
+//$di->set('request', new Inhere\Http\Request());
+//$di->set('response', new Inhere\Http\Response());
 
 //var_dump($di['logger']);
 

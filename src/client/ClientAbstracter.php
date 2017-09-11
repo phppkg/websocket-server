@@ -11,9 +11,9 @@ namespace inhere\webSocket\client;
 use inhere\exceptions\ConnectException;
 use inhere\library\utils\LiteLogger;
 use inhere\webSocket\WSAbstracter;
-use inhere\webSocket\http\Request;
-use inhere\webSocket\http\Response;
-use inhere\webSocket\http\Uri;
+use Inhere\Http\Request;
+use Inhere\Http\Response;
+use Inhere\Http\Uri;
 
 /**
  * Class ClientAbstracter

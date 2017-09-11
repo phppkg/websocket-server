@@ -8,8 +8,8 @@
 
 namespace inhere\webSocket\server\deprecated;
 
-use inhere\webSocket\http\Request;
-use inhere\webSocket\http\Response;
+use Inhere\Http\Request;
+use Inhere\Http\Response;
 
 /**
  * Class WebSocketServer

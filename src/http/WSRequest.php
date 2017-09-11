@@ -6,7 +6,7 @@
  * Time: 11:08
  */
 
-namespace inhere\webSocket\server;
+namespace inhere\webSocket\http;
 
 /**
  * Class WSRequest

@@ -12,8 +12,8 @@ use inhere\console\utils\Show;
 use inhere\library\helpers\PhpHelper;
 use inhere\library\log\ProcessLogInterface;
 use inhere\webSocket\WSAbstracter;
-use inhere\webSocket\http\Request;
-use inhere\webSocket\http\Response;
+use Inhere\Http\Request;
+use Inhere\Http\Response;
 
 /**
  * Class AServerDriver

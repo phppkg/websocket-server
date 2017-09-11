@@ -9,8 +9,8 @@
 namespace inhere\webSocket\module;
 
 use inhere\webSocket\Application;
-use inhere\webSocket\http\Request;
-use inhere\webSocket\http\Response;
+use Inhere\Http\Request;
+use Inhere\Http\Response;
 use inhere\webSocket\http\WSResponse;
 use inhere\webSocket\server\ClientMetadata;
 
