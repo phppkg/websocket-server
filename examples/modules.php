@@ -8,10 +8,10 @@
  * @var $app Application
  */
 
-use inhere\webSocket\Application;
-use inhere\webSocket\module\ModuleInterface;
+use Inhere\WebSocket\Application;
+use Inhere\WebSocket\Module\ModuleInterface;
 
-$rootModule = $app->module('/', new \inhere\webSocket\module\RootModule());
+$rootModule = $app->module('/', new \Inhere\WebSocket\Module\RootModule());
 
 // commands
 $rootModule->add('test', function ($data, $index, ModuleInterface $module) {

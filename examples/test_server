@@ -3,9 +3,9 @@
 
 require __DIR__ . '/../../../autoload.php';
 
-use inhere\webSocket\WSInterface;
-use inhere\webSocket\server\ServerFactory;
-use inhere\webSocket\server\ServerInterface;
+use Inhere\WebSocket\WSInterface;
+use Inhere\WebSocket\Server\ServerFactory;
+use Inhere\WebSocket\Server\ServerInterface;
 
 define('PROJECT_PATH', __DIR__);
 

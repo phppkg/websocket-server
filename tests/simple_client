@@ -3,7 +3,7 @@
 
 require __DIR__ . '/../../../autoload.php';
 
-use inhere\webSocket\client\ClientFactory;
+use Inhere\WebSocket\Client\ClientFactory;
 
 define('PROJECT_PATH', __DIR__);
 

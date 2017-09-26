@@ -6,11 +6,11 @@
  * Time: 01:05
  */
 
-namespace inhere\webSocket;
+namespace Inhere\WebSocket;
 
 /**
  * Class WSHelper
- * @package inhere\webSocket
+ * @package Inhere\WebSocket
  */
 class WSHelper
 {

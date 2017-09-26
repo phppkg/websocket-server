@@ -6,11 +6,11 @@
  * Time: 22:15
  */
 
-namespace inhere\webSocket;
+namespace Inhere\WebSocket;
 
 /**
  * Interface WSInterface
- * @package inhere\webSocket
+ * @package Inhere\WebSocket
  *
  * @property array $opCodes The ws protocal opCode list. @see `OPCODE_*`
  * @property int $state The ws state @see `STATE_*`

@@ -6,7 +6,7 @@
  * Time: 23:13
  */
 
-namespace inhere\webSocket;
+namespace Inhere\WebSocket;
 
 use inhere\console\io\Input;
 use inhere\console\io\Output;
@@ -16,15 +16,15 @@ use inhere\library\helpers\ProcessHelper;
 use inhere\library\traits\EventTrait;
 use inhere\library\traits\OptionsTrait;
 use inhere\library\log\FileLogger;
-use inhere\webSocket\module\ModuleInterface;
-use inhere\webSocket\module\RootModule;
-use inhere\webSocket\http\WSResponse;
+use Inhere\WebSocket\Module\ModuleInterface;
+use Inhere\WebSocket\Module\RootModule;
+use Inhere\WebSocket\Http\WSResponse;
 use Inhere\Http\Request;
 use Inhere\Http\Response;
-use inhere\webSocket\server\ClientMetadata;
-use inhere\webSocket\server\ServerAbstracter;
-use inhere\webSocket\server\ServerFactory;
-use inhere\webSocket\server\ServerInterface;
+use Inhere\WebSocket\Server\ClientMetadata;
+use Inhere\WebSocket\Server\ServerAbstracter;
+use Inhere\WebSocket\Server\ServerFactory;
+use Inhere\WebSocket\Server\ServerInterface;
 
 /**
  * Class Application

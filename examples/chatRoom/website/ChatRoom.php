@@ -6,7 +6,7 @@
  * Time: 9:44
  */
 
-namespace inhere\webSocket\examples\charRoom\webSite;
+namespace Inhere\WebSocket\examples\charRoom\webSite;
 
 
 class ChatRoom

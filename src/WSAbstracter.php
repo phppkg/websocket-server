@@ -6,7 +6,7 @@
  * Time: 23:10
  */
 
-namespace inhere\webSocket;
+namespace Inhere\WebSocket;
 
 use inhere\console\io\Input;
 use inhere\console\io\Output;
@@ -18,7 +18,7 @@ use inhere\library\traits\ConfigTrait;
 
 /**
  * Class WSAbstracter
- * @package inhere\webSocket
+ * @package Inhere\WebSocket
  */
 abstract class WSAbstracter implements WSInterface
 {

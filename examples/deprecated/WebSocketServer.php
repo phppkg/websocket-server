@@ -6,7 +6,7 @@
  * Time: 下午8:29
  */
 
-namespace inhere\webSocket\server\deprecated;
+namespace Inhere\WebSocket\Server\deprecated;
 
 use Inhere\Http\Request;
 use Inhere\Http\Response;

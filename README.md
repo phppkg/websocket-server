@@ -17,7 +17,7 @@ run: `composer up`
 ### only use webSocket server
 
 ```php
-use inhere\webSocket\WebSocketServer;
+use Inhere\WebSocket\WebSocketServer;
 
 $ws = new WebSocketServer();
 
@@ -34,8 +34,8 @@ $ws->start();
 ### use the webSocket application
 
 ```php
-use inhere\webSocket\Application;
-use inhere\webSocket\WebSocketServer;
+use Inhere\WebSocket\Application;
+use Inhere\WebSocket\WebSocketServer;
 
 $app = new Application('', 9501);
 
@@ -51,7 +51,7 @@ $app->onClose(function (WebSocketServer $ws, Application $app) {
     ]);
 });
 
-$rootHandler = $app->route('/', new \inhere\webSocket\handlers\RootHandler());
+$rootHandler = $app->route('/', new \Inhere\WebSocket\handlers\RootHandler());
 
 // commands
 $rootHandler->add('test', function ($data, $index, Application $app) {

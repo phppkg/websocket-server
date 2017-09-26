@@ -8,9 +8,9 @@
  * RUN  `server/ws_server`
  */
 
-use inhere\webSocket\Application;
-use inhere\webSocket\http\Request;
-use inhere\webSocket\server\ClientMetadata;
+use Inhere\WebSocket\Application;
+use Inhere\WebSocket\Http\Request;
+use Inhere\WebSocket\Server\ClientMetadata;
 
 define('PROJECT_PATH', __DIR__);
 
