@@ -10,11 +10,11 @@ namespace Inhere\WebSocket;
 
 use inhere\console\io\Input;
 use inhere\console\io\Output;
-use inhere\library\helpers\CliHelper;
-use inhere\library\log\ProcessLogger;
-use inhere\library\log\ProcessLogInterface;
-use inhere\library\traits\FixedEventTrait;
-use inhere\library\traits\ConfigTrait;
+use Inhere\Library\Helpers\CliHelper;
+use Inhere\LibraryPlus\Log\ProcessLogger;
+use Inhere\LibraryPlus\Log\ProcessLogInterface;
+use Inhere\Library\Traits\FixedEventTrait;
+use Inhere\Library\Traits\ConfigTrait;
 
 /**
  * Class WSAbstracter

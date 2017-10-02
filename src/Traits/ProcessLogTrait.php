@@ -8,7 +8,7 @@
 
 namespace Inhere\WebSocket\Traits;
 
-use inhere\library\helpers\CliHelper;
+use Inhere\Library\Helpers\CliHelper;
 
 /**
  * Trait ProcessLogTrait

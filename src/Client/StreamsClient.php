@@ -8,7 +8,7 @@
 
 namespace Inhere\WebSocket\Client;
 
-use inhere\exceptions\ConnectException;
+use Inhere\Exceptions\ConnectException;
 use Inhere\WebSocket\Traits\StreamsTrait;
 
 /**

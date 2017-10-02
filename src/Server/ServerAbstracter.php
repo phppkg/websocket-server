@@ -9,8 +9,8 @@
 namespace Inhere\WebSocket\Server;
 
 use inhere\console\utils\Show;
-use inhere\library\helpers\PhpHelper;
-use inhere\library\log\ProcessLogInterface;
+use Inhere\Library\Helpers\PhpHelper;
+use Inhere\LibraryPlus\Log\ProcessLogInterface;
 use Inhere\WebSocket\WSAbstracter;
 use Inhere\Http\Request;
 use Inhere\Http\Response;

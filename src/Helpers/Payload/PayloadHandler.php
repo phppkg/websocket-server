@@ -2,7 +2,7 @@
 
 namespace Inhere\WebSocket\Helpers\Payload;
 
-use inhere\library\StdObject;
+use Inhere\Library\StdObject;
 use InvalidArgumentException;
 use Wrench\Exception\PayloadException;
 

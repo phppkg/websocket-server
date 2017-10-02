@@ -6,9 +6,9 @@
  * Time: 18:23
  */
 
-use inhere\library\di\ContainerManager;
-use inhere\library\log\FileLogger;
-use inhere\library\log\ProcessLogger;
+use Inhere\Library\DI\ContainerManager;
+use Inhere\LibraryPlus\Log\FileLogger;
+use Inhere\LibraryPlus\Log\ProcessLogger;
 //use Inhere\Route\ORouter;
 
 $di = ContainerManager::make();

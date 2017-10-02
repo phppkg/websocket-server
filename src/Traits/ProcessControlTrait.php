@@ -9,8 +9,8 @@
 namespace Inhere\WebSocket\Traits;
 
 use inhere\console\utils\Show;
-use inhere\library\helpers\CliHelper;
-use inhere\library\helpers\ProcessHelper;
+use Inhere\Library\Helpers\CliHelper;
+use Inhere\Library\Helpers\ProcessHelper;
 
 /**
  * Class ProcessControlTrait

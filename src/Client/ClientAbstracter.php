@@ -8,8 +8,8 @@
 
 namespace Inhere\WebSocket\Client;
 
-use inhere\exceptions\ConnectException;
-use inhere\library\utils\LiteLogger;
+use Inhere\Exceptions\ConnectException;
+use Inhere\Library\Utils\LiteLogger;
 use Inhere\WebSocket\WSAbstracter;
 use Inhere\Http\Request;
 use Inhere\Http\Response;

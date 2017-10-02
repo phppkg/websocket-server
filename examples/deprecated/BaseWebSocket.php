@@ -8,8 +8,8 @@
 
 namespace Inhere\WebSocket\Server\deprecated;
 
-use inhere\library\traits\FixedEventTrait;
-use inhere\library\traits\OptionsTrait;
+use Inhere\Library\Traits\FixedEventTrait;
+use Inhere\Library\Traits\OptionsTrait;
 
 /**
  * Class BaseWebSocket

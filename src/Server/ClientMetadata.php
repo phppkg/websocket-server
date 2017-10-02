@@ -8,8 +8,8 @@
 
 namespace Inhere\WebSocket\Server;
 
-use inhere\library\StdObject;
-use inhere\library\traits\ArrayAccessByPropertyTrait;
+use Inhere\Library\StdObject;
+use Inhere\Library\Traits\ArrayAccessByPropertyTrait;
 use Traversable;
 
 /**

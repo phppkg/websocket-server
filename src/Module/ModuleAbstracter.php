@@ -8,8 +8,8 @@
 
 namespace Inhere\WebSocket\Module;
 
-use inhere\library\helpers\PhpHelper;
-use inhere\library\traits\OptionsTrait;
+use Inhere\Library\Helpers\PhpHelper;
+use Inhere\Library\Traits\OptionsTrait;
 use Inhere\WebSocket\Application;
 use Inhere\WebSocket\Server\ClientMetadata;
 use Inhere\WebSocket\Server\DataParser\ComplexDataParser;

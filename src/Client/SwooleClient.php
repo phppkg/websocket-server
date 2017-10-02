@@ -8,8 +8,8 @@
 
 namespace Inhere\WebSocket\Client;
 
-use inhere\exceptions\ConnectException;
-use inhere\exceptions\UnknownCalledException;
+use Inhere\Exceptions\ConnectException;
+use Inhere\Exceptions\UnknownCalledException;
 use Swoole\Client;
 
 /**

@@ -8,7 +8,7 @@
 
 namespace Inhere\WebSocket\Client;
 
-use inhere\library\helpers\PhpHelper;
+use Inhere\Library\Helpers\PhpHelper;
 use Inhere\WebSocket\Traits\SocketsTrait;
 use Inhere\WebSocket\WSHelper;
 
