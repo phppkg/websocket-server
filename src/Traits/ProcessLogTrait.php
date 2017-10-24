@@ -8,7 +8,7 @@
 
 namespace Inhere\WebSocket\Traits;
 
-use Inhere\Library\Helpers\CliHelper;
+use Inhere\Library\Helpers\Cli;
 
 /**
  * Trait ProcessLogTrait
@@ -221,7 +221,7 @@ trait ProcessLogTrait
      */
     protected function stderr($text, $nl = true, $quit = -200)
     {
-        CliHelper::stderr($text, $nl, $quit);
+        Cli::stderr($text, $nl, $quit);
     }
 
     /**

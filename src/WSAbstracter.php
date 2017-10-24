@@ -10,7 +10,7 @@ namespace Inhere\WebSocket;
 
 use inhere\console\io\Input;
 use inhere\console\io\Output;
-use Inhere\Library\Helpers\CliHelper;
+use Inhere\Library\Helpers\Cli;
 use Inhere\LibraryPlus\Log\ProcessLogger;
 use Inhere\LibraryPlus\Log\ProcessLogInterface;
 use Inhere\Library\Traits\FixedEventTrait;
@@ -202,7 +202,7 @@ abstract class WSAbstracter implements WSInterface
      */
     protected function stderr($text, $nl = true, $quit = -200)
     {
-        CliHelper::stderr($text, $nl, $quit);
+        Cli::stderr($text, $nl, $quit);
     }
 
     /**

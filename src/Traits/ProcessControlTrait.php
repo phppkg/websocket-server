@@ -9,7 +9,7 @@
 namespace Inhere\WebSocket\Traits;
 
 use inhere\console\utils\Show;
-use Inhere\Library\Helpers\CliHelper;
+use Inhere\Library\Helpers\Cli;
 use Inhere\Library\Helpers\ProcessHelper;
 
 /**
@@ -549,7 +549,7 @@ trait ProcessControlTrait
 
         ProcessHelper::killAndWait($pid, SIGTERM, 'server');
 
-        $this->stdout(sprintf("\n%s\n"), CliHelper::color('The manager process stopped', CliHelper::FG_GREEN));
+        $this->stdout(sprintf("\n%s\n"), Cli::color('The manager process stopped', Cli::FG_GREEN));
 
         if ($quit) {
             $this->quit();

@@ -8,7 +8,7 @@
 
 namespace Inhere\WebSocket\Parts;
 
-use Inhere\Http\Request;
+use Inhere\Http\ServerRequest as Request;
 
 /**
  * Class OriginCheck

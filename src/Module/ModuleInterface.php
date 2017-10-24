@@ -9,7 +9,7 @@
 namespace Inhere\WebSocket\Module;
 
 use Inhere\WebSocket\Application;
-use Inhere\Http\Request;
+use Inhere\Http\ServerRequest as Request;
 use Inhere\Http\Response;
 use Inhere\WebSocket\Http\WSResponse;
 use Inhere\WebSocket\Server\ClientMetadata;

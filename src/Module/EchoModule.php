@@ -8,7 +8,7 @@
 
 namespace Inhere\WebSocket\Module;
 
-use Inhere\Http\Request;
+use Inhere\Http\ServerRequest as Request;
 use Inhere\Http\Response;
 
 /**

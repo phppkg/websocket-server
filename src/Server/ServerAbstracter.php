@@ -12,7 +12,7 @@ use inhere\console\utils\Show;
 use Inhere\Library\Helpers\PhpHelper;
 use Inhere\LibraryPlus\Log\ProcessLogInterface;
 use Inhere\WebSocket\WSAbstracter;
-use Inhere\Http\Request;
+use Inhere\Http\ServerRequest as Request;
 use Inhere\Http\Response;
 
 /**

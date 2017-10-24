@@ -14,7 +14,7 @@ use Inhere\WebSocket\Application;
 use Inhere\WebSocket\Server\ClientMetadata;
 use Inhere\WebSocket\Server\DataParser\ComplexDataParser;
 use Inhere\WebSocket\Server\DataParser\DataParserInterface;
-use Inhere\Http\Request;
+use Inhere\Http\ServerRequest as Request;
 use Inhere\Http\Response;
 use Inhere\WebSocket\Http\WSResponse;
 

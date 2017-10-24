@@ -19,7 +19,7 @@ use Inhere\LibraryPlus\Log\FileLogger;
 use Inhere\WebSocket\Module\ModuleInterface;
 use Inhere\WebSocket\Module\RootModule;
 use Inhere\WebSocket\Http\WSResponse;
-use Inhere\Http\Request;
+use Inhere\Http\ServerRequest as Request;
 use Inhere\Http\Response;
 use Inhere\WebSocket\Server\ClientMetadata;
 use Inhere\WebSocket\Server\ServerAbstracter;
