@@ -78,7 +78,7 @@ abstract class Frame
      * Whether this frame is waiting for more data
      * @return bool
      */
-    public function isWaitingForData()
+    public function isWaitingForData(): bool
     {
         return $this->getRemainingData() > 0;
     }
@@ -107,9 +107,9 @@ abstract class Frame
      * Gets the expected length of the frame payload
      * @return int
      */
-    protected function getBufferLength()
+    protected function getBufferLength(): int
     {
-        return strlen($this->buffer);
+        return \strlen($this->buffer);
     }
 
     /**
@@ -118,7 +118,7 @@ abstract class Frame
      * @return string
      * @throws FrameException
      */
-    public function getFramePayload()
+    public function getFramePayload(): string
     {
         if (!$this->isComplete()) {
             throw new FrameException('Cannot get payload: frame is not complete');
@@ -160,7 +160,7 @@ abstract class Frame
      * @throws FrameException
      * @return string binary
      */
-    public function getFrameBuffer()
+    public function getFrameBuffer(): string
     {
         if (!$this->buffer && $this->payload) {
             throw new FrameException('Cannot get frame buffer');

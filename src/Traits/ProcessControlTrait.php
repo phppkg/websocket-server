@@ -131,7 +131,7 @@ trait ProcessControlTrait
         $maxLifetime = $this->maxLifetime;
 
         // Main processing loop for the parent process
-        while (!$this->stopWork || count($this->workers)) {
+        while (!$this->stopWork || \count($this->workers)) {
             // receive and dispatch sig
             $this->dispatchSignals();
 
@@ -184,7 +184,7 @@ trait ProcessControlTrait
      * @param int $signal
      * @return bool
      */
-    protected function stopWorkers($signal = SIGTERM)
+    protected function stopWorkers($signal = SIGTERM): bool
     {
         if (!$this->workers) {
             $this->log('No child process(worker) need to stop', self::LOG_PROC_INFO);
@@ -353,7 +353,7 @@ trait ProcessControlTrait
     /**
      * @return string
      */
-    public function getPidRole()
+    public function getPidRole(): string
     {
         return $this->isMaster ? 'Master' : 'Worker';
     }
@@ -389,8 +389,8 @@ trait ProcessControlTrait
      */
     protected function checkEnvironment()
     {
-        $e1 = function_exists('posix_kill');
-        $e2 = function_exists('pcntl_fork');
+        $e1 = \function_exists('posix_kill');
+        $e2 = \function_exists('pcntl_fork');
 
         if (!$e1 || !$e2) {
             $this->canProcessControl = false;

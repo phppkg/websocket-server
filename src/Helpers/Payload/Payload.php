@@ -39,12 +39,12 @@ abstract class Payload
      * @return Payload
      * @todo No splitting into multiple frames just yet
      */
-    public function encode(string $data, int $type = Protocol::TYPE_TEXT, bool $masked = false)
+    public function encode(string $data, int $type = Protocol::TYPE_TEXT, bool $masked = false): Payload
     {
         $this->frames = [];
 
         $frame = $this->getFrame();
-        array_push($this->frames, $frame);
+        $this->frames[] = $frame;
 
         $frame->encode($data, $type, $masked);
 
@@ -76,7 +76,7 @@ abstract class Payload
      *
      * @return int|null
      */
-    public function getRemainingData(): ?int
+    public function getRemainingData()
     {
         if ($this->isComplete()) {
             return 0;
@@ -98,7 +98,7 @@ abstract class Payload
      *
      * @return bool
      */
-    public function isComplete()
+    public function isComplete(): bool
     {
         return $this->getCurrentFrame()->isComplete() && $this->getCurrentFrame()->isFinal();
     }
@@ -111,7 +111,7 @@ abstract class Payload
     protected function getCurrentFrame()
     {
         if (empty($this->frames)) {
-            array_push($this->frames, $this->getFrame());
+            $this->frames[] = $this->getFrame();
         }
         return end($this->frames);
     }
@@ -157,7 +157,7 @@ abstract class Payload
                 $chunkSize = $remaining;
             }
 
-            $chunkSize = min(strlen($data), $chunkSize);
+            $chunkSize = min(\strlen($data), $chunkSize);
             $chunk = substr($data, 0, $chunkSize);
             $data = substr($data, $chunkSize);
 

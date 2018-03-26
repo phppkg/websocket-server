@@ -39,9 +39,9 @@ class SocketsServer extends ServerAbstracter
     /**
      * @return bool
      */
-    public static function isSupported()
+    public static function isSupported(): bool
     {
-        return extension_loaded('sockets');
+        return \extension_loaded('sockets');
     }
 
     /**
@@ -74,7 +74,7 @@ class SocketsServer extends ServerAbstracter
         // more see http://php.net/manual/en/function.socket-create.php
         $this->socket = socket_create(AF_INET, SOCK_STREAM, SOL_TCP);
 
-        if (!is_resource($this->socket)) {
+        if (!\is_resource($this->socket)) {
             $this->fetchError();
             $this->cliOut->error('Unable to create socket: ' . $this->errMsg, $this->errNo);
         }
@@ -136,7 +136,7 @@ class SocketsServer extends ServerAbstracter
      * @param int $len
      * @return bool
      */
-    protected function handleSocket($sock, $len)
+    protected function handleSocket($sock, $len): bool
     {
         // 每次循环检查到 $this->socket 时，都会用 socket_accept() 去检查是否有新的连接进入，有就加入连接列表
         if ($sock === $this->socket) {
@@ -217,12 +217,12 @@ class SocketsServer extends ServerAbstracter
      */
     protected function doClose(int $cid, $socket = null)
     {
-        if (!is_resource($socket) && !($socket = $this->clients[$cid] ?? null)) {
+        if (!\is_resource($socket) && !($socket = $this->clients[$cid] ?? null)) {
             $this->log("Close the client socket connection failed! #$cid client socket not exists", 'error');
         }
 
         // close socket connection
-        if ($socket && is_resource($socket)) {
+        if ($socket && \is_resource($socket)) {
             $result = socket_shutdown($socket);
             socket_close($socket);
 
@@ -242,7 +242,7 @@ class SocketsServer extends ServerAbstracter
     public function writeTo($socket, string $data, int $length = 0)
     {
         // response data to client
-        socket_write($socket, $data, $length > 0 ? $length : strlen($data));
+        socket_write($socket, $data, $length > 0 ? $length : \strlen($data));
 
         return $this->getErrorNo($socket);
     }

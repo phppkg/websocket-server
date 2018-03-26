@@ -215,7 +215,7 @@ class Application
      *     `php bin/test_server.php start -d`
      * @return bool
      */
-    protected function handleCliCommand()
+    protected function handleCliCommand(): bool
     {
         $command = $this->cliIn->getCommand(); // e.g 'start'
         $this->checkInputCommand($command);
@@ -308,7 +308,7 @@ class Application
         }
 
         // is an not supported command
-        if (!in_array($command, $supportCommands, true)) {
+        if (!\in_array($command, $supportCommands, true)) {
             $this->cliOut->error("the command [$command] is not supported. please see the help information.");
             $this->showHelpInfo();
         }
@@ -327,7 +327,7 @@ class Application
         $this->ws->on(WSInterface::ON_ERROR, [$this, 'handleError']);
 
         // if not register route, add a default root path module handler
-        if (0 === count($this->modules)) {
+        if (0 === \count($this->modules)) {
             $this->module('/', new RootModule);
         }
 
@@ -339,7 +339,7 @@ class Application
      * @param bool $value
      * @return $this
      */
-    public function asDaemon($value = true)
+    public function asDaemon($value = true): self
     {
         $this->daemon = (bool)$value;
         $this->config['swoole']['daemonize'] = (bool)$value;
@@ -384,7 +384,7 @@ class Application
      * @param  boolean $onlyTaskWorker
      * @return int
      */
-    public function reload($onlyTaskWorker = false)
+    public function reload($onlyTaskWorker = false): int
     {
         if (!$masterPid = $this->getPidFromFile(true)) {
             return Show::error("The swoole server({$this->name}) is not started.", true);
@@ -424,7 +424,7 @@ class Application
      * @param  boolean $quit Quit, When stop success?
      * @return int
      */
-    public function stop($quit = true)
+    public function stop($quit = true): int
     {
         if (!$masterPid = $this->getPidFromFile(true)) {
             return Show::error("The swoole server({$this->name}) is not running.", true);
@@ -547,7 +547,7 @@ class Application
      * @param bool $checkRunning
      * @return int
      */
-    public function getPidFromFile($checkRunning = false)
+    public function getPidFromFile($checkRunning = false): int
     {
         return ProcessHelper::getPidFromFile($this->pidFile, $checkRunning);
     }
@@ -568,7 +568,7 @@ class Application
     /**
      * @return bool
      */
-    protected function removePidFile()
+    protected function removePidFile(): bool
     {
         if ($this->pidFile && file_exists($this->pidFile)) {
             return unlink($this->pidFile);
@@ -584,7 +584,7 @@ class Application
      * @param int $cid
      * @return bool
      */
-    public function handleHandshake(Request $request, Response $response, int $cid)
+    public function handleHandshake(Request $request, Response $response, int $cid): bool
     {
         $path = $request->getPath();
 
@@ -671,7 +671,7 @@ class Application
         // $path = $ws->getClient($cid)['path'];
         $result = $this->getModule($meta['path'])->dispatch($data, $cid);
 
-        if ($result && is_string($result)) {
+        if ($result && \is_string($result)) {
             $ws->send($result);
         }
     }
@@ -758,11 +758,11 @@ class Application
      * @param bool $replace replace exists's route
      * @return ModuleInterface
      */
-    public function addModule(string $path, ModuleInterface $module, $replace = false)
+    public function addModule(string $path, ModuleInterface $module, $replace = false): ModuleInterface
     {
         return $this->module($path, $module, $replace);
     }
-    public function module(string $path, ModuleInterface $module, $replace = false)
+    public function module(string $path, ModuleInterface $module, $replace = false): ModuleInterface
     {
         $path = trim($path) ?: '/';
         $pattern = '/^\/[a-zA-Z][\w-]+$/';
@@ -859,7 +859,7 @@ class Application
      * @param int $code
      * @return string
      */
-    public function buildMessage($data, string $msg = 'success', int $code = 0)
+    public function buildMessage($data, string $msg = 'success', int $code = 0): string
     {
         // json
         if ($this->isJsonType()) {
@@ -867,7 +867,7 @@ class Application
 
             // text
         } else {
-            if ($data && is_array($data)) {
+            if ($data && \is_array($data)) {
                 $data = json_encode($data);
             }
 
@@ -900,7 +900,7 @@ class Application
      */
     public function respondText($data, bool $doSend = true)
     {
-        if (is_array($data)) {
+        if (\is_array($data)) {
             $data = implode('', $data);
         }
 
@@ -935,9 +935,9 @@ class Application
      * @param bool $reset
      * @return int
      */
-    public function sendText($data, \Closure $afterMakeMR = null, bool $reset = true)
+    public function sendText($data, \Closure $afterMakeMR = null, bool $reset = true): int
     {
-        if (is_array($data)) {
+        if (\is_array($data)) {
             $data = implode('', $data);
         }
 
@@ -947,7 +947,7 @@ class Application
             $status = $afterMakeMR($mr);
 
             // If the message have been sent
-            if (is_int($status)) {
+            if (\is_int($status)) {
                 return $status;
             }
         }
@@ -1076,7 +1076,7 @@ class Application
      * get Logger service
      * @return FileLogger
      */
-    public function getLogger()
+    public function getLogger(): FileLogger
     {
         return $this->logger;
     }

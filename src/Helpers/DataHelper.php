@@ -15,7 +15,7 @@ namespace Inhere\WebSocket\Helpers;
 class DataHelper
 {
 
-    protected function frame($message, $user, $messageType = 'text', $messageContinues = false)
+    protected function frame($message, $user, $messageType = 'text', $messageContinues = false): string
     {
         switch ($messageType) {
             case 'continuous':
@@ -47,7 +47,7 @@ class DataHelper
             $b1 += 128;
             $user->sendingContinuous = false;
         }
-        $length = strlen($message);
+        $length = \strlen($message);
         $lengthField = "";
         if ($length < 126) {
             $b2 = $length;
@@ -55,38 +55,38 @@ class DataHelper
             $b2 = 126;
             $hexLength = dechex($length);
             //$this->stdout("Hex Length: $hexLength");
-            if (strlen($hexLength) % 2 === 1) {
+            if (\strlen($hexLength) % 2 === 1) {
                 $hexLength = '0' . $hexLength;
             }
 
-            $n = strlen($hexLength) - 2;
+            $n = \strlen($hexLength) - 2;
 
             for ($i = $n; $i >= 0; $i -= 2) {
-                $lengthField = chr(hexdec(substr($hexLength, $i, 2))) . $lengthField;
+                $lengthField = \chr(hexdec(substr($hexLength, $i, 2))) . $lengthField;
             }
 
-            while (strlen($lengthField) < 2) {
-                $lengthField = chr(0) . $lengthField;
+            while (\strlen($lengthField) < 2) {
+                $lengthField = \chr(0) . $lengthField;
             }
         } else {
             $b2 = 127;
             $hexLength = dechex($length);
 
-            if (strlen($hexLength) % 2 === 1) {
+            if (\strlen($hexLength) % 2 === 1) {
                 $hexLength = '0' . $hexLength;
             }
 
-            $n = strlen($hexLength) - 2;
+            $n = \strlen($hexLength) - 2;
             for ($i = $n; $i >= 0; $i -= 2) {
-                $lengthField = chr(hexdec(substr($hexLength, $i, 2))) . $lengthField;
+                $lengthField = \chr(hexdec(substr($hexLength, $i, 2))) . $lengthField;
             }
 
-            while (strlen($lengthField) < 8) {
-                $lengthField = chr(0) . $lengthField;
+            while (\strlen($lengthField) < 8) {
+                $lengthField = \chr(0) . $lengthField;
             }
         }
 
-        return chr($b1) . chr($b2) . $lengthField . $message;
+        return \chr($b1) . \chr($b2) . $lengthField . $message;
     }
 
     //check packet if he have more than one frame and process each frame individually
@@ -96,7 +96,7 @@ class DataHelper
         if ($user->handlingPartialPacket) {
             $packet = $user->partialBuffer . $packet;
             $user->handlingPartialPacket = false;
-            $length = strlen($packet);
+            $length = \strlen($packet);
         }
 
         $fullpacket = $packet;
@@ -131,7 +131,7 @@ class DataHelper
         }
     }
 
-    protected function calcoffset($headers)
+    protected function calcoffset($headers): int
     {
         $offset = 2;
         if ($headers['hasmask']) {
@@ -193,12 +193,12 @@ class DataHelper
 
         if ($pongReply) {
             $reply = $this->frame($payload, $user, 'pong');
-            socket_write($user->socket, $reply, strlen($reply));
+            socket_write($user->socket, $reply, \strlen($reply));
 
             return false;
         }
 
-        if ($headers['length'] > strlen($this->applyMask($headers, $payload))) {
+        if ($headers['length'] > \strlen($this->applyMask($headers, $payload))) {
             $user->handlingPartialPacket = true;
             $user->partialBuffer = $message;
 
@@ -217,41 +217,41 @@ class DataHelper
         return false;
     }
 
-    protected function extractHeaders($message)
+    protected function extractHeaders($message): array
     {
         $header = [
-            'fin' => $message[0] & chr(128),
-            'rsv1' => $message[0] & chr(64),
-            'rsv2' => $message[0] & chr(32),
-            'rsv3' => $message[0] & chr(16),
-            'opcode' => ord($message[0]) & 15,
-            'hasmask' => $message[1] & chr(128),
+            'fin' => $message[0] & \chr(128),
+            'rsv1' => $message[0] & \chr(64),
+            'rsv2' => $message[0] & \chr(32),
+            'rsv3' => $message[0] & \chr(16),
+            'opcode' => \ord($message[0]) & 15,
+            'hasmask' => $message[1] & \chr(128),
             'length' => 0,
             'mask' => ''
         ];
 
-        $header['length'] = (ord($message[1]) >= 128) ? ord($message[1]) - 128 : ord($message[1]);
+        $header['length'] = (\ord($message[1]) >= 128) ? \ord($message[1]) - 128 : \ord($message[1]);
 
         if ($header['length'] === 126) {
             if ($header['hasmask']) {
                 $header['mask'] = $message[4] . $message[5] . $message[6] . $message[7];
             }
 
-            $header['length'] = ord($message[2]) * 256 + ord($message[3]);
+            $header['length'] = \ord($message[2]) * 256 + \ord($message[3]);
         } elseif ($header['length'] === 127) {
 
             if ($header['hasmask']) {
                 $header['mask'] = $message[10] . $message[11] . $message[12] . $message[13];
             }
 
-            $header['length'] = ord($message[2]) * 65536 * 65536 * 65536 * 256
-                + ord($message[3]) * 65536 * 65536 * 65536
-                + ord($message[4]) * 65536 * 65536 * 256
-                + ord($message[5]) * 65536 * 65536
-                + ord($message[6]) * 65536 * 256
-                + ord($message[7]) * 65536
-                + ord($message[8]) * 256
-                + ord($message[9]);
+            $header['length'] = \ord($message[2]) * 65536 * 65536 * 65536 * 256
+                + \ord($message[3]) * 65536 * 65536 * 65536
+                + \ord($message[4]) * 65536 * 65536 * 256
+                + \ord($message[5]) * 65536 * 65536
+                + \ord($message[6]) * 65536 * 256
+                + \ord($message[7]) * 65536
+                + \ord($message[8]) * 256
+                + \ord($message[9]);
 
         } elseif ($header['hasmask']) {
             $header['mask'] = $message[2] . $message[3] . $message[4] . $message[5];
@@ -279,7 +279,7 @@ class DataHelper
         return substr($message, $offset);
     }
 
-    protected function applyMask($headers, $payload)
+    protected function applyMask($headers, $payload): int
     {
         $effectiveMask = '';
         if ($headers['hasmask']) {
@@ -288,21 +288,21 @@ class DataHelper
             return $payload;
         }
 
-        while (strlen($effectiveMask) < strlen($payload)) {
+        while (\strlen($effectiveMask) < \strlen($payload)) {
             $effectiveMask .= $mask;
         }
 
-        while (strlen($effectiveMask) > strlen($payload)) {
+        while (\strlen($effectiveMask) > \strlen($payload)) {
             $effectiveMask = substr($effectiveMask, 0, -1);
         }
 
         return $effectiveMask ^ $payload;
     }
 
-    protected function checkRSVBits($headers, $user)
+    protected function checkRSVBits($headers, $user): bool
     {
         // override this method if you are using an extension where the RSV bits are used.
-        if (ord($headers['rsv1']) + ord($headers['rsv2']) + ord($headers['rsv3']) > 0) {
+        if (\ord($headers['rsv1']) + \ord($headers['rsv2']) + \ord($headers['rsv3']) > 0) {
             //$this->disconnect($user); // todo: fail connection
             return true;
         }
@@ -310,13 +310,13 @@ class DataHelper
         return false;
     }
 
-    protected function strToHex($str)
+    protected function strToHex($str): string
     {
-        $len = strlen($str);
+        $len = \strlen($str);
         $strOut = '';
 
         for ($i = 0; $i < $len; $i++) {
-            $strOut .= (ord($str[$i]) < 16) ? '0' . dechex(ord($str[$i])) : dechex(ord($str[$i]));
+            $strOut .= (\ord($str[$i]) < 16) ? '0' . dechex(\ord($str[$i])) : dechex(\ord($str[$i]));
             $strOut .= ' ';
             $remainder = $i % 32;
 

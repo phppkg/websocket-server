@@ -212,9 +212,9 @@ abstract class Protocol
      * binary string.
      * @return string
      */
-    public function generateKey()
+    public function generateKey(): string
     {
-        if (extension_loaded('openssl')) {
+        if (\extension_loaded('openssl')) {
             $key = openssl_random_pseudo_bytes(16);
         } else {
             // SHA1 is 128 bit (= 16 bytes)
@@ -245,7 +245,7 @@ abstract class Protocol
         $key,
         $origin,
         array $headers = []
-    ) {
+    ): string {
         if (!$uri || !$key || !$origin) {
             throw new InvalidArgumentException('You must supply a URI, key and origin');
         }
@@ -289,7 +289,7 @@ abstract class Protocol
      * @param string $uri
      * @return array(string $scheme, string $host, int $port, string $path)
      */
-    public function validateUri($uri)
+    public function validateUri($uri): array
     {
         $uri = (string)$uri;
         if (!$uri) {
@@ -325,12 +325,12 @@ abstract class Protocol
      * @return string Underlying scheme
      * @throws InvalidArgumentException
      */
-    protected function validateScheme($scheme)
+    protected function validateScheme($scheme): string
     {
         if (!$scheme) {
             throw new InvalidArgumentException('No scheme specified');
         }
-        if (!in_array($scheme, self::$schemes, true)) {
+        if (!\in_array($scheme, self::$schemes, true)) {
             throw new InvalidArgumentException(
                 'Unknown socket scheme: ' . $scheme
             );
@@ -373,7 +373,7 @@ abstract class Protocol
      * @param string $origin
      * @return string[]
      */
-    protected function getDefaultRequestHeaders($host, $key, $origin)
+    protected function getDefaultRequestHeaders($host, $key, $origin): array
     {
         return [
             self::HEADER_HOST => $host,
@@ -397,7 +397,7 @@ abstract class Protocol
      * @param array $headers
      * @return string
      */
-    public function getResponseHandshake($key, array $headers = [])
+    public function getResponseHandshake($key, array $headers = []): string
     {
         $headers = array_merge(
             $this->getSuccessResponseHeaders($key),
@@ -412,7 +412,7 @@ abstract class Protocol
      * @param string $key
      * @return string[]
      */
-    protected function getSuccessResponseHeaders($key)
+    protected function getSuccessResponseHeaders($key): array
     {
         return [
             self::HEADER_UPGRADE => self::UPGRADE_VALUE,
@@ -429,7 +429,7 @@ abstract class Protocol
      * @param string $encoded_key
      * @return string
      */
-    protected function getAcceptValue($encoded_key)
+    protected function getAcceptValue($encoded_key): string
     {
         return base64_encode(sha1($encoded_key . self::MAGIC_GUID, true));
     }
@@ -440,7 +440,7 @@ abstract class Protocol
      * @param array $headers
      * @return string
      */
-    protected function getHttpResponse($status, array $headers = [])
+    protected function getHttpResponse($status, array $headers = []): string
     {
         if (array_key_exists($status, self::HTTP_RESPONSES)) {
             $response = self::HTTP_RESPONSES[$status];
@@ -465,7 +465,7 @@ abstract class Protocol
      * @param array $headers
      * @return string
      */
-    public function getResponseError($e, array $headers = [])
+    public function getResponseError($e, array $headers = []): string
     {
         $code = false;
 
@@ -489,7 +489,7 @@ abstract class Protocol
      * @param string $key
      * @return bool
      */
-    public function validateResponseHandshake($response, $key)
+    public function validateResponseHandshake($response, $key): bool
     {
         if (!$response) {
             return false;
@@ -521,11 +521,11 @@ abstract class Protocol
      * @return array()
      * @throws InvalidArgumentException
      */
-    protected function getHeaders($response, &$request_line = null)
+    protected function getHeaders($response, &$request_line = null): array
     {
         $parts = explode("\r\n\r\n", $response, 2);
 
-        if (count($parts) < 2) {
+        if (\count($parts) < 2) {
             $parts[] = '';
         }
 
@@ -534,12 +534,12 @@ abstract class Protocol
         $return = [];
         foreach (explode("\r\n", $headers) as $header) {
             $parts = explode(': ', $header, 2);
-            if (count($parts) === 2) {
+            if (\count($parts) === 2) {
                 list($name, $value) = $parts;
                 if (!isset($return[$name])) {
                     $return[$name] = $value;
                 } else {
-                    if (is_array($return[$name])) {
+                    if (\is_array($return[$name])) {
                         $return[$name][] = $value;
                     } else {
                         $return[$name] = [$return[$name], $value];
@@ -556,7 +556,7 @@ abstract class Protocol
      * @param string $key
      * @return string
      */
-    public function getEncodedHash($key)
+    public function getEncodedHash($key): string
     {
         return base64_encode(pack('H*', sha1($key . self::MAGIC_GUID)));
     }
@@ -664,7 +664,7 @@ abstract class Protocol
      *             headers
      * @throws InvalidArgumentException
      */
-    protected function getRequestHeaders($response)
+    protected function getRequestHeaders($response): array
     {
         $eol = stripos($response, "\r\n");
 
@@ -711,7 +711,7 @@ abstract class Protocol
      * @param boolean $masked
      * @return Payload
      */
-    public function getClosePayload($e, $masked = true)
+    public function getClosePayload($e, $masked = true): Payload
     {
         $code = false;
 
@@ -745,7 +745,7 @@ abstract class Protocol
      * @throws InvalidArgumentException
      * @return array(string $scheme, string $host, string $port)
      */
-    public function validateSocketUri($uri)
+    public function validateSocketUri($uri): array
     {
         $uri = (string)$uri;
         if (!$uri) {
@@ -772,7 +772,7 @@ abstract class Protocol
      * @throws InvalidArgumentException
      * @return string
      */
-    public function validateOriginUri($origin)
+    public function validateOriginUri($origin): string
     {
         $origin = (string)$origin;
         if (!$origin) {

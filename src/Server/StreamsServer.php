@@ -29,9 +29,9 @@ class StreamsServer extends ServerAbstracter
     /**
      * @inheritdoc
      */
-    public static function isSupported()
+    public static function isSupported(): bool
     {
-        return function_exists('stream_socket_accept');
+        return \function_exists('stream_socket_accept');
     }
 
     /**
@@ -47,7 +47,7 @@ class StreamsServer extends ServerAbstracter
     /**
      * {@inheritDoc}
      */
-    protected function appendDefaultConfig()
+    protected function appendDefaultConfig(): array
     {
         return [
             'context' => null,
@@ -62,7 +62,7 @@ class StreamsServer extends ServerAbstracter
         // Set the stream context options if they're already set in the config
         if ($context = $this->get('context')) {
             // Suppress the error since we'll catch it below
-            if (is_resource($context) && get_resource_type($context) !== 'stream-context') {
+            if (\is_resource($context) && get_resource_type($context) !== 'stream-context') {
                 throw new \InvalidArgumentException("Stream context in options[context] isn't a valid context resource");
             }
         } elseif ($this->get('enable_ssl')) {
@@ -87,7 +87,7 @@ class StreamsServer extends ServerAbstracter
             $context
         );
 
-        if (!is_resource($this->socket)) {
+        if (!\is_resource($this->socket)) {
             $this->cliOut->error('Could not listen on socket: ' . $errStr, $errNo);
         }
 
@@ -138,7 +138,7 @@ class StreamsServer extends ServerAbstracter
      * @param int $dataLen
      * @return bool
      */
-    protected function handleSocket($sock, $dataLen)
+    protected function handleSocket($sock, $dataLen): bool
     {
         // 每次循环检查到 $this->socket 时，都会用 stream_socket_accept() 去检查是否有新的连接进入，有就加入连接列表
         if ($sock === $this->socket) {
@@ -176,7 +176,7 @@ class StreamsServer extends ServerAbstracter
 
         // 函数 stream_socket_recvfrom () 从 socket 中接受长度为 len 字节的数据。
         $data = stream_socket_recvfrom($sock, $dataLen, 0);
-        $bytes = strlen($data);
+        $bytes = \strlen($data);
 
         // 没有发送数据或者小于7字节
         if ($bytes < 7 || !$data) {
@@ -201,12 +201,12 @@ class StreamsServer extends ServerAbstracter
      */
     protected function doClose(int $cid, $socket = null)
     {
-        if (!is_resource($socket) && !($socket = $this->clients[$cid] ?? null)) {
+        if (!\is_resource($socket) && !($socket = $this->clients[$cid] ?? null)) {
             $this->log("Close the client socket connection failed! #$cid client socket not exists", 'error');
         }
 
         // close socket connection
-        if ($socket && is_resource($socket)) {
+        if ($socket && \is_resource($socket)) {
             return fclose($socket);
         }
 

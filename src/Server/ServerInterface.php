@@ -52,7 +52,7 @@ interface ServerInterface
     /**
      * @return bool
      */
-    public static function isSupported();
+    public static function isSupported(): bool;
 
     public function reset();
 
@@ -74,17 +74,17 @@ interface ServerInterface
      * @param int[] $expected
      * @return int
      */
-    public function send(string $data, int $sender = 0, $receiver = null, array $expected = []);
+    public function send(string $data, int $sender = 0, $receiver = null, array $expected = []): int;
 
     /**
      * get all client number
      * @return int
      */
-    public function count();
+    public function count(): int;
 
     public function setCliOut(Output $output);
 
     public function setCliIn(Input $input);
 
-    public function getName();
+    public function getName(): string ;
 }

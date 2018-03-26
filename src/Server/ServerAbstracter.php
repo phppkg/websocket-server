@@ -14,6 +14,7 @@ use Inhere\LibraryPlus\Log\ProcessLogInterface;
 use Inhere\WebSocket\WSAbstracter;
 use Inhere\Http\ServerRequest as Request;
 use Inhere\Http\Response;
+use Psr\Log\LogLevel;
 
 /**
  * Class AServerDriver
@@ -279,12 +280,12 @@ abstract class ServerAbstracter extends WSAbstracter implements ServerInterface,
      * handle CLI command and load options
      * @return bool
      */
-    protected function handleCommandAndConfig()
+    protected function handleCommandAndConfig(): bool
     {
         $command = $this->cliIn->getCommand('start');
         $supported = ['start', 'stop', 'restart', 'reload', 'info', 'status'];
 
-        if (!in_array($command, $supported, true)) {
+        if (!\in_array($command, $supported, true)) {
             $this->showHelp("The command [{$command}] is don't supported!");
         }
 
@@ -298,7 +299,7 @@ abstract class ServerAbstracter extends WSAbstracter implements ServerInterface,
 
         // Debug option to dump the config and exit
         if (isset($options['D']) || isset($options['dump'])) {
-            $val = isset($options['D']) ? $options['D'] : (isset($options['dump']) ? $options['dump'] : '');
+            $val = $options['D'] ?? $options['dump'] ?? '';
             $this->dumpInfo($val === 'all');
         }
 
@@ -332,7 +333,7 @@ abstract class ServerAbstracter extends WSAbstracter implements ServerInterface,
                 $this->reloadWorkers($masterPid);
                 break;
             case 'status':
-                $cmd = isset($options['cmd']) ? $options['cmd']: 'status';
+                $cmd = $options['cmd'] ?? 'status';
                 $this->showStatus($cmd, isset($options['watch-status']));
                 break;
             default:
@@ -579,7 +580,7 @@ abstract class ServerAbstracter extends WSAbstracter implements ServerInterface,
     /**
      * @return bool
      */
-    public function shouldContinue()
+    public function shouldContinue(): bool
     {
         return true;
     }
@@ -719,7 +720,7 @@ abstract class ServerAbstracter extends WSAbstracter implements ServerInterface,
      * @param bool $triggerEvent
      * @return bool
      */
-    public function close(int $cid, $socket = null, bool $triggerEvent = true)
+    public function close(int $cid, $socket = null, bool $triggerEvent = true): bool
     {
         $this->log("Close: Will close the #$cid client connection");
 
@@ -736,7 +737,7 @@ abstract class ServerAbstracter extends WSAbstracter implements ServerInterface,
      * @param resource|null $socket
      * @return bool
      */
-    abstract protected function doClose(int $cid, $socket = null);
+    abstract protected function doClose(int $cid, $socket = null): bool;
 
     /**
      * @param int $cid
@@ -779,10 +780,10 @@ abstract class ServerAbstracter extends WSAbstracter implements ServerInterface,
      * @param int[] $expected
      * @return int
      */
-    public function send(string $data, int $sender = 0, $receiver = null, array $expected = [])
+    public function send(string $data, int $sender = 0, $receiver = null, array $expected = []): int
     {
         // only one receiver
-        if ($receiver && (($isInt = is_int($receiver)) || 1 === count($receiver))) {
+        if ($receiver && (($isInt = \is_int($receiver)) || 1 === \count($receiver))) {
             $receiver = $isInt ? $receiver : array_shift($receiver);
 
             return $this->sendTo($receiver, $data, $sender);
@@ -798,7 +799,7 @@ abstract class ServerAbstracter extends WSAbstracter implements ServerInterface,
      * @param int $sender 发送者
      * @return int
      */
-    public function sendTo(int $receiver, string $data, int $sender = 0)
+    public function sendTo(int $receiver, string $data, int $sender = 0): int
     {
         if (!$data || $receiver < 1) {
             return 0;
@@ -833,12 +834,12 @@ abstract class ServerAbstracter extends WSAbstracter implements ServerInterface,
         }
 
         // only one receiver
-        if (1 === count($receivers)) {
+        if (1 === \count($receivers)) {
             return $this->sendTo(array_shift($receivers), $data, $sender);
         }
 
         $res = $this->frame($data);
-        $len = strlen($res);
+        $len = \strlen($res);
         $fromUser = $sender < 1 ? 'SYSTEM' : $sender;
 
         // to all
@@ -884,26 +885,26 @@ abstract class ServerAbstracter extends WSAbstracter implements ServerInterface,
      * @param int $length
      * @return int      Return socket last error number code. gt 0 on failure, eq 0 on success
      */
-    abstract public function writeTo($socket, string $data, int $length = 0);
+    abstract public function writeTo($socket, string $data, int $length = 0): int;
 
     /**
      * @param null|resource $socket
      * @return int
      */
-    abstract public function getErrorNo($socket = null);
+    abstract public function getErrorNo($socket = null): int ;
 
     /**
      * @param null|resource $socket
      * @return string
      */
-    abstract public function getErrorMsg($socket = null);
+    abstract public function getErrorMsg($socket = null): string ;
 
     /**
      * 获取对端socket的IP地址和端口
      * @param resource|int $socket Driver is sockets or streams, type is resource. Driver is swoole type is int.
      * @return array
      */
-    abstract public function getPeerName($socket);
+    abstract public function getPeerName($socket): array ;
 
     /////////////////////////////////////////////////////////////////////////////////////////
     /// helper method
@@ -912,11 +913,10 @@ abstract class ServerAbstracter extends WSAbstracter implements ServerInterface,
     /**
      * Logs data to disk or stdout
      * @param string $msg
-     * @param int $level
+     * @param int|string $level
      * @param array $data
-     * @return bool
      */
-    public function log(string $msg, $level = ProcessLogInterface::INFO, array $data = [])
+    public function log(string $msg, $level = LogLevel::INFO, array $data = [])
     {
         if ($this->isDebug() && ($info = debug_backtrace(DEBUG_BACKTRACE_IGNORE_ARGS, 1))) {
             $info = $info[0];
@@ -938,7 +938,7 @@ abstract class ServerAbstracter extends WSAbstracter implements ServerInterface,
 
         $msg = $this->getCliOut()->getStyle()->format($msg);
 
-        return $this->logger->log($msg, $level, $data);
+        $this->logger->log($msg, $level, $data);
     }
 
     /**
@@ -954,9 +954,9 @@ abstract class ServerAbstracter extends WSAbstracter implements ServerInterface,
      * @param string $secWSKey 'sec-websocket-key: xxxx'
      * @return bool
      */
-    public function isInvalidSecWSKey($secWSKey)
+    public function isInvalidSecWSKey($secWSKey): bool
     {
-        return 0 === preg_match(self::WS_KEY_PATTEN, $secWSKey) || 16 !== strlen(base64_decode($secWSKey));
+        return 0 === preg_match(self::WS_KEY_PATTEN, $secWSKey) || 16 !== \strlen(base64_decode($secWSKey));
     }
 
     /**
@@ -964,21 +964,21 @@ abstract class ServerAbstracter extends WSAbstracter implements ServerInterface,
      * @param string $s
      * @return string
      */
-    public function frame(string $s)
+    public function frame(string $s): string
     {
         /** @var array $a */
         $a = str_split($s, 125);
         $prefix = self::BINARY_TYPE_BLOB;
 
         // <= 125
-        if (count($a) === 1) {
-            return $prefix . chr(strlen($a[0])) . $a[0];
+        if (\count($a) === 1) {
+            return $prefix . \chr(\strlen($a[0])) . $a[0];
         }
 
         $ns = '';
 
         foreach ($a as $o) {
-            $ns .= $prefix . chr(strlen($o)) . $o;
+            $ns .= $prefix . \chr(\strlen($o)) . $o;
         }
 
         return $ns;
@@ -993,18 +993,18 @@ abstract class ServerAbstracter extends WSAbstracter implements ServerInterface,
         /*$len = $masks = $data =*/
         $decoded = '';
 
-        $fin = (ord($buffer{0}) & 0x80) === 0x80; // 1bit，1表示最后一帧
+        $fin = (\ord($buffer{0}) & 0x80) === 0x80; // 1bit，1表示最后一帧
         if (!$fin) {
             return '';// 超过一帧暂不处理
         }
 
-        $maskFlag = (ord($buffer{1}) & 0x80) === 0x80; // 是否包含掩码 0x80 -> 128
+        $maskFlag = (\ord($buffer{1}) & 0x80) === 0x80; // 是否包含掩码 0x80 -> 128
         if (!$maskFlag) {
             return '';// 不包含掩码的暂不处理
         }
 
         // $len = ord($buffer[1]) & 0x7F; // 数据长度
-        $len = ord($buffer[1]) & 127; // 数据长度 0x7F -> 127
+        $len = \ord($buffer[1]) & 127; // 数据长度 0x7F -> 127
 
         if ($len === 126) {
             $masks = substr($buffer, 4, 4);
@@ -1017,7 +1017,7 @@ abstract class ServerAbstracter extends WSAbstracter implements ServerInterface,
             $data = substr($buffer, 6);
         }
 
-        $dataLen = strlen($data);
+        $dataLen = \strlen($data);
 
         for ($index = 0; $index < $dataLen; $index++) {
             $decoded .= $data[$index] ^ $masks[$index % 4];
@@ -1036,7 +1036,7 @@ abstract class ServerAbstracter extends WSAbstracter implements ServerInterface,
      * @param $cid
      * @return bool
      */
-    public function hasMeta(int $cid)
+    public function hasMeta(int $cid): bool
     {
         return isset($this->metas[$cid]);
     }
@@ -1046,7 +1046,7 @@ abstract class ServerAbstracter extends WSAbstracter implements ServerInterface,
      * @param int $cid
      * @return ClientMetadata
      */
-    public function getMeta(int $cid)
+    public function getMeta(int $cid): ClientMetadata
     {
         return $this->metas[$cid] ?? null;
     }
@@ -1114,7 +1114,7 @@ abstract class ServerAbstracter extends WSAbstracter implements ServerInterface,
      * @param $cid
      * @return bool
      */
-    public function hasClient(int $cid)
+    public function hasClient(int $cid): bool
     {
         return isset($this->clients[$cid]);
     }
@@ -1125,9 +1125,9 @@ abstract class ServerAbstracter extends WSAbstracter implements ServerInterface,
      * @param  resource $socket
      * @return bool
      */
-    public function isClient($socket)
+    public function isClient($socket): bool
     {
-        return in_array($socket, $this->clients, true);
+        return \in_array($socket, $this->clients, true);
     }
 
     /**
@@ -1163,7 +1163,7 @@ abstract class ServerAbstracter extends WSAbstracter implements ServerInterface,
     /**
      * @return string
      */
-    public function getName()
+    public function getName(): string
     {
         return $this->name;
     }
@@ -1171,7 +1171,7 @@ abstract class ServerAbstracter extends WSAbstracter implements ServerInterface,
     /**
      * @return string
      */
-    public function getShowName()
+    public function getShowName(): string
     {
         return $this->name ? "({$this->name})" : '';
     }

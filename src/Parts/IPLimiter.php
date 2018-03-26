@@ -30,16 +30,16 @@ class IPLimiter
      * @param $ip
      * @return bool
      */
-    public function isAllow($ip)
+    public function isAllow($ip): bool
     {
         $long = sprintf('%u', ip2long($ip));
 
         // if 'whitelists' exists, only check it.
         if ($this->whitelists) {
-            return in_array($long, $this->whitelists, true);
+            return \in_array($long, $this->whitelists, true);
         }
 
-        if (in_array($long, $this->blacklists, true)) {
+        if (\in_array($long, $this->blacklists, true)) {
             return false;
         }
 
@@ -69,7 +69,7 @@ class IPLimiter
      * @param $long
      * @return string
      */
-    public function long2ip($long)
+    public function long2ip($long): string
     {
         $long = 4294967295 - ($long - 1);
 

@@ -86,7 +86,7 @@ class WSResponse implements \ArrayAccess
      * @param bool $reset
      * @return int
      */
-    public function send(bool $reset = true)
+    public function send(bool $reset = true): int
     {
         if (!$this->ws) {
             throw new \InvalidArgumentException('Please set the property [ws], is instance of the ServerInterface');
@@ -154,7 +154,7 @@ class WSResponse implements \ArrayAccess
      * @param int $sender
      * @return $this
      */
-    public function sender(int $sender)
+    public function sender(int $sender): self
     {
         return $this->setSender($sender);
     }
@@ -183,14 +183,14 @@ class WSResponse implements \ArrayAccess
      * @param int $cid
      * @return $this
      */
-    public function receiver(int $cid)
+    public function receiver(int $cid): self
     {
         return $this->addReceiver($cid);
     }
 
     public function addReceiver(int $cid)
     {
-        if (!in_array($cid, $this->receivers, true)) {
+        if (!\in_array($cid, $this->receivers, true)) {
             $this->receivers[] = $cid;
         }
 
@@ -201,7 +201,7 @@ class WSResponse implements \ArrayAccess
      * @param array|int $receivers
      * @return $this
      */
-    public function to($receivers)
+    public function to($receivers): self
     {
         return $this->setReceivers($receivers);
     }
@@ -225,9 +225,9 @@ class WSResponse implements \ArrayAccess
      * @param $receiver
      * @return $this
      */
-    public function except(int $receiver)
+    public function except(int $receiver): self
     {
-        if (!in_array($receiver, $this->excepted, true)) {
+        if (!\in_array($receiver, $this->excepted, true)) {
             $this->excepted[] = $receiver;
         }
 
@@ -238,7 +238,7 @@ class WSResponse implements \ArrayAccess
      * @param array|int $excepted
      * @return $this
      */
-    public function setExcepted($excepted)
+    public function setExcepted($excepted): self
     {
         $this->excepted = (array)$excepted;
 
@@ -250,7 +250,7 @@ class WSResponse implements \ArrayAccess
      * @param bool $toLast
      * @return $this
      */
-    public function addData(string $data, bool $toLast = true)
+    public function addData(string $data, bool $toLast = true): self
     {
         if ($toLast) {
             $this->data .= $data;
@@ -292,7 +292,7 @@ class WSResponse implements \ArrayAccess
      * @param ServerInterface $ws
      * @return self
      */
-    public function setWs(ServerInterface $ws)
+    public function setWs(ServerInterface $ws): self
     {
         if (!$this->ws) {
             $this->ws = $ws;

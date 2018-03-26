@@ -204,7 +204,7 @@ class RateLimiter extends Configurable implements Listener, LoggerAwareInterface
             array_shift($this->requests[$id]);
         }
 
-        if (count($this->requests[$id]) > $this->options['requests_per_minute']) {
+        if (\count($this->requests[$id]) > $this->options['requests_per_minute']) {
             $this->limit($connection, 'Requests per minute');
         }
     }

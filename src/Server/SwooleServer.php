@@ -42,15 +42,15 @@ class SwooleServer extends ServerAbstracter
     /**
      * @return bool
      */
-    public static function isSupported()
+    public static function isSupported(): bool
     {
-        return extension_loaded('swoole');
+        return \extension_loaded('swoole');
     }
 
     /**
      * @return array
      */
-    public function appendDefaultConfig()
+    public function appendDefaultConfig(): array
     {
         return [
             'mode'   => self::MODE_PROCESS,
@@ -147,7 +147,7 @@ class SwooleServer extends ServerAbstracter
      * @param SWResponse $swResponse
      * @return bool
      */
-    public function onHandshake(SWRequest $swRequest, SWResponse $swResponse)
+    public function onHandshake(SWRequest $swRequest, SWResponse $swResponse): bool
     {
         $cid = $swRequest->fd;
 
@@ -275,7 +275,7 @@ class SwooleServer extends ServerAbstracter
     {
         //var_dump($this);
         $this->debug("Swoole: PID $server->master_pid FD $frame->fd, OpCode: $frame->opcode, Data: $frame->data", $this->metas);
-        $this->message($frame->fd, $frame->data, strlen($frame->data));
+        $this->message($frame->fd, $frame->data, \strlen($frame->data));
     }
 
     /**
@@ -369,7 +369,7 @@ class SwooleServer extends ServerAbstracter
         }
 
         // only one receiver
-        if (1 === count($receivers)) {
+        if (1 === \count($receivers)) {
             return $this->sendTo(array_shift($receivers), $data, $sender);
         }
 
@@ -401,7 +401,7 @@ class SwooleServer extends ServerAbstracter
         while (true) {
             $connList = $this->swoole->connection_list($startFd, 50);
 
-            if ($connList === false || ($num = count($connList)) === 0) {
+            if ($connList === false || ($num = \count($connList)) === 0) {
                 break;
             }
 
@@ -428,7 +428,7 @@ class SwooleServer extends ServerAbstracter
     {
         $count = 0;
         $res = $data;
-        $len = strlen($res);
+        $len = \strlen($res);
         $fromUser = $sender < 1 ? 'SYSTEM' : $sender;
 
         // to receivers
@@ -452,7 +452,7 @@ class SwooleServer extends ServerAbstracter
         while (true) {
             $connList = $this->swoole->connection_list($startFd, 50);
 
-            if ($connList === false || ($num = count($connList)) === 0) {
+            if ($connList === false || ($num = \count($connList)) === 0) {
                 break;
             }
 
@@ -496,7 +496,7 @@ class SwooleServer extends ServerAbstracter
      * @param int $cid
      * @return bool
      */
-    public function exist(int $cid)
+    public function exist(int $cid): bool
     {
         return $this->swoole->exist($cid);
     }
@@ -505,7 +505,7 @@ class SwooleServer extends ServerAbstracter
      */
     protected function checkEnvWhenEnableSSL()
     {
-        if (!defined('SWOOLE_SSL')) {
+        if (!\defined('SWOOLE_SSL')) {
             $this->cliOut->error('If you want use SSL(https), must add option --enable-openssl on the compile swoole.', -500);
         }
 

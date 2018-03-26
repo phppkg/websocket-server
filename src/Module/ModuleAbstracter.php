@@ -145,7 +145,7 @@ abstract class ModuleAbstracter implements ModuleInterface
         }
 
         // allow all
-        if (is_string($allowed) && $allowed === self::ALLOW_ALL) {
+        if (\is_string($allowed) && $allowed === self::ALLOW_ALL) {
             return true;
         }
 
@@ -205,7 +205,7 @@ abstract class ModuleAbstracter implements ModuleInterface
      * @param callable $handler
      * @return ModuleInterface
      */
-    public function command(string $command, callable $handler)
+    public function command(string $command, callable $handler): ModuleInterface
     {
         return $this->add($command, $handler);
     }
@@ -223,7 +223,7 @@ abstract class ModuleAbstracter implements ModuleInterface
      * @param int $cid
      * @return int
      */
-    public function pingCommand(string $data, int $cid)
+    public function pingCommand(string $data, int $cid): int
     {
         return $this->respondText($data . '+PONG', false)->to($cid)->send();
     }
@@ -233,7 +233,7 @@ abstract class ModuleAbstracter implements ModuleInterface
      * @param int $cid
      * @return int
      */
-    public function errorCommand(string $data, int $cid)
+    public function errorCommand(string $data, int $cid): int
     {
         return $this
             ->respond($data, 'you send data format is error!', -200, false)
@@ -246,7 +246,7 @@ abstract class ModuleAbstracter implements ModuleInterface
      * @param int $cid
      * @return int
      */
-    public function notFoundCommand(string $command, int $cid)
+    public function notFoundCommand(string $command, int $cid): int
     {
         $msg = "You request command [$command] not found in the route [{$this->request->getPath()}].";
 
@@ -322,7 +322,7 @@ abstract class ModuleAbstracter implements ModuleInterface
         return $this->app->send($data, $msg, $code, $afterMakeMR, $reset);
     }
 
-    public function sendText($data, \Closure $afterMakeMR = null, bool $reset = true)
+    public function sendText($data, \Closure $afterMakeMR = null, bool $reset = true): int
     {
         return $this->app->sendText($data, $afterMakeMR, $reset);
     }

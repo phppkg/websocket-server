@@ -75,7 +75,7 @@ class ClientMetadata extends StdObject implements \ArrayAccess, \IteratorAggrega
     /**
      * @return array
      */
-    public function all()
+    public function all(): array
     {
         return [
             'id' => $this->id,

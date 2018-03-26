@@ -23,19 +23,19 @@ class WSHelper
      * @param $s
      * @return string
      */
-    public static function frame($s)
+    public static function frame($s): string
     {
         $a = str_split($s, 125);
         $prefix = WSInterface::BINARY_TYPE_BLOB;
 
-        if (count($a) === 1) {
-            return $prefix . chr(strlen($a[0])) . $a[0];
+        if (\count($a) === 1) {
+            return $prefix . \chr(\strlen($a[0])) . $a[0];
         }
 
         $ns = '';
 
         foreach ($a as $o) {
-            $ns .= $prefix . chr(strlen($o)) . $o;
+            $ns .= $prefix . \chr(\strlen($o)) . $o;
         }
 
         return $ns;
@@ -45,11 +45,11 @@ class WSHelper
      * @param $buffer
      * @return string
      */
-    public static function decode($buffer)
+    public static function decode($buffer): string
     {
         /*$len = $masks = $data =*/
         $decoded = '';
-        $len = ord($buffer[1]) & 127;
+        $len = \ord($buffer[1]) & 127;
 
         if ($len === 126) {
             $masks = substr($buffer, 4, 4);
@@ -62,7 +62,7 @@ class WSHelper
             $data = substr($buffer, 6);
         }
 
-        $dataLen = strlen($data);
+        $dataLen = \strlen($data);
         for ($index = 0; $index < $dataLen; $index++) {
             $decoded .= $data[$index] ^ $masks[$index % 4];
         }
@@ -79,7 +79,7 @@ class WSHelper
     public static function hybi10Encode($payload, $type = 'text', $masked = true)
     {
         $frameHead = array();
-        $payloadLength = strlen($payload);
+        $payloadLength = \strlen($payload);
 
         switch ($type) {
             //文本内容
@@ -132,14 +132,14 @@ class WSHelper
 
         // convert frame-head to string:
         foreach ($frameHead as $i => $v) {
-            $frameHead[$i] = chr($frameHead[$i]);
+            $frameHead[$i] = \chr($frameHead[$i]);
         }
 
         // generate a random mask:
         $mask = array();
         if ($masked === true) {
             for ($i = 0; $i < 4; $i++) {
-                $mask[$i] = chr(random_int(0, 255));
+                $mask[$i] = \chr(random_int(0, 255));
             }
 
             $frameHead = array_merge($frameHead, $mask);
@@ -160,16 +160,16 @@ class WSHelper
      * @return string
      * @throws \InvalidArgumentException
      */
-    public static function hybi10Decode($data)
+    public static function hybi10Decode($data): string
     {
         if (!$data) {
             throw new \InvalidArgumentException('data is empty');
         }
 
         $bytes = $data;
-        $secondByte = sprintf('%08b', ord($bytes[1]));
+        $secondByte = sprintf('%08b', \ord($bytes[1]));
         $masked = '1' === $secondByte[0];
-        $dataLength = ($masked === true) ? ord($bytes[1]) & 127 : ord($bytes[1]);
+        $dataLength = ($masked === true) ? \ord($bytes[1]) & 127 : \ord($bytes[1]);
 
         //服务器不会设置mask
         if ($dataLength === 126) {

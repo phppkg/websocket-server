@@ -91,7 +91,7 @@ trait StreamsTrait
      * @param resource $socket
      * @return array
      */
-    public function getPeerName($socket)
+    public function getPeerName($socket): array
     {
         $name = stream_socket_get_name($socket, true);
         $data = [
@@ -108,7 +108,7 @@ trait StreamsTrait
      * 用于获取客户端socket的本地host:port，必须在连接之后才可以使用
      * @return array
      */
-    public function getSockName()
+    public function getSockName(): array
     {
         $name = stream_socket_get_name($this->socket, false);
         $data = [

@@ -48,7 +48,7 @@ final class ServerFactory
      * @param array $options
      * @return ServerInterface
      */
-    public static function make(string $host = '0.0.0.0', int $port = 8080, array $options = [])
+    public static function make(string $host = '0.0.0.0', int $port = 8080, array $options = []): ServerInterface
     {
         $driver = '';
 
@@ -112,7 +112,7 @@ final class ServerFactory
      * @param array $options
      * @return ServerInterface
      */
-    public static function parseOptMake(array $options = [])
+    public static function parseOptMake(array $options = []): ServerInterface
     {
         $opts = getopt('p::H::dh', ['port::', 'host::', 'driver:', 'help', 'debug']);
 

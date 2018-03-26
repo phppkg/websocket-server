@@ -15,6 +15,7 @@ use Inhere\LibraryPlus\Log\ProcessLogger;
 use Inhere\LibraryPlus\Log\ProcessLogInterface;
 use Inhere\Library\Traits\FixedEventTrait;
 use Inhere\Library\Traits\ConfigTrait;
+use Psr\Log\LoggerInterface;
 
 /**
  * Class WSAbstracter
@@ -51,7 +52,7 @@ abstract class WSAbstracter implements WSInterface
 
     /**
      * the driver name
-     * @var ProcessLogInterface
+     * @var LoggerInterface
      */
     protected $logger;
 
@@ -122,7 +123,7 @@ abstract class WSAbstracter implements WSInterface
     /**
      * @return array
      */
-    protected function appendDefaultConfig()
+    protected function appendDefaultConfig(): array
     {
         return [
             // ...
@@ -323,7 +324,7 @@ abstract class WSAbstracter implements WSInterface
     {
         $key = '';
         $chars = self::TOKEN_CHARS;
-        $chars_length = strlen($chars);
+        $chars_length = \strlen($chars);
 
         for ($i = 0; $i < 16; $i++) {
             $key .= $chars[random_int(0, $chars_length - 1)]; //mt_rand

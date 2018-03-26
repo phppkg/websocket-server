@@ -48,7 +48,7 @@ class PayloadHandler extends StdObject
         }
 
         while ($data) { // Each iteration pulls off a single payload chunk
-            $size = strlen($data);
+            $size = \strlen($data);
             $remaining = $this->payload->getRemainingData();
 
             // If we don't yet know how much data is remaining, read data into
@@ -65,7 +65,7 @@ class PayloadHandler extends StdObject
                 $chunkSize = 0;
             }
 
-            $chunkSize = min(strlen($data), $chunkSize);
+            $chunkSize = min(\strlen($data), $chunkSize);
             $chunk = substr($data, 0, $chunkSize);
             $data = substr($data, $chunkSize);
 
@@ -91,7 +91,7 @@ class PayloadHandler extends StdObject
      */
     protected function emit(Payload $payload)
     {
-        call_user_func($this->callback, $payload);
+        \call_user_func($this->callback, $payload);
     }
 
     /**
@@ -99,7 +99,7 @@ class PayloadHandler extends StdObject
      *
      * @return Payload
      */
-    public function getCurrent()
+    public function getCurrent(): Payload
     {
         return $this->getPayloadHandler->getCurrent();
     }

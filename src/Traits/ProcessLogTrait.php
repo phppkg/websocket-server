@@ -65,7 +65,7 @@ trait ProcessLogTrait
      * @param array $data
      * @return bool
      */
-    public function log($msg, $level = self::LOG_INFO, array $data = [])
+    public function log($msg, $level = self::LOG_INFO, array $data = []): bool
     {
         if ($level > $this->logLevel) {
             return true;
@@ -111,7 +111,7 @@ trait ProcessLogTrait
     /**
      * update the log file name. If 'log_split' is not empty and manager running to long time.
      */
-    protected function updateLogFile()
+    protected function updateLogFile(): bool
     {
         if (!$this->logFileHandle || !($file = $this->logFile)) {
             return false;
@@ -172,14 +172,14 @@ trait ProcessLogTrait
      * @param bool $createDir
      * @return string
      */
-    public function genLogFile($createDir = false)
+    public function genLogFile($createDir = false): string
     {
         // log split type
         if (!($type = $this->config['log_split']) || !($file = $this->config['log_file'])) {
             return $this->config['log_file'];
         }
 
-        if (!in_array($type, [self::LOG_SPLIT_DAY, self::LOG_SPLIT_HOUR], true)) {
+        if (!\in_array($type, [self::LOG_SPLIT_DAY, self::LOG_SPLIT_HOUR], true)) {
             $type = self::LOG_SPLIT_DAY;
         }
 
@@ -230,7 +230,7 @@ trait ProcessLogTrait
      * @param int $level
      * @return bool
      */
-    protected function sysLog($msg, $level)
+    protected function sysLog($msg, $level): bool
     {
         switch ($level) {
             case self::LOG_EMERG:
@@ -264,7 +264,7 @@ trait ProcessLogTrait
      * getLogFile
      * @return string
      */
-    public function getLogFile()
+    public function getLogFile(): string
     {
         return $this->logFile;
     }

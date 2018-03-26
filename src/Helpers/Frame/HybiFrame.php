@@ -65,20 +65,20 @@ class HybiFrame extends Frame
      */
     public function encode($payload, $type = Protocol::TYPE_TEXT, $masked = false)
     {
-        if (!is_int($type) || !in_array($type, Protocol::FRAME_TYPES)) {
+        if (!\is_int($type) || !\in_array($type, Protocol::FRAME_TYPES)) {
             throw new InvalidArgumentException('Invalid frame type');
         }
 
         $this->type = $type;
         $this->masked = $masked;
         $this->payload = $payload;
-        $this->length = strlen($this->payload);
+        $this->length = \strlen($this->payload);
         $this->offset_mask = null;
         $this->offset_payload = null;
 
         $this->buffer = "\x00\x00";
 
-        $this->buffer[self::BYTE_HEADER] = chr(
+        $this->buffer[self::BYTE_HEADER] = \chr(
             (self::BITFIELD_TYPE & $this->type)
             | (self::BITFIELD_FINAL & PHP_INT_MAX)
         );
@@ -86,16 +86,16 @@ class HybiFrame extends Frame
         $masked_bit = (self::BITFIELD_MASKED & ($this->masked ? PHP_INT_MAX : 0));
 
         if ($this->length <= 125) {
-            $this->buffer[self::BYTE_INITIAL_LENGTH] = chr(
+            $this->buffer[self::BYTE_INITIAL_LENGTH] = \chr(
                 (self::BITFIELD_INITIAL_LENGTH & $this->length) | $masked_bit
             );
         } elseif ($this->length <= 65536) {
-            $this->buffer[self::BYTE_INITIAL_LENGTH] = chr(
+            $this->buffer[self::BYTE_INITIAL_LENGTH] = \chr(
                 (self::BITFIELD_INITIAL_LENGTH & 126) | $masked_bit
             );
             $this->buffer .= pack('n', $this->length);
         } else {
-            $this->buffer[self::BYTE_INITIAL_LENGTH] = chr(
+            $this->buffer[self::BYTE_INITIAL_LENGTH] = \chr(
                 (self::BITFIELD_INITIAL_LENGTH & 127) | $masked_bit
             );
 
@@ -125,9 +125,9 @@ class HybiFrame extends Frame
      * Generates a suitable masking key
      * @return string
      */
-    protected function generateMask()
+    protected function generateMask(): string
     {
-        if (extension_loaded('openssl')) {
+        if (\extension_loaded('openssl')) {
             return openssl_random_pseudo_bytes(4);
         }
 
@@ -141,9 +141,9 @@ class HybiFrame extends Frame
      * @param string $payload
      * @return string
      */
-    protected function mask($payload)
+    protected function mask($payload): string
     {
-        $length = strlen($payload);
+        $length = \strlen($payload);
         $mask = $this->getMask();
 
         $unmasked = '';
@@ -159,7 +159,7 @@ class HybiFrame extends Frame
      * @throws FrameException
      * @return string
      */
-    protected function getMask()
+    protected function getMask(): string
     {
         if (null === $this->mask) {
             if (!$this->isMasked()) {
@@ -177,14 +177,14 @@ class HybiFrame extends Frame
      * @return bool
      * @throws FrameException
      */
-    public function isMasked()
+    public function isMasked(): bool
     {
         if (null === $this->mask) {
             if (!isset($this->buffer[1])) {
                 throw new FrameException('Cannot tell if frame is masked: not enough frame data received');
             }
 
-            $this->masked = (boolean)(ord($this->buffer[1]) & self::BITFIELD_MASKED);
+            $this->masked = (boolean)(\ord($this->buffer[1]) & self::BITFIELD_MASKED);
         }
 
         return $this->masked;
@@ -194,7 +194,7 @@ class HybiFrame extends Frame
      * Gets the offset in the frame to the masking bytes
      * @return int
      */
-    protected function getMaskOffset()
+    protected function getMaskOffset(): int
     {
         if (null === $this->offset_mask) {
             $offset = self::BYTE_INITIAL_LENGTH + 1;
@@ -235,7 +235,7 @@ class HybiFrame extends Frame
      * @return int
      * @throws FrameException
      */
-    protected function getInitialLength()
+    protected function getInitialLength(): int
     {
         if (!isset($this->buffer[self::BYTE_INITIAL_LENGTH])) {
             throw new FrameException('Cannot yet tell expected length');
@@ -243,14 +243,14 @@ class HybiFrame extends Frame
 
         // $a = (int)(ord($this->buffer[self::BYTE_INITIAL_LENGTH]) & self::BITFIELD_INITIAL_LENGTH);
 
-        return (int)(ord($this->buffer[self::BYTE_INITIAL_LENGTH]) & self::BITFIELD_INITIAL_LENGTH);
+        return (int)(\ord($this->buffer[self::BYTE_INITIAL_LENGTH]) & self::BITFIELD_INITIAL_LENGTH);
     }
 
     /**
      * Returns the byte size of the mask part of the frame
      * @return int
      */
-    protected function getMaskSize()
+    protected function getMaskSize(): int
     {
         if ($this->isMasked()) {
             return 4;
@@ -263,7 +263,7 @@ class HybiFrame extends Frame
      * Gets the offset of the payload in the frame
      * @return int
      */
-    protected function getPayloadOffset()
+    protected function getPayloadOffset(): int
     {
         if (null === $this->offset_payload) {
             $offset = $this->getMaskOffset();
@@ -298,7 +298,7 @@ class HybiFrame extends Frame
             throw new FrameException('Cannot yet tell if frame is final');
         }
 
-        return (boolean)(ord($this->buffer[self::BYTE_HEADER]) & self::BITFIELD_FINAL);
+        return (boolean)(\ord($this->buffer[self::BYTE_HEADER]) & self::BITFIELD_FINAL);
     }
 
     /**
@@ -310,9 +310,9 @@ class HybiFrame extends Frame
             throw new FrameException('Cannot yet tell type of frame');
         }
 
-        $type = (int)(ord($this->buffer[self::BYTE_HEADER]) & self::BITFIELD_TYPE);
+        $type = (int)(\ord($this->buffer[self::BYTE_HEADER]) & self::BITFIELD_TYPE);
 
-        if (!in_array($type, Protocol::FRAME_TYPES)) {
+        if (!\in_array($type, Protocol::FRAME_TYPES)) {
             throw new FrameException('Invalid payload type');
         }
 
@@ -343,7 +343,7 @@ class HybiFrame extends Frame
                 $length = 0;
                 for ($i = $start; $i <= $end; $i++) {
                     $length <<= 8;
-                    $length += ord($this->buffer[$i]);
+                    $length += \ord($this->buffer[$i]);
                 }
 
                 $this->length = $length;
@@ -369,7 +369,7 @@ class HybiFrame extends Frame
      * @param string $payload
      * @return string
      */
-    protected function unmask($payload)
+    protected function unmask($payload): string
     {
         return $this->mask($payload);
     }

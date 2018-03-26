@@ -11,7 +11,7 @@ class Rfc6455Protocol extends HybiProtocol
 {
     const VERSION = 13;
 
-    public function getVersion()
+    public function getVersion(): int
     {
         return self::VERSION;
     }
@@ -19,7 +19,7 @@ class Rfc6455Protocol extends HybiProtocol
     /**
      * This is our most recent protocol class
      */
-    public function acceptsVersion($version)
+    public function acceptsVersion($version): bool
     {
         if ((int)$version <= 13) {
             return true;

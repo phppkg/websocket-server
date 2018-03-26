@@ -84,7 +84,7 @@ trait SocketsTrait
      * @param $socket
      * @return array
      */
-    public function getSockName($socket)
+    public function getSockName($socket): array
     {
         socket_getsockname($socket, $host, $port);
 
@@ -99,7 +99,7 @@ trait SocketsTrait
      * @param $socket
      * @return array
      */
-    public function getPeerName($socket)
+    public function getPeerName($socket): array
     {
         socket_getpeername($socket, $host, $port);
 
