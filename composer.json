@@ -1,31 +1,41 @@
 {
-  "name": "inhere/websocket",
-  "type": "library",
-  "description": "a lightweight webSocket application library, server and client by sockets,streams,swoole",
-  "keywords": ["library","webSocket","webSocket-application", "sockets", "streams", "swoole"],
-  "homepage": "http://github.com/inhere/php-webSocket",
-  "license": "MIT",
-  "authors": [
-    {
-      "name": "inhere",
-      "email": "in.798@qq.com",
-      "homepage": "http://www.yzone.net/"
+    "name": "inhere/websocket",
+    "type": "library",
+    "description": "a lightweight webSocket application library, server and client by sockets,streams,swoole",
+    "keywords": [
+        "library",
+        "webSocket",
+        "webSocket-application",
+        "sockets",
+        "streams",
+        "swoole"
+    ],
+    "homepage": "http://github.com/inhere/php-webSocket",
+    "license": "MIT",
+    "authors": [
+        {
+            "name": "inhere",
+            "email": "in.798@qq.com",
+            "homepage": "http://www.yzone.net/"
+        }
+    ],
+    "require": {
+        "php": ">=7.0.0",
+        "guzzlehttp/promises": "^1.3",
+        "inhere/console": "dev-master",
+        "inhere/http": "dev-master",
+        "inhere/library": "dev-master"
+    },
+    "require-dev": {
+        "mylib/websocket-client": "dev-master"
+    },
+    "autoload": {
+        "psr-4": {
+            "Inhere\\WebSocket\\": "src/"
+        }
+    },
+    "suggest": {
+        "inhere/simple-print-tool": "Very lightweight data printing tools",
+        "inhere/php-validate": "Very lightweight data validate tool"
     }
-  ],
-  "require": {
-    "php": ">=7.0.0",
-    "guzzlehttp/promises": "^1.3",
-    "inhere/console": "dev-master",
-    "inhere/http": "dev-master",
-    "inhere/library": "dev-master"
-  },
-  "autoload": {
-    "psr-4": {
-      "Inhere\\WebSocket\\" : "src/"
-    }
-  },
-  "suggest": {
-    "inhere/simple-print-tool": "Very lightweight data printing tools",
-    "inhere/php-validate": "Very lightweight data validate tool"
-  }
 }
