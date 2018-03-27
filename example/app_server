@@ -9,7 +9,7 @@
  */
 
 use Inhere\WebSocket\Application;
-use Inhere\WebSocket\Http\Request;
+use Inhere\Http\ServerRequest;
 use Inhere\WebSocket\Server\ClientMetadata;
 
 define('PROJECT_PATH', __DIR__);
@@ -42,7 +42,7 @@ $options = [
 ];
 $app = new Application('', 9501, $options);
 
-$app->onOpen(function (Application $app, Request $request, int $id) {
+$app->onOpen(function (Application $app, ServerRequest $request, int $id) {
     $app->respond([
         'total' => $app->getWs()->count()
     ], 'welcome!');

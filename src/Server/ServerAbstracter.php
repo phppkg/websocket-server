@@ -8,22 +8,22 @@
 
 namespace Inhere\WebSocket\Server;
 
-use inhere\console\utils\Show;
-use Inhere\Library\Helpers\PhpHelper;
-use Inhere\LibraryPlus\Log\ProcessLogInterface;
-use Inhere\WebSocket\WSAbstracter;
+use Inhere\Console\Utils\Show;
+use MyLib\PhpUtil\PhpHelper;
 use Inhere\Http\ServerRequest as Request;
 use Inhere\Http\Response;
+use MyLib\WebSocket\Util\WebSocketUtilTrait;
 use Psr\Log\LogLevel;
 
 /**
  * Class AServerDriver
  * @package Inhere\WebSocket\Server
  */
-abstract class ServerAbstracter extends WSAbstracter implements ServerInterface, LogInterface
+abstract class ServerAbstracter implements ServerInterface, LogInterface
 {
     // use traits\ProcessLogTrait;
     // use traits\ProcessManageTrait;
+    use WebSocketUtilTrait;
 
     /**
      * The statistics info for server/worker

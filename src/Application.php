@@ -8,17 +8,16 @@
 
 namespace Inhere\WebSocket;
 
-use inhere\console\io\Input;
-use inhere\console\io\Output;
-use inhere\console\utils\Show;
-use Inhere\Library\Helpers\PhpHelper;
-use Inhere\Library\Helpers\ProcessHelper;
+use Inhere\Console\IO\Input;
+use Inhere\Console\IO\Output;
+use Inhere\Console\Utils\Show;
+use MyLib\PhpUtil\PhpHelper;
+use MyLib\SysUtil\ProcessUtil;
 use Inhere\Library\Traits\EventTrait;
 use Inhere\Library\Traits\OptionsTrait;
-use Inhere\LibraryPlus\Log\FileLogger;
 use Inhere\WebSocket\Module\ModuleInterface;
 use Inhere\WebSocket\Module\RootModule;
-use Inhere\WebSocket\Http\WSResponse;
+use Inhere\WebSocket\Message;
 use Inhere\Http\ServerRequest as Request;
 use Inhere\Http\Response;
 use Inhere\WebSocket\Server\ClientMetadata;
@@ -224,7 +223,7 @@ class Application
         $masterIsStarted = false;
 
         if (!PhpHelper::isWin()) {
-            $masterPid = ProcessHelper::getPidFromFile($this->getPidFIle());
+            $masterPid = ProcessUtil::getPidFromFile($this->getPidFIle());
             $masterIsStarted = ($masterPid > 0) && @posix_kill($masterPid, 0);
         }
 
@@ -549,7 +548,7 @@ class Application
      */
     public function getPidFromFile($checkRunning = false): int
     {
-        return ProcessHelper::getPidFromFile($this->pidFile, $checkRunning);
+        return ProcessUtil::getPidFromFile($this->pidFile, $checkRunning);
     }
 
     /**
@@ -883,7 +882,7 @@ class Application
      * @param string $msg
      * @param int $code
      * @param bool $doSend
-     * @return int|WSResponse
+     * @return int|Message
      */
     public function respond($data, string $msg = '', int $code = 0, bool $doSend = true)
     {
@@ -896,7 +895,7 @@ class Application
      * response text data to client
      * @param $data
      * @param bool $doSend
-     * @return int|WSResponse
+     * @return int|Message
      */
     public function respondText($data, bool $doSend = true)
     {
@@ -904,7 +903,7 @@ class Application
             $data = implode('', $data);
         }
 
-        $mr = WSResponse::make($data)->setWs($this->ws);
+        $mr = Message::make($data)->setWs($this->ws);
 
         if ($doSend) {
             $mr->send();
@@ -941,7 +940,7 @@ class Application
             $data = implode('', $data);
         }
 
-        $mr = WSResponse::make($data)->setWs($this->ws);
+        $mr = Message::make($data)->setWs($this->ws);
 
         if ($afterMakeMR) {
             $status = $afterMakeMR($mr);

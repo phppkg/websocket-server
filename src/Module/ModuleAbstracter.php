@@ -16,7 +16,7 @@ use Inhere\WebSocket\Server\DataParser\ComplexDataParser;
 use Inhere\WebSocket\Server\DataParser\DataParserInterface;
 use Inhere\Http\ServerRequest as Request;
 use Inhere\Http\Response;
-use Inhere\WebSocket\Http\WSResponse;
+use Inhere\WebSocket\Message;
 
 /**
  * Class ARouteHandler
@@ -300,7 +300,7 @@ abstract class ModuleAbstracter implements ModuleInterface
      * @param string $msg
      * @param int $code
      * @param bool $doSend
-     * @return int|WSResponse
+     * @return int|Message
      */
     public function respond($data, string $msg = 'success', int $code = 0, bool $doSend = true)
     {
@@ -310,7 +310,7 @@ abstract class ModuleAbstracter implements ModuleInterface
     /**
      * @param $data
      * @param bool $doSend
-     * @return WSResponse|int
+     * @return Message|int
      */
     public function respondText($data, bool $doSend = true)
     {

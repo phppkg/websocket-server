@@ -6,18 +6,18 @@
  * Time: 21:32
  */
 
-namespace Inhere\WebSocket\Http;
+namespace Inhere\WebSocket;
 
-use Inhere\Library\Traits\ArrayAccessByPropertyTrait;
-use Inhere\Library\Traits\PropertyAccessByGetterSetterTrait;
+use MyLib\ObjUtil\Traits\ArrayAccessByPropertyTrait;
+use MyLib\ObjUtil\Traits\PropertyAccessByGetterSetterTrait;
 use Inhere\WebSocket\Server\ServerInterface;
 
 /**
  * Class WSResponse
  * webSocket message response
- * @package Inhere\WebSocket\Parts
+ * @package Inhere\WebSocket\Part
  */
-class WSResponse implements \ArrayAccess
+class Message implements \ArrayAccess
 {
     use ArrayAccessByPropertyTrait;
     use PropertyAccessByGetterSetterTrait;

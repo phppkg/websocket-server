@@ -8,7 +8,7 @@
 
 namespace Inhere\WebSocket\Traits;
 
-use inhere\console\utils\Show;
+use Inhere\Console\Utils\Show;
 use Inhere\Library\Helpers\Cli;
 use Inhere\Library\Helpers\ProcessHelper;
 

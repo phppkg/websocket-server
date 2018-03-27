@@ -6,11 +6,11 @@
  * Time: 9:07
  */
 
-namespace Inhere\WebSocket\Parts;
+namespace Inhere\WebSocket\Part;
 
 /**
  * Class IPLimiter
- * @package Inhere\WebSocket\Parts
+ * @package Inhere\WebSocket\Part
  */
 class IPLimiter
 {

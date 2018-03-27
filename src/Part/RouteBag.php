@@ -6,13 +6,13 @@
  * Time: 9:29
  */
 
-namespace Inhere\WebSocket\Parts;
+namespace Inhere\WebSocket\Part;
 
 use Inhere\WebSocket\Module\ModuleInterface;
 
 /**
  * Class RouteBag
- * @package Inhere\WebSocket\Parts
+ * @package Inhere\WebSocket\Part
  */
 class RouteBag
 {

@@ -8,14 +8,15 @@
 
 namespace Inhere\WebSocket\Server;
 
-use inhere\console\io\Input;
-use inhere\console\io\Output;
+use Inhere\Console\IO\Input;
+use Inhere\Console\IO\Output;
+use MyLib\WebSocket\Util\WebSocketInterface;
 
 /**
  * Interface ServerInterface
  * @package Inhere\WebSocket\Server
  */
-interface ServerInterface
+interface ServerInterface extends WebSocketInterface
 {
     const WS_KEY_PATTEN  = '#^[+/0-9A-Za-z]{21}[AQgw]==$#';
 

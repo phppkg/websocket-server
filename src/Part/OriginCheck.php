@@ -6,13 +6,13 @@
  * Time: 11:30
  */
 
-namespace Inhere\WebSocket\Parts;
+namespace Inhere\WebSocket\Part;
 
 use Inhere\Http\ServerRequest as Request;
 
 /**
  * Class OriginCheck
- * @package Inhere\WebSocket\Parts
+ * @package Inhere\WebSocket\Part
  */
 class OriginCheck
 {

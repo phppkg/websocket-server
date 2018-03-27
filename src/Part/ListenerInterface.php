@@ -1,6 +1,6 @@
 <?php
 
-namespace Inhere\WebSocket\Parts;
+namespace Inhere\WebSocket\Part;
 
 use Inhere\WebSocket\Application;
 

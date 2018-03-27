@@ -8,15 +8,15 @@
 
 namespace Inhere\WebSocket\Server;
 
-use Inhere\Library\StdObject;
-use Inhere\Library\Traits\ArrayAccessByPropertyTrait;
+use MyLib\ObjUtil\Traits\ArrayAccessByPropertyTrait;
+use MyLib\ObjUtil\Obj;
 use Traversable;
 
 /**
  * Class ClientMetadata - client connection metadata
  * @package Inhere\WebSocket\Server
  */
-class ClientMetadata extends StdObject implements \ArrayAccess, \IteratorAggregate
+class ClientMetadata implements \ArrayAccess, \IteratorAggregate
 {
     use ArrayAccessByPropertyTrait;
 
@@ -66,7 +66,7 @@ class ClientMetadata extends StdObject implements \ArrayAccess, \IteratorAggrega
      */
     public function __construct(array $config = [])
     {
-        parent::__construct($config);
+        Obj::init($this, $config);
 
         $this->connectTime = time();
         $this->generateClientId();
